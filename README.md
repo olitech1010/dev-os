@@ -1,4 +1,4 @@
-# 🧠 Olives Technologies — Engineering OS
+# Olives Technologies — Engineering OS
 
 > A production-grade, AI-native engineering system for professional solo developers and small teams. Designed to work with Claude Code, Cursor, Gemini, and any agentic AI tool. Built to grow through community contributions.
 
@@ -68,7 +68,7 @@ olivestechnologies-starter/
 │   ├── AGENTS.md                ← Master agent roster and roles
 │   ├── orchestrator/            ← Orchestrator agent prompt
 │   └── prompts/                 ← Individual agent system prompts
-│       ├── architect.md         ← 🏛️ Grill-me inception agent
+│       ├── architect.md         ← Grill-me inception agent
 │       ├── developer.md
 │       ├── researcher.md
 │       ├── reviewer.md
@@ -128,7 +128,7 @@ olivestechnologies-starter/
 
 ---
 
-## 🏛️ Project Inception (Grill-Me Workflow)
+## Project Inception (Grill-Me Workflow)
 
 Before writing a single line of code, the Architect agent interrogates your project idea:
 

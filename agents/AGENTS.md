@@ -26,7 +26,7 @@ YOU (Engineering Lead)
 
 ## Agent Roster
 
-### 🎯 Orchestrator
+### Orchestrator
 **File:** `agents/orchestrator/orchestrator.md`
 
 The tech lead. Receives high-level tasks, breaks them into subtasks, delegates to specialists, validates outputs, manages the loop.
@@ -39,7 +39,7 @@ The tech lead. Receives high-level tasks, breaks them into subtasks, delegates t
 
 ---
 
-### 🏛️ Architect Agent
+### Architect Agent
 **File:** `agents/prompts/architect.md`
 
 The system designer and interrogator. Uses the `grill-me.md` skill to turn a vague project idea into a concrete, rigorous set of technical and non-technical requirements. 
@@ -50,7 +50,7 @@ The system designer and interrogator. Uses the `grill-me.md` skill to turn a vag
 
 ---
 
-### 💻 Developer Agent
+### Developer Agent
 **File:** `agents/prompts/developer.md`
 
 Writes code. Follows the project's `CODING_STANDARDS.md` and stack `CLAUDE.md` exactly.
@@ -63,7 +63,7 @@ Writes code. Follows the project's `CODING_STANDARDS.md` and stack `CLAUDE.md` e
 
 ---
 
-### 🔍 Researcher Agent
+### Researcher Agent
 **File:** `agents/prompts/researcher.md`
 
 Finds the truth. Searches documentation, changelogs, GitHub issues, and Stack Overflow to answer specific questions.
@@ -76,7 +76,7 @@ Finds the truth. Searches documentation, changelogs, GitHub issues, and Stack Ov
 
 ---
 
-### 🧐 Reviewer Agent
+### Reviewer Agent
 **File:** `agents/prompts/reviewer.md`
 
 The gatekeeper. Reads Developer output against standards and either approves or returns with specific feedback.
@@ -93,7 +93,7 @@ Returns a structured verdict: **APPROVED** or **CHANGES REQUESTED** with numbere
 
 ---
 
-### 🧪 Tester Agent
+### Tester Agent
 **File:** `agents/prompts/tester.md`
 
 Writes and runs tests. Works from the feature spec, not from the implementation.
@@ -106,7 +106,7 @@ Writes and runs tests. Works from the feature spec, not from the implementation.
 
 ---
 
-### ☁️ DevOps Agent
+### DevOps Agent
 **File:** `agents/prompts/devops.md`
 
 Infrastructure and deployment. Works with CI/CD, environment config, and deployment pipelines.
@@ -119,7 +119,7 @@ Infrastructure and deployment. Works with CI/CD, environment config, and deploym
 
 ---
 
-### 🔒 Security Agent
+### Security Agent
 **File:** `agents/prompts/security.md`
 
 Scans for vulnerabilities. Runs after Developer but before DevOps.
