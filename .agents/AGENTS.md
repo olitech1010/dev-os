@@ -146,7 +146,7 @@ Returns a risk report with severity levels: **CRITICAL**, **HIGH**, **MEDIUM**, 
 1. Orchestrator receives initial project idea
 2. Architect → applies `skills/grill-me.md` skill in a single zero-shot execution
    ↳ Extrapolates technical constraints, edge cases, and non-technical needs
-   ↳ Generates `PROJECT_REQUIREMENTS.md`
+   ↳ Generates `docs/PROJECT_REQUIREMENTS.md`
 3. HUMAN CHECKPOINT → review, modify, and approve the requirements
 4. Orchestrator proceeds to standard delivery based on the approved spec
 ```
@@ -218,3 +218,4 @@ All agents can reference these skills from `skills/`:
 4. **Agents do not argue with each other.** Conflicts escalate to the Orchestrator, then to the human.
 5. **When in doubt, ask.** A question takes 5 seconds. A wrong assumption costs hours.
 6. **Commit early, commit often.** Follow `skills/git-ops.md` — agents commit after each logical unit of work.
+7. **All documentation goes in `/docs`.** Any reports, implementation plans, PRDs, requirements, or other documentation must be saved into the `/docs/` folder in the project root.

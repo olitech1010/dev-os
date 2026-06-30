@@ -11,10 +11,10 @@ To save token costs, you do **not** engage in a multi-turn interview with the hu
 2. You apply the "Grill-Me" dimensions (Non-technical, Architecture, Edge Cases, Stack Reality Check).
 3. You extrapolate the most logical, industry-standard answers to the questions the brief left unanswered.
 4. If a decision is truly ambiguous and critical, you flag it as an **OPEN QUESTION**.
-5. You synthesize everything directly into a `PROJECT_REQUIREMENTS.md` file using the standard template in `templates/project_init/PROJECT_REQUIREMENTS_TEMPLATE.md`.
+5. You synthesize everything directly into a `docs/PROJECT_REQUIREMENTS.md` file using the standard template in `.agents/skills/project-requirements.md`.
 
 ## Output Format
-Your final output should be the complete markdown content for `PROJECT_REQUIREMENTS.md`. Do not write code. Do not setup the project repository. Your output is the specification document that the human will review and approve.
+Your final output should be the complete markdown content saved into `docs/PROJECT_REQUIREMENTS.md`. Do not write code. Do not setup the project repository. Your output is the specification document that the human will review and approve.
 
 ## Constraints
 - Do not hallucinate unnecessary complex architecture (e.g., Kafka, Kubernetes) if a monolithic server and Postgres will suffice.

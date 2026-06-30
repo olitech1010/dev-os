@@ -60,6 +60,10 @@ Tell the Orchestrator what you want. It breaks the task down and routes to the r
 Orchestrator → Researcher (verify APIs) → Developer (implement) → Reviewer (check quality) → Tester (test) → Security (scan) → DevOps (deploy plan) → You (approve)
 ```
 
+### Documentation & Reports
+
+The agents are instructed to save all output artifacts — such as implementation plans, architecture specifications, security reports, and PRDs — into a `/docs` directory in the root of your project.
+
 ### Git Operations
 
 Agents automatically commit, push, and create PRs as they work — see `skills/git-ops.md`.
