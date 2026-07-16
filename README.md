@@ -1,11 +1,14 @@
-# Olives Technologies — Engineering OS
+# Olives Technologies Engineering OS
 
-> This repository is a universal AI Agent system.
+Welcome to the Dev-OS, a premier agentic development environment engineered for autonomous, high-quality software delivery.
 
-## Quick Start
+## Architecture
+This OS operates on a multi-agent framework where specialized AI agents (Orchestrator, Developer, Tester, etc.) collaborate under a strict **Human-in-the-Loop Commit Gate**.
 
-1. **Copy the .agents/ folder** from this repository into the root of any new project.
-2. **Pick your stack** — copy the relevant file from .agents/skills/stacks/ into your project root (e.g., as AGENTS.md or CLAUDE.md depending on your tool).
-3. **Start building** — tell your agent (Antigravity, Cursor, Claude Code, etc.) to read .agents/AGENTS.md and it will know how to behave.
+## Key Features
+- **Strict Quality Control:** No code is committed without Reviewer approval AND explicit human approval.
+- **Task Contracts:** Clear boundary definition between agents.
+- **Superpowers:** Robust brainstorming and code review skills.
+- **Multi-Stack Support:** Built-in standards for Next.js, Laravel, FastAPI, and Express.
 
-For full documentation, see [.agents/README.md](./.agents/README.md).
+Read `docs/GETTING_STARTED.md` and `docs/ARCHITECTURE.md` to begin.

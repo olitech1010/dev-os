@@ -12,15 +12,18 @@ YOU (Engineering Lead)
         ▼
  ORCHESTRATOR AGENT          ← You talk to this one
         │
-   ┌────┼────────────────────────────┐
+   ┌────┼────────────────────────────────┐
    ▼    ▼         ▼         ▼        ▼
  DEV  RESEARCHER  TESTER  DEVOPS  SECURITY
-        │
-        ▼
-    REVIEWER ← checks DEV output before it's accepted
+  │
+  ▼
+REVIEWER ← checks DEV output before it's accepted
+  │
+  ▼
+🧑 HUMAN ← approves before commit
 ```
 
-**The rule:** No agent's output is final without passing through its designated gate. Developer output → Reviewer. Infrastructure change → human approval. Deployment → human approval.
+**The rule:** No agent's output is final without passing through its designated gate. Developer output → Reviewer → Human approval. Infrastructure change → human approval. Deployment → human approval.
 
 ---
 
@@ -42,7 +45,7 @@ The tech lead. Receives high-level tasks, breaks them into subtasks, delegates t
 ### Architect Agent
 **File:** `agents/architect.md`
 
-The system designer and interrogator. Uses the `skills/grill-me.md` skill to turn a vague project idea into a concrete, rigorous set of technical and non-technical requirements.
+The system designer and interrogator. Uses the `.agents/skills/grill-me/SKILL.md` skill to turn a vague project idea into a concrete, rigorous set of technical and non-technical requirements.
 
 - Single-shot execution to save tokens: internally grills the project constraints and extrapolates logical answers
 - Outputs the final `PROJECT_REQUIREMENTS.md` for human review
@@ -60,7 +63,7 @@ Writes code. Follows the project's coding standards exactly.
 - Never installs packages without Researcher confirmation on version
 - Never deletes files without explicit instruction
 - Output always goes to Reviewer before being accepted
-- Commits work using `skills/git-ops.md` conventions
+- Commits work using `.agents/skills/git-ops/SKILL.md` conventions
 
 ---
 
@@ -116,7 +119,7 @@ Infrastructure and deployment. Works with CI/CD, environment config, and deploym
 - Always produces a **plan** before executing
 - Manages environment variables safely (never logs secrets)
 - Writes infrastructure as code (GitHub Actions, Docker, etc.)
-- Validates that the deployment checklist in `skills/deployment-checklist.md` is complete
+- Validates that the deployment checklist in `.agents/skills/deployment-checklist/SKILL.md` is complete
 
 ---
 
@@ -144,7 +147,7 @@ Returns a risk report with severity levels: **CRITICAL**, **HIGH**, **MEDIUM**, 
 ### Project Inception (Grill-Me)
 ```
 1. Orchestrator receives initial project idea
-2. Architect → applies `skills/grill-me.md` skill in a single zero-shot execution
+2. Architect → applies `.agents/skills/grill-me/SKILL.md` skill in a single zero-shot execution
    ↳ Extrapolates technical constraints, edge cases, and non-technical needs
    ↳ Generates `docs/PROJECT_REQUIREMENTS.md`
 3. HUMAN CHECKPOINT → review, modify, and approve the requirements
@@ -155,7 +158,7 @@ Returns a risk report with severity levels: **CRITICAL**, **HIGH**, **MEDIUM**, 
 ```
 1. Orchestrator receives task → breaks into subtasks
 2. Researcher → confirms any new packages, APIs, or patterns needed
-3. Developer → implements (commits per skills/git-ops.md)
+3. Developer → implements (commits per .agents/skills/git-ops/SKILL.md)
 4. Reviewer → checks against standards (loop back to Developer if needed)
 5. Tester → writes/runs tests (loop back to Developer if failures)
 6. Security → scans (loop back to Developer if CRITICAL or HIGH)
@@ -167,7 +170,7 @@ Returns a risk report with severity levels: **CRITICAL**, **HIGH**, **MEDIUM**, 
 ### Bug Fix Delivery
 ```
 1. Researcher → reproduces and investigates root cause
-2. Developer → implements fix (commits per skills/git-ops.md)
+2. Developer → implements fix (commits per .agents/skills/git-ops/SKILL.md)
 3. Tester → writes regression test first, then verifies fix
 4. Reviewer → approves
 5. HUMAN CHECKPOINT
@@ -217,5 +220,5 @@ All agents can reference these skills from `skills/`:
 3. **No agent silently ignores a constraint.** If a standard cannot be met, surface it — don't work around it.
 4. **Agents do not argue with each other.** Conflicts escalate to the Orchestrator, then to the human.
 5. **When in doubt, ask.** A question takes 5 seconds. A wrong assumption costs hours.
-6. **Commit early, commit often.** Follow `skills/git-ops.md` — agents commit after each logical unit of work.
+6. **Commit early, commit often.** Follow `.agents/skills/git-ops/SKILL.md` — agents commit after each logical unit of work.
 7. **All documentation goes in `/docs`.** Any reports, implementation plans, PRDs, requirements, or other documentation must be saved into the `/docs/` folder in the project root.
