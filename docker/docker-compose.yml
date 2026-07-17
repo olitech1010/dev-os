@@ -1,0 +1,12 @@
+version: '3.8'
+
+services:
+  dev-os-sandbox:
+    build: .
+    container_name: dev-os-sandbox
+    # Mount the parent project root (the workspace) into the container
+    # so agents can execute code against the actual codebase safely.
+    volumes:
+      - ../:/workspace
+    # We drop privileges by default in the Dockerfile
+    restart: unless-stopped
