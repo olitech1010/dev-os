@@ -1,0 +1,57 @@
+name: Dev-OS CI Agent
+
+on:
+  push:
+    branches:
+      - main
+      - feat/*
+      - fix/*
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  test_and_feedback:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v3
+
+    - name: Set up Python Environment
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.12'
+
+    - name: Run Tests (Example)
+      id: run_tests
+      run: |
+        # Replace this with your actual test command (e.g. npm test, pytest)
+        echo "Running Dev-OS test suite..."
+        # We capture the output of the tests into a file
+        pytest > test_logs.txt 2>&1 || (echo "Tests failed!" && exit 1)
+      continue-on-error: true
+
+    - name: Trigger Dev-OS Webhook on Failure
+      if: steps.run_tests.outcome == 'failure'
+      run: |
+        echo "Tests failed. Sending failure logs to Dev-OS orchestrator endpoint..."
+        
+        # Read the logs (limit to last 2000 characters to avoid payload bloat)
+        LOGS=$(tail -c 2000 test_logs.txt)
+        
+        # In a real environment, you'd securely store your DEV_OS_ENDPOINT in GitHub Secrets
+        # e.g., https://my-dev-os.ngrok.app/webhook
+        ENDPOINT="${{ secrets.DEV_OS_ENDPOINT }}"
+        
+        if [ -z "$ENDPOINT" ]; then
+          echo "DEV_OS_ENDPOINT secret is not set. Skipping webhook."
+          exit 1
+        fi
+        
+        curl -X POST $ENDPOINT \
+          -H "Content-Type: application/json" \
+          -d "{\"status\": \"failed\", \"branch\": \"${{ github.ref }}\", \"logs\": \"$LOGS\", \"commit\": \"${{ github.sha }}\"}"
+          
+        echo "Sent failure webhook to Dev-OS."
+        exit 1
