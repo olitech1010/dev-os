@@ -2,40 +2,81 @@
 
 This guide explains how to initialize Dev-OS in a new or existing repository and start collaborating with your multi-agent engineering team.
 
-## 1. Project Inception (The "Grill-Me" Phase)
-When starting a new feature or project, avoid jumping straight into code:
-- Instruct the Orchestrator or Architect agent to trigger the `.agents/skills/grill-me/SKILL.md` protocol.
-- The Architect will interview you to uncover hidden technical constraints, edge cases, and architectural needs.
-- This produces a concrete `docs/PROJECT_REQUIREMENTS.md` document for you to review and approve.
+---
 
-## 2. Setting Your Coding Standards & Stack
-Before writing code, ensure your standards are defined:
-- Copy the appropriate stack file from `.agents/skills/stacks/` into your project root (e.g., `CODING_STANDARDS.md` or `nextjs.md`).
-- Supported stacks include Next.js, Laravel, Django, and React Native.
+## 1. Installation Options
 
-## 3. The Development Workflow & Task Triage
-When you assign a task to the **Orchestrator Agent**, it will automatically triage your request:
+### Option A: Global NPM / NPX (Recommended)
+Run the automated installer in your target project root:
+```bash
+npx devos init
+```
+*(Or install globally: `npm install -g devos` and run `devos init`)*
+
+### Option B: Direct GitHub Installation
+```bash
+npx github:olitech1010/dev-os init
+```
+
+### Option C: Local Cloning & Linking (Fallback / Offline)
+If global or `npx` execution fails or is blocked by network policy:
+```bash
+# Clone the Dev-OS repository
+git clone https://github.com/olitech1010/dev-os.git
+cd dev-os
+
+# Symlink the CLI globally on your system
+npm link
+
+# Go to your project folder and initialize
+cd /path/to/your-target-project
+devos init
+```
+
+---
+
+## 2. Interactive Setup Prompts
+
+When you run the installer, it will ask two simple questions:
+1. **Fresh vs. Existing Project:**
+   - **Fresh Project:** Initializes a clean workspace with standard documentation and templates.
+   - **Existing Project:** Injects `.agents/` team files into your codebase while preserving your existing application code, custom `CODING_STANDARDS.md`, and project documentation.
+2. **Tech Stack Selection:**
+   - Choose your stack (Next.js, Laravel, Django, React Native, or Universal) to configure standard coding rules.
+
+---
+
+## 3. Development Workflow & Task Triage
+
+When you assign a task to the **Orchestrator Agent**, it automatically triages your request:
 
 1. **TRIVIAL Tasks (Typos, small config changes, minor CSS):**
-   - The Orchestrator will execute the fix directly without spawning subagents, saving you latency and token costs.
+   - Executed directly by the Orchestrator without spawning subagents to save time and tokens.
 2. **STANDARD Tasks (New features, standard bug fixes):**
-   - The Orchestrator delegates to the **Developer Agent**.
-   - The Developer writes the implementation and tests.
-   - The Developer hands off to the **QA Agent**.
-   - The QA Agent runs automated checks (`npm run lint`, `pytest`). If they fail, code goes back to the Developer. If they pass, QA checks against `CODING_STANDARDS.md` and asks for your approval.
+   - Orchestrator delegates to the **Developer Agent**.
+   - Developer implements code and passes it to the **QA Agent**.
+   - QA Agent runs automated checks (`npm run lint`, `pytest`). If they pass, QA checks against `CODING_STANDARDS.md` and requests human approval.
 3. **CRITICAL Tasks (Database schemas, Supabase RLS, infrastructure):**
-   - The Orchestrator involves the **DBA Agent**, **Security Agent**, or **DevOps Agent**.
-   - Destructive actions (`DROP`, `TRUNCATE`, deployments) require a mandatory dry-run plan and explicit human approval before execution.
+   - Involves the **DBA Agent**, **Security Agent**, or **DevOps Agent**.
+   - Destructive actions (`DROP`, `TRUNCATE`, deployments) require a mandatory dry-run plan and explicit human sign-off.
+
+---
 
 ## 4. Approving Commits (The Scripted Checkpoint)
-In Dev-OS, agents are mechanically forbidden from running raw `git commit` commands in the terminal. When code is ready to be saved:
+
+In Dev-OS, agents are mechanically forbidden from running raw `git commit` commands in the terminal. When code is ready:
 1. The agent calls `./.agents/scripts/commit.sh`.
-2. The execution pauses and prompts you in the terminal:
+2. Execution pauses and prompts you in the terminal:
    ```
    Human Approval Token (type 'approve' to proceed):
    ```
 3. Type `approve` and press Enter.
-4. The script formats the commit using Conventional Commits and saves your progress securely!
+4. The script formats the commit using Conventional Commits and saves your progress securely.
 
-## 5. Deployment
-Once features are verified and merged to `main`, instruct the **DevOps Agent** to prepare a deployment plan. Review the checklist in `.agents/skills/deployment-checklist/SKILL.md`, give your final sign-off, and deploy to production.
+---
+
+## 5. Related Documentation
+
+- [System Architecture](file:///Users/user/development/dev-os/docs/ARCHITECTURE.md)
+- [Step-by-Step Tutorial & Glossary](file:///Users/user/development/dev-os/docs/TUTORIAL.md)
+- [Root README](file:///Users/user/development/dev-os/README.md)
