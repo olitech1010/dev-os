@@ -29,7 +29,7 @@ const TARGET_DIR = process.cwd();
 function printHeader() {
   console.log(`${colors.cyan}${colors.bold}`);
   console.log('========================================================');
-  console.log('            🚀 Olives Technologies Dev-OS 🤖             ');
+  console.log('            Olives Technologies Dev-OS             ');
   console.log('      Autonomous Multi-Agent Engineering Environment     ');
   console.log('========================================================');
   console.log(`${colors.reset}`);
@@ -112,11 +112,11 @@ async function runInit() {
   printHeader();
 
   if (TEMPLATE_DIR === TARGET_DIR) {
-    console.log(`${colors.yellow}⚠️  Notice: You are running init inside the Dev-OS source repository itself.${colors.reset}\n`);
+    console.log(`${colors.yellow}Notice: You are running init inside the Dev-OS source repository itself.${colors.reset}\n`);
   }
 
   const { isFresh, stack } = await promptQuestions();
-  console.log(`\n${colors.cyan}ℹ️  Setting up Dev-OS (${isFresh ? 'Fresh Project' : 'Existing Project'}) with [${stack.toUpperCase()}] standards...${colors.reset}\n`);
+  console.log(`\n${colors.cyan}Setting up Dev-OS (${isFresh ? 'Fresh Project' : 'Existing Project'}) with [${stack.toUpperCase()}] standards...${colors.reset}\n`);
 
   // Step 1: Copy .agents/ directory (Always updated to latest)
   console.log(`${colors.gray}• Installing agent roster and skills into .agents/...${colors.reset}`);
@@ -173,7 +173,7 @@ async function runInit() {
   }
 
   // Success Output
-  console.log(`\n${colors.green}${colors.bold}✅ Dev-OS successfully installed and configured!${colors.reset}\n`);
+  console.log(`\n${colors.green}${colors.bold}Dev-OS successfully installed and configured!${colors.reset}\n`);
   console.log(`${colors.bold}Installed Components:${colors.reset}`);
   console.log(`  • ${colors.cyan}.agents/agents/${colors.reset}   -> 9 Specialized AI Personas (Orchestrator, Developer, QA, DBA...)`);
   console.log(`  • ${colors.cyan}.agents/skills/${colors.reset}   -> 49 Reusable AI Engineering Skills`);
@@ -197,7 +197,7 @@ function runList() {
   if (fs.existsSync(agentsDir)) {
     fs.readdirSync(agentsDir).forEach(file => {
       if (file.endsWith('.md')) {
-        console.log(`  🤖 ${colors.cyan}${file.replace('.md', '')}${colors.reset}`);
+        console.log(`  * ${colors.cyan}${file.replace('.md', '')}${colors.reset}`);
       }
     });
   }
@@ -208,7 +208,7 @@ function runList() {
     fs.readdirSync(skillsDir).forEach(file => {
       const skillPath = path.join(skillsDir, file);
       if (fs.statSync(skillPath).isDirectory()) {
-        console.log(`  ⚡ ${colors.green}${file}${colors.reset}`);
+        console.log(`  * ${colors.green}${file}${colors.reset}`);
       }
     });
   }
@@ -251,9 +251,9 @@ function runDoctor() {
 
   console.log(`\nDiagnostic Summary: ${passed}/${checks.length} checks passed.`);
   if (passed === checks.length) {
-    console.log(`${colors.green}${colors.bold}✨ Dev-OS is fully installed and operational!${colors.reset}\n`);
+    console.log(`${colors.green}${colors.bold}Dev-OS is fully installed and operational!${colors.reset}\n`);
   } else {
-    console.log(`${colors.yellow}⚠️  Some components are missing. Run ${colors.bold}npx devos init${colors.reset}${colors.yellow} to repair your setup.${colors.reset}\n`);
+    console.log(`${colors.yellow}Some components are missing. Run ${colors.bold}npx devos init${colors.reset}${colors.yellow} to repair your setup.${colors.reset}\n`);
   }
 }
 
