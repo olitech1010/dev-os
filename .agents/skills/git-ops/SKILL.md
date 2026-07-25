@@ -10,7 +10,7 @@ description: Git workflow rules enforcing the strict human-in-the-loop commit ga
 ## The Human-in-the-Loop Rule
 
 **No code is committed without explicit human approval.** The flow is ALWAYS:
-1. Write Code -> 2. Reviewer Approves -> 3. Human Approves -> 4. Commit -> 5. Push
+1. Write Code -> 2. QA Approves -> 3. Human Approves (via commit script) -> 4. Commit -> 5. Push
 
 ## Feature Workflow
 
@@ -21,17 +21,18 @@ When assigned a task:
    - If on `main`, ask the Orchestrator or User what feature branch to create.
    - If instructed to start a feature: `git checkout -b feat/your-feature-name`
 3. **Execute**: Write the code and run tests/linting.
-4. **Reviewer Gate**: Pass output to the Reviewer Agent. You MUST NOT commit yet.
-5. **Human Gate**: Once Reviewer approves, present the changes to the human (User). Say: *"The code has passed review. Do I have your approval to commit these changes?"*
-6. **Commit**: ONLY after human says yes:
-   - `git add <specific-files>`
-   - `git commit -m "feat(scope): descriptive message"`
-7. **Push**: `git push origin HEAD`
-8. **Repeat** for the next logical unit.
+4. **QA Gate**: Pass output to the QA Agent. You MUST NOT commit yet.
+5. **Commit & Human Gate**: Once QA approves, you MUST use the `.agents/scripts/commit.sh` script to mechanically enforce the human checkpoint.
+   - Stage your files: `git add <specific-files>`
+   - Execute the script: `./.agents/scripts/commit.sh`
+   - The script will pause and prompt the human for approval. Once the human approves via the prompt, the script will handle the commit formatting and execution.
+   - **DO NOT run `git commit` directly.**
+6. **Push**: `git push origin HEAD`
+7. **Repeat** for the next logical unit.
 
 ## Commit Message Standard (Conventional Commits)
 
-Use the Conventional Commits format for all commits:
+Use the Conventional Commits format for all commits. The `commit.sh` script will enforce this format:
 `<type>(<scope>): <short description>`
 
 Types:
@@ -44,11 +45,9 @@ Types:
 - `test`: Adding missing tests or correcting existing tests
 - `chore`: Changes to the build process or auxiliary tools and libraries
 
-Example: `feat(auth): implement JWT token rotation`
-
 ## Strict Constraints
 
-1. **Never commit without human approval.** This is an absolute constraint.
-2. **Never commit secrets**. If an API key or password is in the code, remove it, use an environment variable, and then ask for commit approval.
+1. **Never commit without human approval.** You must use `.agents/scripts/commit.sh`. Raw `git commit` is strictly forbidden.
+2. **Never commit secrets**. If an API key or password is in the code, remove it, use an environment variable, and then run the commit script.
 3. **Never force-push (`-f`)**. If your push is rejected, pull with rebase (`git pull --rebase origin main`), resolve conflicts, and try pushing again.
 4. **Never commit broken code** to `main`. If you are on `main`, stop and switch to a branch.

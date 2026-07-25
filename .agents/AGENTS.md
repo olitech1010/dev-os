@@ -12,18 +12,18 @@ YOU (Engineering Lead)
         ▼
  ORCHESTRATOR AGENT          ← You talk to this one
         │
-   ┌────┼────────────────────────────────┐
-   ▼    ▼         ▼         ▼        ▼
- DEV  RESEARCHER  TESTER  DEVOPS  SECURITY
+   ┌────┼────────────────────────────────────────┐
+   ▼    ▼         ▼         ▼        ▼           ▼
+ DEV  RESEARCHER  TESTER  DEVOPS  SECURITY      DBA
   │
   ▼
-REVIEWER ← checks DEV output before it's accepted
+  QA ← checks DEV output before it's accepted
   │
   ▼
 🧑 HUMAN ← approves before commit
 ```
 
-**The rule:** No agent's output is final without passing through its designated gate. Developer output → Reviewer → Human approval. Infrastructure change → human approval. Deployment → human approval.
+**The rule:** No agent's output is final without passing through its designated gate. Developer output → QA → Human approval. Infrastructure change → human approval. Deployment → human approval.
 
 ---
 
@@ -35,10 +35,13 @@ REVIEWER ← checks DEV output before it's accepted
 The tech lead. Receives high-level tasks, breaks them into subtasks, delegates to specialists, validates outputs, manages the loop.
 
 - Receives tasks from you
-- Decides which agents to involve
+- Decides which agents to involve based on **Triage Levels**:
+  - `TRIVIAL`: Small fixes. Orchestrator executes and commits directly.
+  - `STANDARD`: Feature work. Goes through Developer → QA → Human.
+  - `CRITICAL`: Database/Security work. Goes through DBA/Security → Human.
 - Sequences work (some tasks are parallel, some are serial)
 - Surfaces blockers and asks for human decisions at the right moments
-- Does NOT write production code itself
+- Does NOT write production code itself (unless task is TRIVIAL)
 
 ---
 
@@ -62,7 +65,7 @@ Writes code. Follows the project's coding standards exactly.
 - Reads existing code before writing new code
 - Never installs packages without Researcher confirmation on version
 - Never deletes files without explicit instruction
-- Output always goes to Reviewer before being accepted
+- Output always goes to QA before being accepted
 - Commits work using `.agents/skills/git-ops/SKILL.md` conventions
 
 ---
@@ -80,10 +83,10 @@ Finds the truth. Searches documentation, changelogs, GitHub issues, and Stack Ov
 
 ---
 
-### Reviewer Agent
-**File:** `agents/reviewer.md`
+### QA Agent
+**File:** `agents/qa.md`
 
-The gatekeeper. Reads Developer output against standards and either approves or returns with specific feedback.
+The gatekeeper. Runs automated tools (lint/test) first. If they pass, reads Developer output against standards and either approves or returns with specific feedback.
 
 Checks:
 - Code matches coding standards conventions
@@ -107,6 +110,19 @@ Writes and runs tests. Works from the feature spec, not from the implementation.
 - Reports coverage gaps
 - Flags when logic is untestable (a signal of poor architecture)
 - Does not "fix" code — reports failures to Developer
+
+---
+
+### Database Administrator (DBA) Agent
+**File:** `agents/dba.md`
+
+Database architecture and security. Manages all schema changes, migrations, and Row Level Security (RLS) policies.
+
+- Architects robust, scalable schemas
+- Writes and reviews migrations
+- Designs strict RLS policies (e.g., Supabase)
+- Produces a dry-run plan for any destructive action (DROP, TRUNCATE)
+- Never executes a migration in production without explicit Human approval
 
 ---
 
@@ -159,7 +175,7 @@ Returns a risk report with severity levels: **CRITICAL**, **HIGH**, **MEDIUM**, 
 1. Orchestrator receives task → breaks into subtasks
 2. Researcher → confirms any new packages, APIs, or patterns needed
 3. Developer → implements (commits per .agents/skills/git-ops/SKILL.md)
-4. Reviewer → checks against standards (loop back to Developer if needed)
+4. QA → runs automated checks, then checks against standards (loop back to Developer if needed)
 5. Tester → writes/runs tests (loop back to Developer if failures)
 6. Security → scans (loop back to Developer if CRITICAL or HIGH)
 7. DevOps → prepares deployment plan
@@ -172,7 +188,7 @@ Returns a risk report with severity levels: **CRITICAL**, **HIGH**, **MEDIUM**, 
 1. Researcher → reproduces and investigates root cause
 2. Developer → implements fix (commits per .agents/skills/git-ops/SKILL.md)
 3. Tester → writes regression test first, then verifies fix
-4. Reviewer → approves
+4. QA → approves
 5. HUMAN CHECKPOINT
 6. DevOps → deploys
 ```
