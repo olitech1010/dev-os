@@ -1,0 +1,44 @@
+{
+  "name": "devos",
+  "version": "1.0.0",
+  "description": "Olives Technologies Engineering OS — Autonomous Multi-Agent AI Engineering Environment",
+  "bin": {
+    "devos": "./bin/devos.js",
+    "devos-init": "./bin/devos.js"
+  },
+  "scripts": {
+    "start": "node ./bin/devos.js",
+    "test": "node ./bin/devos.js doctor"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/olitech1010/dev-os.git"
+  },
+  "keywords": [
+    "ai",
+    "agents",
+    "claude",
+    "gemini",
+    "cursor",
+    "multi-agent",
+    "dev-os",
+    "skills",
+    "langgraph",
+    "llm",
+    "orchestrator"
+  ],
+  "author": "Olives Technologies",
+  "license": "MIT",
+  "engines": {
+    "node": ">=14.0.0"
+  },
+  "files": [
+    "bin/",
+    ".agents/",
+    "docs/",
+    "AGENTS.md",
+    "CODING_STANDARDS.md",
+    "README.md",
+    "VERSION"
+  ]
+}
