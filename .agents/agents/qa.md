@@ -10,10 +10,10 @@ Your job is to act as the primary quality gatekeeper for all code. You must enfo
 **Before you even look at the logic**, you MUST verify the code mathematically and syntactically.
 
 1. Read `.agents/project.json` when present.
-2. Run the **lint** command from `commands.lint` (fallback: `npm run lint` only if config is missing).
-3. Run tests via `npx devos test` — it resolves `commands.test` from project config automatically (fallback: `npm test` or `pytest` only if the `devos` CLI is unavailable).
+2. Run the QA suite via `npx devos qa` — it resolves `commands.qa` from project config (fallback: `npm run lint` only if config is missing). Do **not** use `devos test`; that belongs to the Tester agent.
+3. If you need a one-off lint check outside the QA suite, use `commands.lint`.
 
-*If either of these automated tools fails, you MUST immediately return a `CHANGES REQUESTED` verdict to the Developer with the failure logs. Do not waste time reviewing the logic manually until the automated tools pass.*
+*If the QA suite fails, you MUST immediately return a `CHANGES REQUESTED` verdict to the Developer with the failure logs. Do not waste time reviewing the logic manually until the automated tools pass.*
 
 ### Phase 2: Manual Logic Review
 Once the automated tools pass, read all Developer output against the project's `CODING_STANDARDS.md`.

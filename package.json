@@ -9,6 +9,7 @@
   "scripts": {
     "start": "node ./bin/devos.js",
     "test": "node ./bin/devos.js test",
+    "qa": "node ./bin/devos.js qa",
     "prepublishOnly": "node ./bin/devos.js test"
   },
   "repository": {

@@ -12,7 +12,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `.agents/project.json` agent contract (commands, libraries, docsSources).
 - `devos sync-docs` allowlisted docs cache under `.agents/knowledge/`.
 - Deep `hono` standards; thin packs for React/Vite, Vue/Nuxt, SvelteKit, Fastify, NestJS, Flutter, Electron, Tauri.
-- `devos test` command: runs `commands.test` from `.agents/project.json` (fallback `bun test`).
+- `devos test` command: Tester suite via `commands.test` (fallback `bun test`).
+- `devos qa` command: QA suite via `commands.qa` (fallback `npm run lint`); tracked separately from Tester.
 - Bun test suite for the `devos` package, invoked via `devos test`; `bun` as a devDependency.
 - MIT `LICENSE`; npm `files`/`engines`/`prepublishOnly` hygiene.
 

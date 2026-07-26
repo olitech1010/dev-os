@@ -87,10 +87,10 @@ Finds the truth. Searches documentation, changelogs, GitHub issues, and Stack Ov
 ### QA Agent
 **File:** `agents/qa.md`
 
-The gatekeeper. Runs automated tools (lint/test) first. If they pass, reads Developer output against standards and either approves or returns with specific feedback.
+The gatekeeper. Runs the QA suite first. If it passes, reads Developer output against standards and either approves or returns with specific feedback.
 
 Checks:
-- Runs lint/test from `.agents/project.json` → `commands` first
+- Runs `npx devos qa` → `commands.qa` from `.agents/project.json` first (not the Tester suite)
 - Code matches coding standards conventions
 - No forbidden patterns used
 - Tests exist for new logic
@@ -108,7 +108,7 @@ Returns a structured verdict: **APPROVED** or **CHANGES REQUESTED** with numbere
 Writes and runs tests. Works from the feature spec, not from the implementation.
 
 - Writes tests before or alongside code (TDD when possible)
-- Uses `commands.test` / `runtime` from `.agents/project.json` when present
+- Uses `npx devos test` / `commands.test` / `runtime` from `.agents/project.json` when present (not `devos qa`)
 - Covers happy path, edge cases, and failure states
 - Reports coverage gaps
 - Flags when logic is untestable (a signal of poor architecture)

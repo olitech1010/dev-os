@@ -2,14 +2,14 @@ import { describe, expect, test, beforeEach, afterEach } from 'bun:test';
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
-import { resolveTestCommand } from '../lib/run-tests.js';
+import { resolveSuiteCommand } from '../lib/run-tests.js';
 import { writeProjectConfig } from '../lib/config.js';
 
 function makeTemp() {
   return fs.mkdtempSync(path.join(os.tmpdir(), 'devos-run-tests-'));
 }
 
-describe('devos test command resolution', () => {
+describe('devos test / qa suite resolution', () => {
   let dir;
 
   beforeEach(() => {
@@ -20,20 +20,29 @@ describe('devos test command resolution', () => {
     fs.rmSync(dir, { recursive: true, force: true });
   });
 
-  test('falls back to bun test without project config', () => {
-    expect(resolveTestCommand(dir)).toBe('bun test');
+  test('test falls back to bun test without project config', () => {
+    expect(resolveSuiteCommand(dir, 'test')).toBe('bun test');
   });
 
-  test('uses commands.test from project.json', () => {
+  test('qa falls back to npm run lint without project config', () => {
+    expect(resolveSuiteCommand(dir, 'qa')).toBe('npm run lint');
+  });
+
+  test('uses commands.test and commands.qa from project.json', () => {
     writeProjectConfig(dir, {
       platform: 'server',
       stack: 'django',
       runtime: 'python',
       depth: 'deep',
-      commands: { lint: 'ruff check .', test: 'pytest' },
+      commands: {
+        lint: 'ruff check .',
+        test: 'pytest',
+        qa: 'ruff check . && pytest -m smoke'
+      },
       libraries: [],
       docsSources: []
     });
-    expect(resolveTestCommand(dir)).toBe('pytest');
+    expect(resolveSuiteCommand(dir, 'test')).toBe('pytest');
+    expect(resolveSuiteCommand(dir, 'qa')).toBe('ruff check . && pytest -m smoke');
   });
 });
