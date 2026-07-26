@@ -1,16 +1,20 @@
 ---
 name: express-stack
-description: Stack standard for Express.js, TypeScript, Node
+description: Thin stack standard for Express.js
 ---
 # Express.js Stack Standard
 
 ## Tech Stack
 - Framework: Express.js
-- Language: TypeScript
-- Node: LTS (20+)
+- Language: TypeScript preferred
+- Runtime: See `.agents/project.json` → `runtime` (usually node or bun)
 
 ## Standards
-- **Architecture:** Use Controller-Service-Repository pattern.
-- **Error Handling:** Centralized async error handling middleware.
-- **Validation:** Use Zod or Joi for request validation middleware.
-- **Security:** Helmet, CORS, Rate Limiting must be configured.
+- **Architecture:** Prefer Controller-Service-Repository (or equivalent clear layers).
+- **Error Handling:** Centralized async error-handling middleware.
+- **Validation:** Zod or Joi for request validation.
+- **Security:** Helmet, CORS, and rate limiting where applicable.
+- Confirm APIs via `.agents/knowledge/express/` or `devos sync-docs`.
+
+## QA Commands
+Use `commands.lint` and `commands.test` from `.agents/project.json`.

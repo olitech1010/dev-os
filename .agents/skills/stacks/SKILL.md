@@ -1,19 +1,35 @@
 ---
 name: stacks
-description: Stack-specific coding standards. Contains standards for Next.js, Laravel, Django, and React Native. Copy the relevant stack file into your project root.
+description: Stack-specific coding standards for web, server, mobile, and desktop. Copy the relevant stack file into your project root as CODING_STANDARDS.md (devos init does this).
 ---
 
 # Stack-Specific Coding Standards
 
 This directory contains coding standards for supported technology stacks.
 
-## Available Stacks
+**Stack vs runtime:** Stack identity is the framework (e.g. `hono`). Runtime (Bun, Node, Deno, PHP, Python, …) is inferred from the host project and stored in `.agents/project.json`.
 
-- `nextjs.md` — Next.js 15 + TypeScript + Supabase + Vercel
-- `laravel.md` — Laravel 12 + PHP + MySQL + cPanel
-- `django.md` — Django + DRF + Celery + Redis
-- `react-native.md` — React Native + Expo Router + Zustand
+## Deep stacks
+
+- `hono.md` — Hono (server; runtime inferred)
+- `nextjs.md` — Next.js + TypeScript
+- `laravel.md` — Laravel + PHP
+- `django.md` — Django + DRF
+- `react-native.md` — React Native + Expo
+
+## Thin stacks
+
+- `react-vite.md` — React + Vite
+- `vue-nuxt.md` — Vue / Nuxt
+- `sveltekit.md` — Svelte / SvelteKit
+- `express.md` — Express.js
+- `fastify.md` — Fastify
+- `nestjs.md` — NestJS
+- `fastapi.md` — FastAPI
+- `flutter.md` — Flutter
+- `electron.md` — Electron
+- `tauri.md` — Tauri
 
 ## Usage
 
-Copy the relevant stack file into your project root as your coding standards reference.
+`devos init` detects the host project, confirms the stack, and copies the matching file to `CODING_STANDARDS.md`. Agents should also read `.agents/project.json` for runtime, libraries, lint/test commands, and docs sources.
