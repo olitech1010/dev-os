@@ -8,7 +8,7 @@
   },
   "scripts": {
     "start": "node ./bin/devos.js",
-    "test": "node ./bin/devos.js doctor"
+    "test": "bun test"
   },
   "repository": {
     "type": "git",
@@ -40,5 +40,8 @@
     "CODING_STANDARDS.md",
     "README.md",
     "VERSION"
-  ]
+  ],
+  "devDependencies": {
+    "bun": "^1.3.14"
+  }
 }
