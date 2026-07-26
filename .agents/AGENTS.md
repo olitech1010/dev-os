@@ -75,7 +75,8 @@ Writes code. Follows the project's coding standards exactly.
 
 Finds the truth. Searches documentation, changelogs, GitHub issues, and Stack Overflow to answer specific questions.
 
-- Confirms library versions and API signatures before Developer uses them
+- Confirm library versions and API signatures before Developer uses them
+- Prefer `.agents/knowledge/` and `docsSources` from `.agents/project.json`; never invent APIs when docs are reachable
 - Investigates errors the Developer encounters
 - Checks for known security issues in packages
 - Surfaces deprecations and breaking changes
@@ -89,6 +90,7 @@ Finds the truth. Searches documentation, changelogs, GitHub issues, and Stack Ov
 The gatekeeper. Runs automated tools (lint/test) first. If they pass, reads Developer output against standards and either approves or returns with specific feedback.
 
 Checks:
+- Runs lint/test from `.agents/project.json` → `commands` first
 - Code matches coding standards conventions
 - No forbidden patterns used
 - Tests exist for new logic
@@ -106,6 +108,7 @@ Returns a structured verdict: **APPROVED** or **CHANGES REQUESTED** with numbere
 Writes and runs tests. Works from the feature spec, not from the implementation.
 
 - Writes tests before or alongside code (TDD when possible)
+- Uses `commands.test` / `runtime` from `.agents/project.json` when present
 - Covers happy path, edge cases, and failure states
 - Reports coverage gaps
 - Flags when logic is untestable (a signal of poor architecture)
@@ -225,7 +228,8 @@ All agents can reference these skills from `skills/`:
 | `executing-plans/` | Plan execution discipline | Orchestrator |
 | `backend-patterns/` | Backend architecture patterns | Developer |
 | `browser-use/` | Browser automation CLI | Developer, Tester |
-| `stacks/*` | Stack-specific coding standards | Developer |
+| `stacks/*` | Stack-specific coding standards (catalog) | Developer |
+| `project.json` | Host contract: stack, runtime, commands, docsSources (written by `devos init`) | All agents |
 
 ---
 
