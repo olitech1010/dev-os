@@ -8,39 +8,27 @@ Welcome to **Dev-OS**, a premier agentic development environment engineered for 
 
 Dev-OS is an operating system for engineering teams that utilizes specialized AI agents (Orchestrator, Developer, QA, DBA, DevOps, etc.) to collaboratively build, test, and ship software. Instead of relying on a single AI model to do everything, Dev-OS separates responsibilities into distinct personas with mechanical guardrails and strict quality gates.
 
+It configures **agent packs + host project metadata** — it is not an application scaffolder.
+
 ---
 
 ## 2. Installation & Quick Start
 
-You can install Dev-OS into any fresh or existing project using any of the following methods:
-
-### Method A: Global NPM / NPX (Recommended)
-Run the automated installer directly in your project root:
 ```bash
 npx devos init
 ```
-*(Or install globally: `npm install -g devos` and then run `devos init`)*
 
-### Method B: Directly from GitHub
-If the NPM package is not published yet or you prefer using GitHub directly:
-```bash
-npx github:olitech1010/dev-os init
-```
+Other commands:
 
-### Method C: Local Cloning & Linking (Offline / Fallback Method)
-If `npx` or global installation fails (e.g., offline environment or permission restrictions), clone the repository and link it locally:
-```bash
-# 1. Clone the repository to your machine
-git clone https://github.com/olitech1010/dev-os.git
-cd dev-os
+| Command | Purpose |
+|---------|---------|
+| `devos init` | Detect stack/runtime, install `.agents/`, write `.agents/project.json` |
+| `devos init --yes` | Non-interactive init |
+| `devos sync-docs` | Cache allowlisted official docs into `.agents/knowledge/` |
+| `devos list` | List agents, skills, and catalog stacks |
+| `devos doctor` | Diagnose install health |
 
-# 2. Register the CLI globally on your system
-npm link
-
-# 3. Navigate to your target project folder and run the installer
-cd /path/to/your-target-project
-devos init
-```
+Global install: `npm install -g devos`. From GitHub: `npx github:olitech1010/dev-os init`.
 
 ---
 
@@ -63,22 +51,37 @@ YOU (Engineering Lead)
 HUMAN ← approves before commit (via commit.sh)
 ```
 
+**Stack vs runtime:** Stack is the framework (`hono`, `nextjs`, …). Runtime (`bun`, `node`, `python`, …) is inferred from the host and stored in `.agents/project.json`.
+
+**Catalog (v1):** Deep packs for Hono, Next.js, Laravel, Django, React Native; thin packs for React/Vite, Vue/Nuxt, SvelteKit, Express, Fastify, NestJS, FastAPI, Flutter, Electron, Tauri, Universal.
+
 ---
 
 ## 4. Key Features
 
-- **Task Triage Levels (`TRIVIAL`, `STANDARD`, `CRITICAL`):** Prevents over-engineering by allowing small fixes to bypass the multi-agent loop while enforcing strict gates for feature and database work.
-- **Mandatory Automated QA:** The QA Agent must run local linter and test suites (`npm run lint`, `pytest`) before evaluating code logic.
-- **Dedicated DBA Agent:** Offloads database schemas, migrations, and Row Level Security (RLS) policies to a database specialist.
-- **Hardcoded Human Checkpoint:** Agents are physically forbidden from running raw `git commit` commands. They must execute `./.agents/scripts/commit.sh`, which prompts you for an approval token before making version control changes.
-- **Task Contracts:** Clear boundary definitions and standardized communication protocols between agents.
+- **Detect-first init:** Proposes stack/runtime/libraries from the host project; confirm or override.
+- **Project config:** `.agents/project.json` drives QA/Tester commands and Researcher docs sources.
+- **Hybrid docs:** Curated sources + `devos sync-docs` knowledge cache (no arbitrary site crawl).
+- **Task triage:** `TRIVIAL` / `STANDARD` / `CRITICAL`.
+- **Human commit gate:** `./.agents/scripts/commit.sh` — agents cannot raw `git commit`.
 
 ---
 
-## 5. Documentation & User Guides
+## 5. Documentation
 
-Explore our detailed guides by clicking the links below:
+- [Getting Started](docs/GETTING_STARTED.md)
+- [System Architecture](docs/ARCHITECTURE.md)
+- [Tutorial & Glossary](docs/TUTORIAL.md)
 
-- [Getting Started Guide](file:///Users/user/development/dev-os/docs/GETTING_STARTED.md): How to initialize and run Dev-OS in your project.
-- [System Architecture](file:///Users/user/development/dev-os/docs/ARCHITECTURE.md): Deep dive into the multi-agent paradigm and triage rules.
-- [Step-by-Step Tutorial & Glossary](file:///Users/user/development/dev-os/docs/TUTORIAL.md): A beginner-friendly walkthrough explaining how to use Dev-OS, how agents interact, and how to delegate tasks effectively.
+---
+
+## 6. Contributing / developing Dev-OS itself
+
+Tests for this package use Bun:
+
+```bash
+npm install   # installs bun as a devDependency when needed
+bun test      # or: npm test
+```
+
+The published CLI stays zero **runtime** dependencies and runs on any Node-compatible runtime (`node`, `bun`, `deno`, …).

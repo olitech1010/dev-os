@@ -1,6 +1,6 @@
 {
   "name": "devos",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Olives Technologies Engineering OS — Autonomous Multi-Agent AI Engineering Environment",
   "bin": {
     "devos": "./bin/devos.js",
@@ -8,7 +8,8 @@
   },
   "scripts": {
     "start": "node ./bin/devos.js",
-    "test": "bun test"
+    "test": "bun test",
+    "prepublishOnly": "bun test"
   },
   "repository": {
     "type": "git",
@@ -25,21 +26,24 @@
     "skills",
     "langgraph",
     "llm",
-    "orchestrator"
+    "orchestrator",
+    "hono"
   ],
   "author": "Olives Technologies",
   "license": "MIT",
   "engines": {
-    "node": ">=14.0.0"
+    "node": ">=18.0.0"
   },
   "files": [
     "bin/",
+    "lib/",
     ".agents/",
     "docs/",
-    "AGENTS.md",
     "CODING_STANDARDS.md",
     "README.md",
-    "VERSION"
+    "LICENSE",
+    "VERSION",
+    "CHANGELOG.md"
   ],
   "devDependencies": {
     "bun": "^1.3.14"

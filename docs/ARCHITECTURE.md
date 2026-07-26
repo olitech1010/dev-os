@@ -37,8 +37,13 @@ Dev-OS eliminates this by replacing raw `git commit` terminal commands with an e
 
 ### Two-Phase Quality Assurance (QA)
 To prevent the QA Agent from wasting tokens reasoning about code that does not compile, Dev-OS enforces a strict two-phase review:
-1. **Phase 1 (Automated):** The QA Agent must execute local CI tools (`npm run lint`, `pytest`, etc.). If syntax or tests fail, code goes immediately back to the Developer.
+1. **Phase 1 (Automated):** The QA Agent must execute host lint/test commands from `.agents/project.json` → `commands` (fallback only if config is missing). If syntax or tests fail, code goes immediately back to the Developer.
 2. **Phase 2 (Manual Logic Review):** Only when automated tools pass does QA review architectural logic against `CODING_STANDARDS.md`.
+
+### Stack catalog, detection, and docs knowledge
+- **Stack** = framework identity (`hono`, `nextjs`, …). **Runtime** = inferred host runtime (`bun`, `node`, `python`, …).
+- `devos init` detects the host, writes `.agents/project.json`, and selects deep/thin coding standards.
+- Researcher prefers `.agents/knowledge/` (filled by `devos sync-docs`) and official `docsSources` — never invent APIs when docs are reachable.
 
 ### Explicit Handoffs via Task Contracts
 Agents communicate using structured **Task Contracts** (`.agents/skills/task-contract/SKILL.md`). When the Orchestrator delegates work, it defines:
@@ -51,6 +56,6 @@ Agents communicate using structured **Task Contracts** (`.agents/skills/task-con
 
 ## 3. Navigation & Documentation
 
-- [Getting Started Guide](file:///Users/user/development/dev-os/docs/GETTING_STARTED.md)
-- [Step-by-Step Tutorial & Glossary](file:///Users/user/development/dev-os/docs/TUTORIAL.md)
-- [Root README](file:///Users/user/development/dev-os/README.md)
+- [Getting Started Guide](./GETTING_STARTED.md)
+- [Step-by-Step Tutorial & Glossary](./TUTORIAL.md)
+- [Root README](../README.md)
