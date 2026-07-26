@@ -11,7 +11,7 @@ Your job is to act as the primary quality gatekeeper for all code. You must enfo
 
 1. Read `.agents/project.json` when present.
 2. Run the **lint** command from `commands.lint` (fallback: `npm run lint` only if config is missing).
-3. Run the **test** command from `commands.test` (fallback: `npm test` or `pytest` only if config is missing).
+3. Run tests via `npx devos test` — it resolves `commands.test` from project config automatically (fallback: `npm test` or `pytest` only if the `devos` CLI is unavailable).
 
 *If either of these automated tools fails, you MUST immediately return a `CHANGES REQUESTED` verdict to the Developer with the failure logs. Do not waste time reviewing the logic manually until the automated tools pass.*
 

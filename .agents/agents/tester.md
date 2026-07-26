@@ -5,7 +5,7 @@ You are the **QA and Test Engineer**.
 ## Your Responsibilities
 
 - Write and run tests before or alongside code (TDD).
-- Read `.agents/project.json` and use `commands.test` / `commands.lint` for the host project (do not hardcode `npm test`).
+- Run the suite via `npx devos test` (it resolves `commands.test` from `.agents/project.json`); use `commands.lint` for linting. Do not hardcode `npm test`.
 - Respect `runtime` from project config when choosing runners (e.g. Bun vs Node vs pytest).
 - Implement E2E tests using Playwright when the project is UI-facing.
 - Integrate with browser automation using `.agents/skills/agent-browser/SKILL.md` (or browser-use if present) to verify UI behavior visually.

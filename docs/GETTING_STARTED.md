@@ -53,6 +53,14 @@ npx devos sync-docs
 
 Fetches allowlisted official docs into `.agents/knowledge/` for the Researcher agent.
 
+### Running tests
+
+```bash
+npx devos test
+```
+
+Runs the test command from `.agents/project.json` → `commands.test` (falls back to `bun test` when no config exists).
+
 ---
 
 ## 3. Development Workflow & Task Triage

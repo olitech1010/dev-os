@@ -12,6 +12,7 @@ const { colors, printHeader } = require('../lib/colors');
 const { runInit } = require('../lib/init');
 const { runDoctor } = require('../lib/doctor');
 const { syncDocs } = require('../lib/sync-docs');
+const { runTests } = require('../lib/run-tests');
 const { getStacks } = require('../lib/registry');
 const fs = require('fs');
 
@@ -24,12 +25,14 @@ function printHelp() {
   console.log('Commands:');
   console.log(`  ${colors.green}init${colors.reset}        Initialize or update Dev-OS in the current project`);
   console.log(`  ${colors.green}sync-docs${colors.reset}   Fetch allowlisted docs into .agents/knowledge/`);
+  console.log(`  ${colors.green}test${colors.reset}        Run the project's test suite (commands.test, fallback: bun test)`);
   console.log(`  ${colors.green}list${colors.reset}        List agents, skills, and catalog stacks`);
   console.log(`  ${colors.green}doctor${colors.reset}      Diagnose current project's Dev-OS setup`);
   console.log(`  ${colors.green}help${colors.reset}        Show this help message\n`);
   console.log('Examples:');
   console.log(`  $ npx devos init`);
   console.log(`  $ npx devos sync-docs`);
+  console.log(`  $ npx devos test`);
   console.log(`  $ npx devos doctor\n`);
 }
 
@@ -81,6 +84,9 @@ async function main() {
       console.log(`${colors.bold}Syncing docs knowledge cache...${colors.reset}\n`);
       await syncDocs(TARGET_DIR);
       console.log();
+      break;
+    case 'test':
+      process.exit(runTests(TARGET_DIR));
       break;
     case 'list':
       runList();

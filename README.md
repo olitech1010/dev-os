@@ -25,6 +25,7 @@ Other commands:
 | `devos init` | Detect stack/runtime, install `.agents/`, write `.agents/project.json` |
 | `devos init --yes` | Non-interactive init |
 | `devos sync-docs` | Cache allowlisted official docs into `.agents/knowledge/` |
+| `devos test` | Run the project's test suite (`commands.test` from project config; fallback `bun test`) |
 | `devos list` | List agents, skills, and catalog stacks |
 | `devos doctor` | Diagnose install health |
 
@@ -77,11 +78,11 @@ HUMAN ← approves before commit (via commit.sh)
 
 ## 6. Contributing / developing Dev-OS itself
 
-Tests for this package use Bun:
+Tests for this package use Bun, invoked through the CLI itself:
 
 ```bash
-npm install   # installs bun as a devDependency when needed
-bun test      # or: npm test
+npm install       # installs bun as a devDependency when needed
+npx devos test    # or: npm test (both route through `devos test` → bun test)
 ```
 
 The published CLI stays zero **runtime** dependencies and runs on any Node-compatible runtime (`node`, `bun`, `deno`, …).

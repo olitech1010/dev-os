@@ -8,8 +8,8 @@
   },
   "scripts": {
     "start": "node ./bin/devos.js",
-    "test": "bun test",
-    "prepublishOnly": "bun test"
+    "test": "node ./bin/devos.js test",
+    "prepublishOnly": "node ./bin/devos.js test"
   },
   "repository": {
     "type": "git",
