@@ -20,7 +20,7 @@ YOU (Engineering Lead)
   QA ← checks DEV output before it's accepted
   │
   ▼
-🧑 HUMAN ← approves before commit
+HUMAN ← approves before commit
 ```
 
 **The rule:** No agent's output is final without passing through its designated gate. Developer output → QA → Human approval. Infrastructure change → human approval. Deployment → human approval.
