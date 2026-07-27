@@ -1,6 +1,6 @@
-# Getting Started with Dev-OS
+# Getting Started with Olives Dev-OS
 
-This guide explains how to initialize Dev-OS in a new or existing repository and start collaborating with your multi-agent engineering team.
+This guide explains how to initialize Dev-OS in a new or existing repository using the standard **Olives Dev-OS CLI** (`devos` / `olives-devos`) and start collaborating with your multi-agent engineering team.
 
 ---
 
@@ -13,12 +13,18 @@ npx devos init
 ```
 *(Or install globally: `npm install -g devos` and run `devos init`)*
 
-### Option B: Direct GitHub Installation
+### Option B: Non-Interactive Flag Execution
+For automated environments, CI scripts, or quick setup:
+```bash
+npx devos init --stack nextjs --existing
+```
+
+### Option C: Direct GitHub Installation
 ```bash
 npx github:olitech1010/dev-os init
 ```
 
-### Option C: Local Cloning & Linking (Fallback / Offline)
+### Option D: Local Cloning & Linking (Fallback / Offline)
 If global or `npx` execution fails or is blocked by network policy:
 ```bash
 # Clone the Dev-OS repository
@@ -35,14 +41,33 @@ devos init
 
 ---
 
-## 2. Interactive Setup Prompts
+## 2. CLI Command & Diagnostic Reference
 
-When you run the installer, it will ask two simple questions:
-1. **Fresh vs. Existing Project:**
-   - **Fresh Project:** Initializes a clean workspace with standard documentation and templates.
-   - **Existing Project:** Injects `.agents/` team files into your codebase while preserving your existing application code, custom `CODING_STANDARDS.md`, and project documentation.
-2. **Tech Stack Selection:**
-   - Choose your stack (Next.js, Laravel, Django, React Native, or Universal) to configure standard coding rules.
+The Olives Dev-OS CLI provides a full suite of commands modeled after industry standard developer tools (Claude Code, Gemini CLI, gh, Vercel):
+
+```bash
+$ devos --help
+
+USAGE
+  $ devos <command> [flags]
+
+CORE COMMANDS
+  init, setup      Initialize or update Dev-OS multi-agent environment in target project
+  doctor, check    Diagnose project setup, permissions, commit script, and health
+  list, agents     Display active agent personas and installed specialist skills
+  status           Show active project configuration, detected stack, and health summary
+  version          Print Dev-OS CLI version, Node runtime, and environment information
+  help             Display this command reference
+
+FLAGS
+  -s, --stack <name>  Specify target stack (nextjs, laravel, django, react-native, universal)
+  --fresh             Non-interactive fresh project initialization
+  --existing          Non-interactive existing project initialization
+  --json              Output diagnostic and listing results as JSON
+  -q, --quiet         Suppress header banners and non-essential log messages
+  -v, --version       Print CLI version
+  -h, --help          Show command options
+```
 
 ---
 

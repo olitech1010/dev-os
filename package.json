@@ -4,6 +4,7 @@
   "description": "Olives Technologies Engineering OS — Autonomous Multi-Agent AI Engineering Environment",
   "bin": {
     "devos": "./bin/devos.js",
+    "olives-devos": "./bin/devos.js",
     "devos-init": "./bin/devos.js"
   },
   "scripts": {
