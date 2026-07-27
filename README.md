@@ -1,34 +1,40 @@
 # Olives Technologies Engineering OS (Dev-OS)
 
-Welcome to **Dev-OS**, a premier agentic development environment engineered for autonomous, high-quality software delivery under strict human-in-the-loop constraints.
+Welcome to **Olives Dev-OS**, a premier agentic development environment engineered for autonomous, high-quality software delivery under strict human-in-the-loop constraints.
 
 ---
 
-## 1. What is Dev-OS?
+## 1. What is Olives Dev-OS?
 
-Dev-OS is an operating system for engineering teams that utilizes specialized AI agents (Orchestrator, Developer, QA, DBA, DevOps, etc.) to collaboratively build, test, and ship software. Instead of relying on a single AI model to do everything, Dev-OS separates responsibilities into distinct personas with mechanical guardrails and strict quality gates.
+Olives Dev-OS is an operating system for engineering teams that utilizes specialized AI agents (Orchestrator, Developer, QA, DBA, DevOps, etc.) to collaboratively build, test, and ship software. Instead of relying on a single AI model to do everything, Dev-OS separates responsibilities into distinct personas with mechanical guardrails and strict quality gates.
 
 ---
 
-## 2. Installation & Quick Start
+## 2. Standard CLI Installation & Commands
 
-You can install Dev-OS into any fresh or existing project using any of the following methods:
+The **Olives Dev-OS CLI** (`devos` / `olives-devos`) is a zero-dependency command-line interface designed to match modern developer tool standards (Claude Code, Gemini CLI, gh, Vercel).
 
-### Method A: Global NPM / NPX (Recommended)
+### Installation Methods
+
+#### Method A: Global NPM / NPX (Recommended)
 Run the automated installer directly in your project root:
 ```bash
 npx devos init
 ```
 *(Or install globally: `npm install -g devos` and then run `devos init`)*
 
-### Method B: Directly from GitHub
-If the NPM package is not published yet or you prefer using GitHub directly:
+#### Method B: Non-Interactive Flag Execution
+```bash
+npx devos init --stack nextjs --existing
+```
+
+#### Method C: Directly from GitHub
 ```bash
 npx github:olitech1010/dev-os init
 ```
 
-### Method C: Local Cloning & Linking (Offline / Fallback Method)
-If `npx` or global installation fails (e.g., offline environment or permission restrictions), clone the repository and link it locally:
+#### Method D: Local Cloning & Linking (Offline / Fallback Method)
+If `npx` or global installation fails (e.g., offline environment or permission restrictions):
 ```bash
 # 1. Clone the repository to your machine
 git clone https://github.com/olitech1010/dev-os.git
@@ -41,6 +47,17 @@ npm link
 cd /path/to/your-target-project
 devos init
 ```
+
+### CLI Command Reference
+
+| Command | Flags | Description |
+| :--- | :--- | :--- |
+| `devos init` | `-s, --stack`, `--fresh`, `--existing`, `-q` | Initialize or update Dev-OS in target directory |
+| `devos doctor` | `--json`, `-q` | Run system diagnostic check on permissions, gates, and files |
+| `devos list` | `--json` | List active agent personas and installed specialist skills |
+| `devos status` | `-q` | Show active project setup, detected stack, and health |
+| `devos version` | `-v, --version` | Output CLI version, Node runtime, and environment path |
+| `devos help` | `-h, --help` | Display standard CLI help reference |
 
 ---
 
