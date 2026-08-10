@@ -36,6 +36,7 @@ if [ -z "$commit_message" ]; then
 fi
 
 # 3. Execute Commit
+export DEVOS_COMMIT_APPROVED=true
 echo ""
 echo "Executing: git commit -m \"$commit_type: $commit_message\""
 git commit -m "$commit_type: $commit_message"

@@ -1,101 +1,89 @@
-# Olives Technologies Engineering OS (Dev-OS)
+# Dev-OS — Engineering OS
 
-Welcome to **Olives Dev-OS**, a premier agentic development environment engineered for autonomous, high-quality software delivery under strict human-in-the-loop constraints.
+*A multi-agent Engineering Operating System for AI-assisted software development*
 
----
+![Version](https://img.shields.io/badge/version-v2.0.0-blue.svg)
 
-## 1. What is Olives Dev-OS?
+## What is Dev-OS?
 
-Olives Dev-OS is an operating system for engineering teams that utilizes specialized AI agents (Orchestrator, Developer, QA, DBA, DevOps, etc.) to collaboratively build, test, and ship software. Instead of relying on a single AI model to do everything, Dev-OS separates responsibilities into distinct personas with mechanical guardrails and strict quality gates.
+Dev-OS is a modern, multi-agent Engineering Operating System designed to augment software development teams. By treating AI agents not as generic chatbots but as specialized team members (Developer, QA, Tester, Security, etc.), Dev-OS enforces a rigorous software development lifecycle where no code is merged without passing through designated mechanical and AI-driven quality gates.
 
----
+## Key Features
 
-## 2. Standard CLI Installation & Commands
+- **Agent Roster**: Specialized AI agents (Developer, QA, Tester, Security, DBA, DevOps, Researcher, Architect, Memory Manager, Release Manager) handle distinct phases of delivery.
+- **Slash Commands**: 10 pre-configured commands (e.g., `/test`, `/review`) for quick task routing.
+- **Memory System**: Project state tracking, episodic memory (`LESSONS.md`), and context preservation.
+- **Mechanical Commit Gates**: Automated hooks and secret scanning (`gitleaks`) to prevent bad code or secrets from ever reaching production.
+- **Parallel Quality Gates**: QA, Tester, and Security run simultaneously to speed up validation.
 
-The **Olives Dev-OS CLI** (`devos` / `olives-devos`) is a zero-dependency command-line interface designed to match modern developer tool standards (Claude Code, Gemini CLI, gh, Vercel).
+## Architecture Overview
 
-### Installation Methods
-
-#### Method A: Global NPM / NPX (Recommended)
-Run the automated installer directly in your project root:
-```bash
-npx devos init
-```
-*(Or install globally: `npm install -g devos` and then run `devos init`)*
-
-#### Method B: Non-Interactive Flag Execution
-```bash
-npx devos init --stack nextjs --existing
-```
-
-#### Method C: Directly from GitHub
-```bash
-npx github:olitech1010/dev-os init
-```
-
-#### Method D: Local Cloning & Linking (Offline / Fallback Method)
-If `npx` or global installation fails (e.g., offline environment or permission restrictions):
-```bash
-# 1. Clone the repository to your machine
-git clone https://github.com/olitech1010/dev-os.git
-cd dev-os
-
-# 2. Register the CLI globally on your system
-npm link
-
-# 3. Navigate to your target project folder and run the installer
-cd /path/to/your-target-project
-devos init
+```mermaid
+flowchart TD
+    Human(Human Lead) --> Orchestrator
+    Orchestrator --> Agents
+    subgraph Agents [Specialized Agent Team]
+        Developer
+        QA
+        Tester
+        Security
+        DBA
+        DevOps
+        Researcher
+        Architect
+        MemoryManager[Memory Manager]
+        ReleaseManager[Release Manager]
+    end
 ```
 
-### CLI Command Reference
+## Quick Start
 
-| Command | Flags | Description |
-| :--- | :--- | :--- |
-| `devos init` | `-s, --stack`, `--fresh`, `--existing`, `-q` | Initialize or update Dev-OS in target directory |
-| `devos doctor` | `--json`, `-q` | Run system diagnostic check on permissions, gates, and files |
-| `devos list` | `--json` | List active agent personas and installed specialist skills |
-| `devos status` | `-q` | Show active project setup, detected stack, and health |
-| `devos version` | `-v, --version` | Output CLI version, Node runtime, and environment path |
-| `devos help` | `-h, --help` | Display standard CLI help reference |
+1. **Clone the repository** and navigate to the project directory.
+2. **Install hooks**: Run `.agents/scripts/install-hooks.sh` to set up the mechanical commit gate.
+3. **Invoke Dev-OS**: Talk to the Orchestrator agent to start a task, or use one of the predefined slash commands below.
 
----
+## Slash Commands Quick Reference
 
-## 3. System Architecture & Agent Roster
+| Command | Description |
+|---|---|
+| `/review` | Request a comprehensive code review from QA. |
+| `/commit` | Trigger the autonomous commit workflow (`commit.sh`). |
+| `/test` | Ask the Tester agent to generate or execute tests. |
+| `/secure` | Request a security audit from the Security agent. |
+| `/research` | Task the Researcher with finding docs, CVEs, or package info. |
+| `/status` | Summarize the current project state via Memory Manager. |
+| `/fix` | Initiate the Bug Fix workflow. |
+| `/architect` | Incept a new feature or project using the Architect. |
+| `/refactor` | Start an exploratory refactoring workflow on a throwaway branch. |
+| `/deploy` | Trigger DevOps for deployment planning and execution. |
+
+## Directory Structure
 
 ```
-YOU (Engineering Lead)
-        │
-        ▼
- ORCHESTRATOR AGENT          ← You talk to this one
-        │
-   ┌────┼────────────────────────────────────────┐
-   ▼    ▼         ▼         ▼        ▼           ▼
- DEV  RESEARCHER  TESTER  DEVOPS  SECURITY      DBA
-  │
-  ▼
-  QA ← checks DEV output before it's accepted
-  │
-  ▼
-HUMAN ← approves before commit (via commit.sh)
+.
+├── .agents/
+│   ├── AGENTS.md               # Main agent roster and workflow rules
+│   ├── README.md               # Overview of the .agents directory
+│   ├── agents/                 # System prompts for each agent
+│   ├── commands/               # Slash command definitions
+│   ├── scripts/                # Utility scripts (commit.sh, install-hooks.sh)
+│   └── skills/                 # Reusable agent skills
+├── docs/
+│   ├── ARCHITECTURE.md         # System architecture and workflows
+│   ├── CHANGELOG.md            # Version history
+│   ├── SLASH_COMMANDS.md       # Slash command reference
+│   └── TUTORIAL.md             # Step-by-step user guide
+└── README.md                   # This file
 ```
 
----
+## Documentation
 
-## 4. Key Features
+For deep dives, please read:
+- [Tutorial](docs/TUTORIAL.md)
+- [Architecture](docs/ARCHITECTURE.md)
+- [Slash Commands Reference](docs/SLASH_COMMANDS.md)
+- [Changelog](docs/CHANGELOG.md)
 
-- **Task Triage Levels (`TRIVIAL`, `STANDARD`, `CRITICAL`):** Prevents over-engineering by allowing small fixes to bypass the multi-agent loop while enforcing strict gates for feature and database work.
-- **Mandatory Automated QA:** The QA Agent must run local linter and test suites (`npm run lint`, `pytest`) before evaluating code logic.
-- **Dedicated DBA Agent:** Offloads database schemas, migrations, and Row Level Security (RLS) policies to a database specialist.
-- **Hardcoded Human Checkpoint:** Agents are physically forbidden from running raw `git commit` commands. They must execute `./.agents/scripts/commit.sh`, which prompts you for an approval token before making version control changes.
-- **Task Contracts:** Clear boundary definitions and standardized communication protocols between agents.
+## License
 
----
-
-## 5. Documentation & User Guides
-
-Explore our detailed guides by clicking the links below:
-
-- [Getting Started Guide](file:///Users/user/development/dev-os/docs/GETTING_STARTED.md): How to initialize and run Dev-OS in your project.
-- [System Architecture](file:///Users/user/development/dev-os/docs/ARCHITECTURE.md): Deep dive into the multi-agent paradigm and triage rules.
-- [Step-by-Step Tutorial & Glossary](file:///Users/user/development/dev-os/docs/TUTORIAL.md): A beginner-friendly walkthrough explaining how to use Dev-OS, how agents interact, and how to delegate tasks effectively.
+[MIT License](LICENSE) (Placeholder)

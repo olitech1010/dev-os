@@ -1,56 +1,114 @@
-# System Architecture & Design Philosophy
+# Dev-OS System Architecture
 
-## 1. The Multi-Agent Paradigm
+## System Architecture Overview
 
-Dev-OS is designed on the principle of **Separation of Concerns**. Instead of relying on a single monolithic LLM prompt to architect, write, review, test, and deploy software, Dev-OS assigns distinct personas with specialized system prompts and rigid boundaries.
+Dev-OS uses a multi-agent hierarchy orchestrated by a central coordinator (the Orchestrator). AI outputs are isolated by role and validated by parallel agents before human review.
 
+### Agent Hierarchy and Communication Flow
+
+```mermaid
+flowchart TD
+    Human(Human Lead) --> Orchestrator
+    
+    subgraph Execution
+        Developer
+        Tester
+        DevOps
+        DBA
+    end
+    
+    subgraph Quality and Validation
+        QA
+        Security
+        Researcher
+    end
+    
+    subgraph Strategy and Memory
+        Architect
+        MemoryManager
+        ReleaseManager
+    end
+
+    Orchestrator --> Execution
+    Orchestrator --> Quality and Validation
+    Orchestrator --> Strategy and Memory
 ```
-YOU (Engineering Lead)
-        │
-        ▼
- ORCHESTRATOR AGENT          ← You talk to this one
-        │
-   ┌────┼────────────────────────────────────────┐
-   ▼    ▼         ▼         ▼        ▼           ▼
- DEV  RESEARCHER  TESTER  DEVOPS  SECURITY      DBA
-  │
-  ▼
-  QA ← checks DEV output before it's accepted
-  │
-  ▼
-HUMAN ← approves before commit (via commit.sh)
+
+### Standard Feature Delivery (Parallel Gate)
+
+```mermaid
+flowchart TD
+    Task(New Task) --> Orch[Orchestrator]
+    Orch --> Dev[Developer Writes Code]
+    Dev --> Gate{Parallel Quality Gate}
+    
+    Gate --> QA[QA Agent Checks Code]
+    Gate --> Tester[Tester Agent Runs Tests]
+    Gate --> Sec[Security Agent Scans]
+    
+    QA --> Merge1{All Pass?}
+    Tester --> Merge1
+    Sec --> Merge1
+    
+    Merge1 -- No --> Dev
+    Merge1 -- Yes --> Human[Human Approval]
+    Human --> Deploy[DevOps / Merge]
 ```
 
----
+### Bug Fix Workflow
 
-## 2. Core Principles
+```mermaid
+flowchart TD
+    Bug(Bug Report) --> Researcher[Researcher Investigates]
+    Researcher --> Dev[Developer Fixes Code]
+    Dev --> Tester[Tester Writes Regression Test]
+    Tester --> QA[QA Verifies]
+    QA --> Human[Human Approval]
+```
 
-### Task Triage & Latency Optimization
-A major failure mode of multi-agent systems is **over-engineering**. Spawning a Developer agent and a QA agent to fix a typo wastes tokens and time. Dev-OS solves this through **Triage Levels**:
-- `TRIVIAL`: Small fixes are executed and committed directly by the Orchestrator.
-- `STANDARD`: Feature work flows through Developer → QA → Human.
-- `CRITICAL`: Database and security work involves specialized DBA and Security agents with mandatory dry-run plans.
+### Commit Gate Flow
 
-### Mechanical Human-in-the-Loop Guardrails
-LLMs suffer from **Task Completion Bias**—when given a list of tasks, an agent's desire to check off "commit code" often causes it to ignore passive instructions like "wait for human approval." 
-Dev-OS eliminates this by replacing raw `git commit` terminal commands with an executable bash script (`.agents/scripts/commit.sh`). The script physically halts terminal execution and requires a cryptographic/string token (`approve`) from the human before a commit can be recorded in version control.
+```mermaid
+flowchart LR
+    Dev[Agent / Developer] --> Script[commit.sh]
+    Script --> Token[Export DEVOS_COMMIT_APPROVED]
+    Token --> Git[git commit]
+    Git --> Hook[Pre-commit hook]
+    Hook --> Gitleaks[gitleaks Secret Scan]
+    Gitleaks -- Pass --> Success[Commit Saved]
+    Gitleaks -- Fail --> Reject[Commit Rejected]
+```
 
-### Two-Phase Quality Assurance (QA)
-To prevent the QA Agent from wasting tokens reasoning about code that does not compile, Dev-OS enforces a strict two-phase review:
-1. **Phase 1 (Automated):** The QA Agent must execute local CI tools (`npm run lint`, `pytest`, etc.). If syntax or tests fail, code goes immediately back to the Developer.
-2. **Phase 2 (Manual Logic Review):** Only when automated tools pass does QA review architectural logic against `CODING_STANDARDS.md`.
+### Memory System Architecture
 
-### Explicit Handoffs via Task Contracts
-Agents communicate using structured **Task Contracts** (`.agents/skills/task-contract/SKILL.md`). When the Orchestrator delegates work, it defines:
-- Target agent.
-- Precise task description.
-- Expected output schema or format.
-- Strict constraints or context.
+```mermaid
+flowchart TD
+    PinnedRules[Pinned Hard Rules] --> Context[Agent Context Window]
+    CurrentState[CURRENT_STATE.md] --> Context
+    Lessons[LESSONS.md] --> Context
+    
+    Context --> Execution[Agent Execution]
+    Execution --> MemoryManager[Memory Manager Agent]
+    MemoryManager --> |Updates| CurrentState
+    MemoryManager --> |Learns| Lessons
+```
 
----
+### Slash Command Routing
 
-## 3. Navigation & Documentation
+```mermaid
+flowchart LR
+    Command[/slash_command] --> Orch[Orchestrator]
+    Orch --> Parse[Read YAML Frontmatter]
+    Parse --> Target[Target Agent]
+    Target --> Workflow[Execute Workflow / Prompt]
+```
 
-- [Getting Started Guide](file:///Users/user/development/dev-os/docs/GETTING_STARTED.md)
-- [Step-by-Step Tutorial & Glossary](file:///Users/user/development/dev-os/docs/TUTORIAL.md)
-- [Root README](file:///Users/user/development/dev-os/README.md)
+## Directory Structure
+
+- `.agents/`: The core logic of the OS.
+  - `agents/`: System prompts for each agent.
+  - `commands/`: Slash commands.
+  - `skills/`: Agent capabilities.
+  - `scripts/`: Tooling (e.g., `commit.sh`).
+- `docs/`: User documentation.
+- `src/` (or similar): The actual project source code being managed.

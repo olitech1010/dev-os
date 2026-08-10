@@ -1,118 +1,71 @@
-# Dev-OS Step-by-Step Tutorial & Glossary
+# Dev-OS Tutorial
 
-Welcome to the **Dev-OS Tutorial**! If you are new to agentic development environments, multi-agent frameworks, or LLM orchestration, this guide will explain everything from the ground up in plain English.
+Welcome to Dev-OS! This step-by-step guide will walk you through using the Engineering OS.
 
----
+## 1. What is Dev-OS?
 
-## Part 1: Key Terms & Concepts Explained
+Dev-OS is an AI-augmented Engineering Operating System. Instead of a single AI assistant, you have a full development team comprising an Orchestrator, Developer, QA, Tester, Security, and more. They follow strict workflows, require human approval for crucial steps, and prevent common AI mistakes through mechanical gates.
 
-Before we build, let us understand the terminology used across Dev-OS:
+## 2. Setting up Dev-OS
 
-### 1. What is an "Agent"?
-In traditional software, a script follows exact rules (e.g., `if X then Y`). An **Agent** is an AI model equipped with a **Persona (System Prompt)**, a set of **Tools** (like running bash commands or reading files), and the autonomy to make decisions to achieve a goal.
+1. **Install hooks**: Run `.agents/scripts/install-hooks.sh`. This sets up Git hooks.
+2. **Verify gitleaks**: The hook enforces secret scanning using `gitleaks`. Any commits containing secrets will be mechanically rejected.
 
-In Dev-OS, we do not use one giant "do-everything" agent. We use a **Team of Specialists**, just like a real software company:
-- **Orchestrator:** The Engineering Manager. Decides who does what and sequences work.
-- **Architect:** The System Designer. Questions your vague ideas and writes clear requirements.
-- **Developer:** The Coder. Follows coding standards and writes the actual features or bug fixes.
-- **Researcher:** The Scout. Looks up documentation, checks library versions, and investigates bugs.
-- **QA Agent (Quality Assurance):** The Gatekeeper. Runs linters and tests, then checks code for architectural flaws.
-- **DBA Agent (Database Administrator):** The Data Expert. Handles Supabase schemas, Row Level Security (RLS), and migrations safely.
-- **DevOps & Security Agents:** Handle CI/CD, deployment plans, and vulnerability scanning.
+## 3. Understanding the Agent Roster
 
-### 2. What is a "Skill"?
-A **Skill** is a folder inside `.agents/skills/` containing reusable instructions, scripts, or templates that teach an agent how to perform a specialized task. For example:
-- **`grill-me`:** A skill that teaches the Architect how to interview you to uncover hidden project requirements.
-- **`git-ops`:** A skill that teaches agents how to branch, format commit messages, and ask for human approval.
+You communicate primarily with the **Orchestrator**. 
+The Orchestrator delegates to:
+- **Architect**: Designs the system and requirements.
+- **Developer**: Writes the code.
+- **QA, Tester, Security**: The parallel quality gate.
+- **DBA, DevOps**: Infrastructure and databases.
+- **Memory Manager & Release Manager**: Handles state, context, and versioning.
 
-### 3. What is the "Human-in-the-Loop Commit Gate"?
-AI models are powerful, but they can occasionally hallucinate, loop infinitely, or misunderstand requirements. To protect your project, Dev-OS enforces a strict mechanical rule: **No agent can commit code to git without your explicit permission.** 
-Instead of using `git commit`, agents must call `./.agents/scripts/commit.sh`, which physically halts the terminal and prompts you to type `approve`.
+For a full breakdown, see `../.agents/AGENTS.md`.
 
-### 4. What are "Triage Levels"?
-To prevent wasting time and tokens on simple tasks, the Orchestrator categorizes every request into one of three buckets:
-- **`TRIVIAL`:** Small fixes (e.g., a typo in text, a CSS color change). The Orchestrator fixes and commits it directly.
-- **`STANDARD`:** Building a new feature or fixing a complex bug. Follows the full team pipeline (`Developer -> QA -> Human`).
-- **`CRITICAL`:** Database migrations, RLS policies, or infrastructure changes. Mandates the involvement of the DBA or Security agent and requires a dry-run plan before execution.
+## 4. Using Slash Commands
 
----
+Slash commands let you explicitly trigger a workflow or a specific agent.
 
-## Part 2: Step-by-Step Installation & Setup
+*Examples:*
+- `/test src/auth/login.js` -> Triggers the Tester to write/run tests for the login module.
+- `/secure` -> Asks the Security agent to audit the codebase.
+- `/architect Build a user profile page` -> Runs the `grill-me` skill to define requirements.
 
-You can install Dev-OS into any fresh or existing project using any of the following methods:
+See [Slash Commands Reference](SLASH_COMMANDS.md) for more details.
 
-### Method A: Global NPM / NPX
-Run the automated installer in your target project directory:
-```bash
-npx devos init
-```
-*(Or install globally: `npm install -g devos` and run `devos init`)*
+## 5. Understanding the Workflow
 
-### Method B: Directly from GitHub
-```bash
-npx github:olitech1010/dev-os init
-```
+### Standard Feature Delivery
+1. Orchestrator delegates to Developer.
+2. Developer writes code.
+3. **Parallel Gate**: QA checks standards, Tester runs/writes tests, Security scans for vulnerabilities.
+4. Human approves.
 
-### Method C: Local Cloning & Linking (Fallback / Offline)
-If `npx` or global installation fails due to permission or network constraints:
-```bash
-# 1. Clone the Dev-OS repository
-git clone https://github.com/olitech1010/dev-os.git
-cd dev-os
+### Bug Fix
+1. Researcher finds the root cause.
+2. Developer fixes it.
+3. Tester writes a regression test.
+4. QA approves.
+5. Human approves.
 
-# 2. Register the CLI globally on your machine
-npm link
+## 6. Memory System
 
-# 3. Navigate to your project folder and run the installer
-cd /path/to/your-target-project
-devos init
-```
+Dev-OS maintains its own context to prevent token overload and "forgetting".
+- `CURRENT_STATE.md`: Tracks the current state of the project.
+- `LESSONS.md`: Episodic memory of past mistakes and architectural decisions.
+- **Pinned Rules**: Always present in the agent's context.
 
----
+## 7. Commit Workflow (commit.sh)
 
-## Part 3: Step-by-Step Tutorial — Building a Feature
+Agents cannot run raw `git commit`. They must use `.agents/scripts/commit.sh`. This script:
+1. Stages changes.
+2. Generates a commit message.
+3. Exports `DEVOS_COMMIT_APPROVED`.
+4. Runs through the Git pre-commit hook.
 
-Let us walk through what happens when you use Dev-OS to build a new feature (for example, adding a "User Profile" page).
+## 8. Best Practices and Tips
 
-### Step 1: You give a task to the Orchestrator
-You type your request:
-> *"Orchestrator, we need to add a User Profile page where users can update their bio and avatar."*
-
-### Step 2: Triage & Task Contracts
-1. The Orchestrator analyzes the request and marks it as **`STANDARD`** (since it requires new UI and backend logic).
-2. The Orchestrator breaks the work into subtasks using **Task Contracts**. For example:
-   - *Task 1 to Researcher:* "Find out what Supabase storage bucket we use for avatars."
-   - *Task 2 to Developer:* "Create the UI component `UserProfile.tsx` using Tailwind CSS."
-
-### Step 3: The Developer Writes the Code
-The **Developer Agent** receives Task 2. It:
-1. Reads your coding standards (`CODING_STANDARDS.md`).
-2. Creates `UserProfile.tsx`.
-3. Runs tests locally to make sure it compiles.
-4. Passes the completed code to the **QA Agent**.
-
-### Step 4: Two-Phase Quality Assurance (QA)
-The **QA Agent** receives the Developer's code and performs two strict checks:
-1. **Automated Check:** It runs `npm run lint` and `npm run test`.
-   - *What if it fails?* If there is a TypeScript error, QA rejects the code immediately back to the Developer with error logs.
-2. **Manual Logic Review:** Once automated tests pass, QA checks for architectural rules (e.g., "Are functions under 50 lines? Is error handling present?").
-   - Once everything is ready, QA requests human sign-off.
-
-### Step 5: You (The Human) Approve the Commit
-The Developer stages the files and executes the secure commit script:
-```bash
-./.agents/scripts/commit.sh
-```
-The terminal pauses and asks you:
-```
-Human Approval Token (type 'approve' to proceed):
-```
-You review the changes, type `approve`, press Enter, and the commit is safely saved to git using Conventional Commits format (`feat(user): add user profile bio and avatar component`).
-
----
-
-## Part 4: Documentation Navigation
-
-- [Getting Started Guide](file:///Users/user/development/dev-os/docs/GETTING_STARTED.md)
-- [System Architecture](file:///Users/user/development/dev-os/docs/ARCHITECTURE.md)
-- [Root README](file:///Users/user/development/dev-os/README.md)
+- **Review the plans**: Always read what the DevOps or DBA agents plan to do before approving.
+- **Use /status**: If you lose track, type `/status` to have the Memory Manager summarize the situation.
+- **Let them loop, but not forever**: Agents have a Circuit Breaker (3 iterations). If they fail 3 times, they will escalate to you.

@@ -31,3 +31,10 @@ Report your Implementation Summary and await Reviewer feedback.
 - **Provide Context:** When handing off work to another agent or the Human, provide a brief summary of what was done and what needs to happen next.
 - **No Silent Failures:** If a standard cannot be met or a test fails, report it. Do not hide it.
 - **Human-in-the-Loop:** Acknowledge when human intervention is required (e.g. for commits, deployments, or architecture decisions).
+
+## Memory & Context
+
+- Before starting any task, check `docs/LESSONS.md` for relevant past issues in the same domain.
+- When completing a task, provide a clear summary to the Orchestrator for `docs/CURRENT_STATE.md` updates.
+- If you encounter and resolve a non-trivial bug, report the root cause and fix to the Orchestrator for logging in `docs/LESSONS.md`.
+- NEVER forget: All commits go through `.agents/scripts/commit.sh`. Raw `git commit` is forbidden.
