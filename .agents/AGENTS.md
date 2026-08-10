@@ -32,16 +32,16 @@ HUMAN ← approves before commit
 ### Orchestrator
 **File:** `agents/orchestrator.md`
 
-The tech lead. Receives high-level tasks, breaks them into subtasks, delegates to specialists, validates outputs, manages the loop.
+The tech lead. Receives high-level tasks, breaks them into subtasks, delegates to specialists, validates outputs, manages the loop. Coordinates with the Memory Manager for context management.
 
 - Receives tasks from you
 - Decides which agents to involve based on **Triage Levels**:
-  - `TRIVIAL`: Small fixes. Orchestrator executes and commits directly.
+  - `TRIVIAL`: Small bug fixes/typos. Delegated to Developer → QA → Human approval (`commit.sh`).
   - `STANDARD`: Feature work. Goes through Developer → QA → Human.
   - `CRITICAL`: Database/Security work. Goes through DBA/Security → Human.
 - Sequences work (some tasks are parallel, some are serial)
 - Surfaces blockers and asks for human decisions at the right moments
-- Does NOT write production code itself (unless task is TRIVIAL)
+- Does NOT write production code or run git commit directly under any circumstances.
 
 ---
 
@@ -86,7 +86,7 @@ Finds the truth. Searches documentation, changelogs, GitHub issues, and Stack Ov
 ### QA Agent
 **File:** `agents/qa.md`
 
-The gatekeeper. Runs automated tools (lint/test) first. If they pass, reads Developer output against standards and either approves or returns with specific feedback.
+Reviews test results and code quality. Does NOT write tests (that is the Tester's role). The gatekeeper. Runs automated tools (lint/test) first. If they pass, reads Developer output against standards and either approves or returns with specific feedback.
 
 Checks:
 - Code matches coding standards conventions
@@ -103,7 +103,7 @@ Returns a structured verdict: **APPROVED** or **CHANGES REQUESTED** with numbere
 ### Tester Agent
 **File:** `agents/tester.md`
 
-Writes and runs tests. Works from the feature spec, not from the implementation.
+Owns all test creation and execution. Reports failures to Developer. Works from the feature spec, not from the implementation.
 
 - Writes tests before or alongside code (TDD when possible)
 - Covers happy path, edge cases, and failure states
@@ -158,6 +158,32 @@ Returns a risk report with severity levels: **CRITICAL**, **HIGH**, **MEDIUM**, 
 
 ---
 
+### Memory Manager Agent
+**File:** `agents/memory-manager.md`
+
+Maintains project context and prevents knowledge loss across sessions. Manages state tracking, episodic memory, and context compaction.
+
+- Maintains `docs/CURRENT_STATE.md` as the single source of truth for project status
+- Maintains `docs/LESSONS.md` as the persistent lessons-learned store
+- Performs context compaction when conversations approach context limits
+- Creates session handoff documents for seamless continuity
+- Does NOT write production code — manages information only
+
+---
+
+### Release Manager Agent
+**File:** `agents/release-manager.md`
+
+Owns versioning, changelogs, release notes, and post-deployment documentation.
+
+- Follows Semantic Versioning (MAJOR.MINOR.PATCH)
+- Generates and updates `docs/CHANGELOG.md` from conventional commits
+- Writes human-readable release notes
+- Updates documentation after deployments
+- Does NOT write production code or deploy infrastructure
+
+---
+
 ## Workflow Protocols
 
 ### Project Inception (Grill-Me)
@@ -170,17 +196,28 @@ Returns a risk report with severity levels: **CRITICAL**, **HIGH**, **MEDIUM**, 
 4. Orchestrator proceeds to standard delivery based on the approved spec
 ```
 
+### Commit Model: Staged Review
+
+Dev-OS uses a **Staged Review** commit model:
+- Agents write and modify code but **never auto-commit**.
+- After completing changes, the Developer presents a summary of all modifications.
+- The Human reviews the changes (including testing UI/logic in the browser).
+- The Human triggers the commit via `/commit` or `.agents/scripts/commit.sh`.
+- This ensures the Human can inspect, test, and make corrections before anything is committed.
+
 ### Standard Feature Delivery
 ```
 1. Orchestrator receives task → breaks into subtasks
 2. Researcher → confirms any new packages, APIs, or patterns needed
-3. Developer → implements (commits per .agents/skills/git-ops/SKILL.md)
-4. QA → runs automated checks, then checks against standards (loop back to Developer if needed)
-5. Tester → writes/runs tests (loop back to Developer if failures)
-6. Security → scans (loop back to Developer if CRITICAL or HIGH)
-7. DevOps → prepares deployment plan
-8. HUMAN CHECKPOINT → review and approve
-9. DevOps → executes deployment
+3. Developer → implements code changes (does NOT commit — presents for review)
+4. PARALLEL GATE (all three run simultaneously):
+   a. QA → reviews code quality and standards
+   b. Tester → writes and runs tests
+   c. Security → scans for vulnerabilities
+5. Orchestrator → collects all verdicts. If any agent rejects, route back to Developer (Circuit Breaker: max 3 loops)
+6. HUMAN CHECKPOINT → review changes, test in browser, approve
+7. Developer → commits via `.agents/scripts/commit.sh`
+8. DevOps → prepares and executes deployment plan (requires Human approval)
 ```
 
 ### Bug Fix Delivery
@@ -201,6 +238,28 @@ Returns a risk report with severity levels: **CRITICAL**, **HIGH**, **MEDIUM**, 
 4. Security → re-scans
 5. HUMAN CHECKPOINT
 6. DevOps → deploys
+```
+
+### Rollback Protocol
+```
+1. DevOps → identifies the failing deployment or regression
+2. Orchestrator → halts all in-progress work on the affected branch
+3. Developer → reverts to the last known good state (git revert or branch reset)
+4. Tester → runs regression tests to confirm stability
+5. QA → approves the rollback
+6. HUMAN CHECKPOINT → approve rollback deployment
+7. DevOps → deploys the rollback
+8. Orchestrator → logs the incident in `docs/LESSONS.md`
+```
+
+### Exploratory Refactoring
+```
+1. Developer → creates a throwaway branch for exploration
+2. Developer → experiments with structural changes (no QA gate during exploration)
+3. Developer → presents findings and proposed approach to Orchestrator
+4. HUMAN CHECKPOINT → approve or discard the exploration
+5. If approved: Developer implements clean version on a proper feature branch → Standard Feature Delivery workflow
+6. If discarded: Developer deletes the exploration branch
 ```
 
 ---
@@ -236,5 +295,10 @@ All agents can reference these skills from `skills/`:
 3. **No agent silently ignores a constraint.** If a standard cannot be met, surface it — don't work around it.
 4. **Agents do not argue with each other.** Conflicts escalate to the Orchestrator, then to the human.
 5. **When in doubt, ask.** A question takes 5 seconds. A wrong assumption costs hours.
-6. **Commit early, commit often.** Follow `.agents/skills/git-ops/SKILL.md` — agents commit after each logical unit of work.
+6. **Commit early, commit often.** Follow `.agents/skills/git-ops/SKILL.md` — agents commit after each logical unit of work via `.agents/scripts/commit.sh`.
 7. **All documentation goes in `/docs`.** Any reports, implementation plans, PRDs, requirements, or other documentation must be saved into the `/docs/` folder in the project root.
+8. **Mechanical Commit Gate.** Raw `git commit` commands without routing through `.agents/scripts/commit.sh` or setting `DEVOS_COMMIT_APPROVED=true` are strictly forbidden and blocked by Git pre-commit hooks.
+9. **Never hardcode secrets.** API keys, credentials, or access tokens must never be written into code or config files; always reference `process.env.*`.
+10. **Circuit Breaker.** If any agent loop (e.g., Developer ↔ QA, Developer ↔ Tester) exceeds 3 iterations on the same task without resolution, the Orchestrator MUST halt the loop, compile a diagnostic summary of all attempts, and escalate to the Human for guidance.
+11. **Verify Before Implementing.** Agents must confirm library APIs, version compatibility, and patterns via the Researcher agent or official documentation before using unfamiliar features. No hallucinated API usage.
+12. **No Heavy Dependencies Without Approval.** Adding new dependencies with >5MB install size or >50 transitive dependencies requires explicit Human approval.
