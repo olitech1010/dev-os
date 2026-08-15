@@ -6,6 +6,10 @@ Slash commands are pre-configured triggers that route tasks to specific agents w
 
 Commands are defined in `.agents/commands/`. When you use a slash command (e.g., `/review`), the Orchestrator reads the corresponding markdown file and routes the request to the target agent immediately.
 
+## Claude Code Integration
+
+Running `devos init` compiles the command definitions in `.agents/commands/` into `.claude/commands/`, so every command in this reference is natively available as a slash command inside Claude Code (e.g., typing `/review` in a Claude Code session). Pass `--no-claude` to `devos init` if you want to skip generating the `.claude/` integration files.
+
 ## Schema Explanation
 
 Each command file uses YAML frontmatter to configure behavior:
@@ -58,27 +62,27 @@ Use $ARGUMENTS to reference user input after the command.
 ### `/secure`
 - **Description**: Request a security audit.
 - **Target Agent**: Security
-- **Triage Level**: CRITICAL
+- **Triage Level**: STANDARD
 - **Workflow**: direct
 - **Usage**: `/secure`
 
 ### `/research`
 - **Description**: Investigate docs, CVEs, or package info.
 - **Target Agent**: Researcher
-- **Triage Level**: STANDARD
+- **Triage Level**: TRIVIAL
 - **Workflow**: direct
 - **Usage**: `/research Next.js 14 App Router caching`
 
 ### `/status`
 - **Description**: Summarize the current project state.
-- **Target Agent**: Memory Manager
+- **Target Agent**: Orchestrator
 - **Triage Level**: TRIVIAL
 - **Workflow**: direct
 - **Usage**: `/status`
 
 ### `/fix`
 - **Description**: Initiate the Bug Fix workflow.
-- **Target Agent**: Orchestrator
+- **Target Agent**: Developer
 - **Triage Level**: STANDARD
 - **Workflow**: bugfix
 - **Usage**: `/fix The login button doesn't respond on mobile`
@@ -86,15 +90,15 @@ Use $ARGUMENTS to reference user input after the command.
 ### `/architect`
 - **Description**: Incept a new feature or project.
 - **Target Agent**: Architect
-- **Triage Level**: CRITICAL
+- **Triage Level**: STANDARD
 - **Workflow**: inception
 - **Usage**: `/architect We need a new admin dashboard for user management`
 
 ### `/refactor`
-- **Description**: Start exploratory refactoring on a throwaway branch.
+- **Description**: Refactor code in the specified scope, with all existing tests passing and QA review before merge.
 - **Target Agent**: Developer
 - **Triage Level**: STANDARD
-- **Workflow**: direct
+- **Workflow**: standard
 - **Usage**: `/refactor Rewrite the auth module using the new Context API`
 
 ### `/deploy`

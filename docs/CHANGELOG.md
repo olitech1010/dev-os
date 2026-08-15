@@ -3,9 +3,14 @@
 All notable changes to Dev-OS are documented in this file.
 This project follows [Semantic Versioning](https://semver.org/).
 
-## [2.0.0] — 2026-08-10
+## [2.0.0] — 2026-08-14
 
 ### Added
+- **npm Package (`dev-os`)**: Installable via `npx dev-os init` / `npm install -g dev-os` (the name `devos` on npm belongs to an unrelated 2016 package). Bin commands remain `devos`, `olives-devos`, and `devos-init`
+- **Claude Code Integration**: `devos init` now generates `.claude/commands/` and `.claude/agents/` (with valid frontmatter) from the `.agents/` sources, and bootstraps a project `CLAUDE.md`, so slash commands and agent personas are natively discovered by Claude Code. Skippable with `--no-claude`
+- **CLI Redesign**: Block-letter DEV-OS banner with attribution, TTY/`NO_COLOR`-aware color output, styled section rules, dynamic component counts, and a boxed init summary
+- **Safety**: `devos init` backs up an existing `.agents/` to `.agents/_backup/<timestamp>/` before overwriting; `install-hooks.sh` backs up an existing pre-commit hook; `doctor` now exits non-zero when checks fail
+- **Smoke Test**: `npm test` runs `scripts/smoke-test.js` — a real end-to-end init/doctor/reference-integrity check
 - **Slash Command System**: 10 pre-configured commands (`/review`, `/commit`, `/test`, `/secure`, `/research`, `/status`, `/fix`, `/architect`, `/refactor`, `/deploy`) with YAML frontmatter schema
 - **Memory System**: Project state tracking (`CURRENT_STATE.md`), episodic memory (`LESSONS.md`), context compaction, and pinned safety rules
 - **Circuit Breaker Protocol**: Agent loops exceeding 3 iterations automatically halt and escalate to human

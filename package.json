@@ -1,6 +1,6 @@
 {
-  "name": "devos",
-  "version": "1.0.0",
+  "name": "dev-os",
+  "version": "2.0.0",
   "description": "Olives Technologies Engineering OS — Autonomous Multi-Agent AI Engineering Environment",
   "bin": {
     "devos": "./bin/devos.js",
@@ -9,11 +9,16 @@
   },
   "scripts": {
     "start": "node ./bin/devos.js",
-    "test": "node ./bin/devos.js doctor"
+    "test": "node ./scripts/smoke-test.js",
+    "prepublishOnly": "node ./scripts/smoke-test.js"
   },
   "repository": {
     "type": "git",
     "url": "https://github.com/olitech1010/dev-os.git"
+  },
+  "homepage": "https://github.com/olitech1010/dev-os#readme",
+  "bugs": {
+    "url": "https://github.com/olitech1010/dev-os/issues"
   },
   "keywords": [
     "ai",
@@ -28,18 +33,19 @@
     "llm",
     "orchestrator"
   ],
-  "author": "Olives Technologies",
+  "author": "Clement Olives — Olives Technologies",
   "license": "MIT",
   "engines": {
-    "node": ">=14.0.0"
+    "node": ">=18.0.0"
   },
   "files": [
     "bin/",
+    "scripts/",
     ".agents/",
     "docs/",
-    "AGENTS.md",
     "CODING_STANDARDS.md",
     "README.md",
+    "LICENSE",
     "VERSION"
   ]
 }

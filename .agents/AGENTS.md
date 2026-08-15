@@ -161,10 +161,10 @@ Returns a risk report with severity levels: **CRITICAL**, **HIGH**, **MEDIUM**, 
 ### Memory Manager Agent
 **File:** `agents/memory-manager.md`
 
-Maintains project context and prevents knowledge loss across sessions. Manages state tracking, episodic memory, and context compaction.
+Maintains project context and prevents knowledge loss across sessions. Manages state tracking, episodic memory, and context compaction. The Memory Manager owns `docs/CURRENT_STATE.md` and `docs/LESSONS.md`; the Orchestrator updates them when the Memory Manager is not active.
 
-- Maintains `docs/CURRENT_STATE.md` as the single source of truth for project status
-- Maintains `docs/LESSONS.md` as the persistent lessons-learned store
+- Owns `docs/CURRENT_STATE.md` as the single source of truth for project status
+- Owns `docs/LESSONS.md` as the persistent lessons-learned store
 - Performs context compaction when conversations approach context limits
 - Creates session handoff documents for seamless continuity
 - Does NOT write production code — manages information only
@@ -249,7 +249,7 @@ Dev-OS uses a **Staged Review** commit model:
 5. QA → approves the rollback
 6. HUMAN CHECKPOINT → approve rollback deployment
 7. DevOps → deploys the rollback
-8. Orchestrator → logs the incident in `docs/LESSONS.md`
+8. Orchestrator → has the incident logged in `docs/LESSONS.md` (via the Memory Manager, or directly when the Memory Manager is not active)
 ```
 
 ### Exploratory Refactoring
@@ -266,25 +266,24 @@ Dev-OS uses a **Staged Review** commit model:
 
 ## Available Skills
 
-All agents can reference these skills from `skills/`:
+All agents can reference these skills from `skills/`. Each skill is a directory containing a `SKILL.md`:
 
 | Skill | Purpose | Primary Agent |
 |-------|---------|---------------|
-| `grill-me.md` | Project inception interrogation | Architect |
-| `design.md` | UI/UX design principles | Developer |
-| `token-optimization.md` | Minimize AI token costs | All agents |
-| `git-workflow.md` | Branch strategy and PR standards | All agents |
-| `git-ops.md` | Autonomous commit, push, PR | Developer, DevOps |
-| `deployment-checklist.md` | Pre-deployment verification | DevOps |
-| `project-requirements.md` | Requirements template | Architect |
-| `frontend-design/` | Distinctive visual design | Developer |
-| `react-best-practices/` | React/Next.js performance | Developer |
+| `grill-me/` | Project inception interrogation | Architect |
+| `design/` | UI/UX design principles | Developer |
+| `token-optimization/` | Minimize AI token costs | All agents |
+| `git-workflow/` | Branch strategy and PR standards | All agents |
+| `git-ops/` | Autonomous commit, push, PR | Developer, DevOps |
+| `deployment-checklist/` | Pre-deployment verification | DevOps |
+| `project-requirements/` | Requirements template | Architect |
+| `frontend-ui-engineering/` | Distinctive visual design | Developer |
+| `vercel-react-best-practices/` | React/Next.js performance | Developer |
 | `ui-ux-pro-max/` | Comprehensive UI/UX reference | Developer |
 | `brainstorming/` | Design-before-code workflow | Architect, Developer |
-| `executing-plans/` | Plan execution discipline | Orchestrator |
 | `backend-patterns/` | Backend architecture patterns | Developer |
-| `browser-use/` | Browser automation CLI | Developer, Tester |
-| `stacks/*` | Stack-specific coding standards | Developer |
+| `agent-browser/` | Browser automation CLI | Developer, Tester |
+| `stacks/` | Stack-specific coding standards | Developer |
 
 ---
 

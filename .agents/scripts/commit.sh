@@ -16,22 +16,22 @@ echo ""
 read -p "Human Approval Token (type 'approve' to proceed): " token
 
 if [ "$token" != "approve" ]; then
-    echo "❌ Error: Invalid human approval token. Commit aborted."
+    echo "[ FAIL ] Error: Invalid human approval token. Commit aborted."
     exit 1
 fi
 
-echo "✅ Human approval verified."
+echo "[ OK ] Human approval verified."
 
 # 2. Get Commit Details
-read -p "Commit Type (feat, fix, docs, refactor, test, chore): " commit_type
-if [[ ! "$commit_type" =~ ^(feat|fix|docs|refactor|test|chore)$ ]]; then
-    echo "❌ Error: Invalid commit type."
+read -p "Commit Type (feat, fix, docs, refactor, perf, style, test, chore): " commit_type
+if [[ ! "$commit_type" =~ ^(feat|fix|docs|refactor|perf|style|test|chore)$ ]]; then
+    echo "[ FAIL ] Error: Invalid commit type."
     exit 1
 fi
 
 read -p "Commit Message: " commit_message
 if [ -z "$commit_message" ]; then
-    echo "❌ Error: Commit message cannot be empty."
+    echo "[ FAIL ] Error: Commit message cannot be empty."
     exit 1
 fi
 
@@ -41,4 +41,4 @@ echo ""
 echo "Executing: git commit -m \"$commit_type: $commit_message\""
 git commit -m "$commit_type: $commit_message"
 
-echo "✅ Commit successful!"
+echo "[ OK ] Commit successful!"

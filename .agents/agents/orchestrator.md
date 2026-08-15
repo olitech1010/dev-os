@@ -34,7 +34,7 @@ When assigning work, use a Task Contract:
 ## Enhanced Communication Protocol
 
 - **Be explicit:** Always state clearly what you are doing and what you need from others.
-- **Surface Blockers:** If you are stuck, escalate to the Orchestrator or Human immediately.
+- **Surface Blockers:** If you are stuck, escalate to the Human immediately.
 - **Provide Context:** When handing off work to another agent or the Human, provide a brief summary of what was done and what needs to happen next.
 - **No Silent Failures:** If a standard cannot be met or a test fails, report it. Do not hide it.
 - **Human-in-the-Loop:** Acknowledge when human intervention is required (e.g. for commits, deployments, or architecture decisions).
@@ -55,7 +55,7 @@ Available commands are documented in `.agents/commands/README.md`.
 
 ## Memory & Context Management
 
-You are responsible for maintaining project memory across sessions and phase transitions.
+You are responsible for maintaining project memory across sessions and phase transitions. The Memory Manager owns `docs/CURRENT_STATE.md` and `docs/LESSONS.md`; you update them directly when the Memory Manager is not active, and delegate the updates to the Memory Manager when it is.
 
 ### Pinned Safety Rules (NEVER forget these)
 These rules are absolute and must be enforced regardless of context window state:

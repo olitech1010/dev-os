@@ -1,2 +1,26 @@
+# Dependencies
+node_modules/
+
+# Python artifacts
+__pycache__/
+*.pyc
+.pytest_cache/
+.venv/
+venv/
+
+# OS files
+.DS_Store
+
+# Secrets & environment
+.env
+.env.*
+
+# Logs
+*.log
+npm-debug.log*
+
+# Build artifacts
+*.tgz
+
 # Dev-OS temporary backups
 .agents/_backup/
