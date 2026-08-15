@@ -3,9 +3,9 @@
   "version": "2.0.0",
   "description": "Olives Technologies Engineering OS — Autonomous Multi-Agent AI Engineering Environment",
   "bin": {
-    "devos": "./bin/devos.js",
-    "olives-devos": "./bin/devos.js",
-    "devos-init": "./bin/devos.js"
+    "devos": "bin/devos.js",
+    "olives-devos": "bin/devos.js",
+    "devos-init": "bin/devos.js"
   },
   "scripts": {
     "start": "node ./bin/devos.js",
@@ -14,7 +14,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/olitech1010/dev-os.git"
+    "url": "git+https://github.com/olitech1010/dev-os.git"
   },
   "homepage": "https://github.com/olitech1010/dev-os#readme",
   "bugs": {
