@@ -8,7 +8,7 @@ Dev-OS is an AI-augmented Engineering Operating System. Instead of a single AI a
 
 ## 2. Setting up Dev-OS
 
-1. **Install Dev-OS**: From your project root, run `npx dev-os init` (see [Getting Started](GETTING_STARTED.md) for all installation options). This installs `.agents/`, generates the Claude Code integration in `.claude/`, and sets up your coding standards.
+1. **Install Dev-OS**: From your project root, run `npx @olitech010/dev-os init` (see [Getting Started](GETTING_STARTED.md) for all installation options). This installs `.agents/`, generates the Claude Code integration in `.claude/`, and sets up your coding standards.
 2. **Install hooks**: Run `.agents/scripts/install-hooks.sh`. This sets up Git hooks.
 3. **Verify gitleaks**: The hook enforces secret scanning using `gitleaks`. Any commits containing secrets will be mechanically rejected.
 4. **Check health**: Run `devos doctor` — it must report all required checks passing.

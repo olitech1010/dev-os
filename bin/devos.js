@@ -131,10 +131,10 @@ function printHelp() {
   console.log(`  ${colors.cyan}-h, --help${colors.reset}          Show command options\n`);
 
   console.log(`${colors.bold}EXAMPLES${colors.reset}`);
-  console.log(`  $ ${colors.cyan}npx dev-os init${colors.reset}`);
-  console.log(`  $ ${colors.cyan}npx dev-os init --stack nextjs --existing${colors.reset}`);
-  console.log(`  $ ${colors.cyan}npx dev-os doctor${colors.reset}`);
-  console.log(`  $ ${colors.cyan}npx dev-os list${colors.reset}\n`);
+  console.log(`  $ ${colors.cyan}npx @olitech010/dev-os init${colors.reset}`);
+  console.log(`  $ ${colors.cyan}npx @olitech010/dev-os init --stack nextjs --existing${colors.reset}`);
+  console.log(`  $ ${colors.cyan}npx @olitech010/dev-os doctor${colors.reset}`);
+  console.log(`  $ ${colors.cyan}npx @olitech010/dev-os list${colors.reset}\n`);
 
   console.log(`${colors.gray}Documentation & Guides: https://github.com/olitech1010/dev-os${colors.reset}\n`);
 }
@@ -665,7 +665,7 @@ function runDoctor(flags) {
     }
     console.log();
   } else {
-    console.log(`${colors.yellow}[ WARN ] System check incomplete. Run ${colors.bold}npx dev-os init${colors.reset}${colors.yellow} to repair your setup.${colors.reset}\n`);
+    console.log(`${colors.yellow}[ WARN ] System check incomplete. Run ${colors.bold}npx @olitech010/dev-os init${colors.reset}${colors.yellow} to repair your setup.${colors.reset}\n`);
     process.exit(1);
   }
 }
@@ -705,7 +705,7 @@ function runStatus(flags) {
   console.log(`  Claude Code:   ${hasClaude ? colors.green + 'Wired (.claude/)' : colors.gray + 'Not Wired'}${colors.reset}\n`);
 
   if (!hasAgents) {
-    console.log(`Run ${colors.cyan}npx dev-os init${colors.reset} to install Dev-OS in this project.\n`);
+    console.log(`Run ${colors.cyan}npx @olitech010/dev-os init${colors.reset} to install Dev-OS in this project.\n`);
   }
 }
 

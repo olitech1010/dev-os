@@ -1,6 +1,9 @@
 {
-  "name": "dev-os",
+  "name": "@olitech010/dev-os",
   "version": "2.0.0",
+  "publishConfig": {
+    "access": "public"
+  },
   "description": "Olives Technologies Engineering OS — Autonomous Multi-Agent AI Engineering Environment",
   "bin": {
     "devos": "bin/devos.js",
