@@ -21,8 +21,8 @@ This directory powers the intelligence of the Dev-OS, defining the agents, their
 - [DBA](agents/dba.md)
 - [DevOps](agents/devops.md)
 - [Security](agents/security.md)
-- Memory Manager (See `AGENTS.md` / `agents/memory_manager.md` if implemented)
-- Release Manager (See `AGENTS.md` / `agents/release_manager.md` if implemented)
+- [Memory Manager](agents/memory-manager.md)
+- [Release Manager](agents/release-manager.md)
 
 ## Slash Commands Quick Reference
 

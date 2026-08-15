@@ -8,8 +8,10 @@ Dev-OS is an AI-augmented Engineering Operating System. Instead of a single AI a
 
 ## 2. Setting up Dev-OS
 
-1. **Install hooks**: Run `.agents/scripts/install-hooks.sh`. This sets up Git hooks.
-2. **Verify gitleaks**: The hook enforces secret scanning using `gitleaks`. Any commits containing secrets will be mechanically rejected.
+1. **Install Dev-OS**: From your project root, run `npx dev-os init` (see [Getting Started](GETTING_STARTED.md) for all installation options). This installs `.agents/`, generates the Claude Code integration in `.claude/`, and sets up your coding standards.
+2. **Install hooks**: Run `.agents/scripts/install-hooks.sh`. This sets up Git hooks.
+3. **Verify gitleaks**: The hook enforces secret scanning using `gitleaks`. Any commits containing secrets will be mechanically rejected.
+4. **Check health**: Run `devos doctor` — it must report all required checks passing.
 
 ## 3. Understanding the Agent Roster
 
@@ -58,14 +60,16 @@ Dev-OS maintains its own context to prevent token overload and "forgetting".
 
 ## 7. Commit Workflow (commit.sh)
 
-Agents cannot run raw `git commit`. They must use `.agents/scripts/commit.sh`. This script:
-1. Stages changes.
-2. Generates a commit message.
+Agents cannot run raw `git commit`. Changes are staged with `git add`, then the human runs `.agents/scripts/commit.sh`. The script:
+1. Prompts for the human approval token.
+2. Prompts for the commit type and message.
 3. Exports `DEVOS_COMMIT_APPROVED`.
-4. Runs through the Git pre-commit hook.
+4. Runs `git commit`, which passes through the Git pre-commit hook.
+
+Note: the script does **not** stage files — run `git add` before invoking it.
 
 ## 8. Best Practices and Tips
 
 - **Review the plans**: Always read what the DevOps or DBA agents plan to do before approving.
-- **Use /status**: If you lose track, type `/status` to have the Memory Manager summarize the situation.
+- **Use /status**: If you lose track, type `/status` to have the Orchestrator summarize the situation from `CURRENT_STATE.md`.
 - **Let them loop, but not forever**: Agents have a Circuit Breaker (3 iterations). If they fail 3 times, they will escalate to you.

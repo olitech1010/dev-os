@@ -33,7 +33,7 @@ Use $ARGUMENTS to reference user input after the command.
 |---|---|---|
 | `name` | Yes | Command trigger name (without `/`) |
 | `description` | Yes | Human-readable description |
-| `agent` | Yes | Target agent: `orchestrator`, `developer`, `qa`, `tester`, `security`, `devops`, `researcher`, `architect`, `dba` |
+| `agent` | Yes | Target agent: `orchestrator`, `developer`, `qa`, `tester`, `security`, `devops`, `researcher`, `architect`, `dba`, `memory-manager`, `release-manager` |
 | `triage_level` | Yes | `TRIVIAL`, `STANDARD`, or `CRITICAL` |
 | `workflow` | No | Which delivery workflow to follow. Defaults to `standard` |
 

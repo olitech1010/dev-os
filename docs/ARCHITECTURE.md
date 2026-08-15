@@ -10,28 +10,28 @@ Dev-OS uses a multi-agent hierarchy orchestrated by a central coordinator (the O
 flowchart TD
     Human(Human Lead) --> Orchestrator
     
-    subgraph Execution
+    subgraph EX["Execution"]
         Developer
         Tester
         DevOps
         DBA
     end
     
-    subgraph Quality and Validation
+    subgraph QV["Quality and Validation"]
         QA
         Security
         Researcher
     end
     
-    subgraph Strategy and Memory
+    subgraph SM["Strategy and Memory"]
         Architect
         MemoryManager
         ReleaseManager
     end
 
-    Orchestrator --> Execution
-    Orchestrator --> Quality and Validation
-    Orchestrator --> Strategy and Memory
+    Orchestrator --> EX
+    Orchestrator --> QV
+    Orchestrator --> SM
 ```
 
 ### Standard Feature Delivery (Parallel Gate)
@@ -52,7 +52,7 @@ flowchart TD
     
     Merge1 -- No --> Dev
     Merge1 -- Yes --> Human[Human Approval]
-    Human --> Deploy[DevOps / Merge]
+    Human --> Deploy["DevOps / Merge"]
 ```
 
 ### Bug Fix Workflow
@@ -70,7 +70,7 @@ flowchart TD
 
 ```mermaid
 flowchart LR
-    Dev[Agent / Developer] --> Script[commit.sh]
+    Dev["Agent / Developer"] --> Script[commit.sh]
     Script --> Token[Export DEVOS_COMMIT_APPROVED]
     Token --> Git[git commit]
     Git --> Hook[Pre-commit hook]
@@ -97,7 +97,7 @@ flowchart TD
 
 ```mermaid
 flowchart LR
-    Command[/slash_command] --> Orch[Orchestrator]
+    Command["/slash_command"] --> Orch[Orchestrator]
     Orch --> Parse[Read YAML Frontmatter]
     Parse --> Target[Target Agent]
     Target --> Workflow[Execute Workflow / Prompt]
