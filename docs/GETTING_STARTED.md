@@ -125,5 +125,6 @@ In Dev-OS, agents are mechanically forbidden from running raw `git commit` comma
 ## 5. Related Documentation
 
 - [System Architecture](ARCHITECTURE.md)
+- [Mechanical Pre-Commit Hook Reference](PRE_COMMIT_HOOK.md)
 - [Step-by-Step Tutorial & Glossary](TUTORIAL.md)
 - [Root README](../README.md)

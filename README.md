@@ -137,6 +137,8 @@ Dev-OS uses a mechanical Git pre-commit hook to physically block raw `git commit
 ./.agents/scripts/install-hooks.sh
 ```
 
+The hook lives in `.git/hooks/`, which Git does not track, so every clone must run this command. See [docs/PRE_COMMIT_HOOK.md](docs/PRE_COMMIT_HOOK.md) for the full behaviour reference, the installer's backup rule, and known limits.
+
 ### Step 3: Secret Scanner Verification
 
 Verify that Gitleaks is installed and operational:
