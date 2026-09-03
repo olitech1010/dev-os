@@ -3,10 +3,10 @@
 > This file is maintained by the Orchestrator agent. It is updated at each phase transition to preserve context across long sessions.
 
 ## Current Task
-- **Task:** Resolve PR #9 (pre-commit hook reference & Gitleaks modernization) and PR #10 (Dadiboes field audit compliance hardening); release Dev-OS v2.1.0.
-- **Branch:** feat/devos-v2.1-hardening
+- **Task:** Dev-OS v2.1.0 release (audit hardening, Gitleaks modernization, update command, scope corrected to @olitech1010).
+- **Branch:** main
 - **Triage Level:** STANDARD
-- **Status:** ACTIVE (Implementation complete, verification in progress)
+- **Status:** RELEASE READY (v2.1.0 merged to main, smoke tests passed)
 
 ## Active Agents
 | Agent | Status | Current Assignment |
