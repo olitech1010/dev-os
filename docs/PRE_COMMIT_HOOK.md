@@ -89,40 +89,35 @@ Consequences to plan around:
 
 Two items were raised against the hook template. Both were checked against the source at `.agents/scripts/install-hooks.sh` and against a live Gitleaks install (8.30.1, Homebrew, macOS). One is confirmed; one did not reproduce. Both are recorded here, including the one that did not reproduce, so the question is not re-opened from memory later.
 
-### Issue 1 — The hook calls a legacy Gitleaks subcommand (CONFIRMED)
+### Issue 1 — The hook calls a legacy Gitleaks subcommand (RESOLVED in v2.1.0)
 
-The generated hook runs:
+The generated hook previously ran:
 
 ```bash
 gitleaks protect --staged --verbose
 ```
 
-`protect` is a legacy subcommand. On Gitleaks 8.30.1 it no longer appears in the `Available Commands` list printed by `gitleaks --help`; the listed commands are `dir`, `git`, and `stdin`. `gitleaks protect --help` still resolves, and the command still runs and still exits `1` when it finds a secret, so **the hook is functional today**. It does not print a deprecation notice at the default log level.
-
-The risk is forward-looking rather than current: the hook depends on a hidden, undocumented command path that upstream has already removed from its own help output, and it will break silently in the direction that matters — a removed subcommand makes Gitleaks exit non-zero, which the hook reports as a detected secret, turning every commit into a false `[ FAIL ]`.
-
-**Suggested fix.** Replace the invocation with the documented current form, `gitleaks git --staged`. The `git` subcommand exposes `--staged` with the same meaning ("scan staged commits, good for pre-commit") and the same exit-code contract: `0` when clean, `1` when leaks are found, controlled by the global `--exit-code` flag. The global `--verbose`/`-v` flag is unchanged and can be carried over as-is.
-
-### Issue 2 — Claim that the scan result is never enforced (NOT REPRODUCED)
-
-The reported claim was that an `echo` statement sits between the Gitleaks invocation and the `if [ $? -ne 0 ]` test, resetting `$?` to the exit status of the `echo` and making the failure branch unreachable — so a detected secret would print its findings and the commit would proceed anyway.
-
-**This does not match the source.** In `.agents/scripts/install-hooks.sh` the Gitleaks call and the status test are adjacent, with no intervening command:
+`protect` is a legacy subcommand. On Gitleaks 8.30.1+ it no longer appears in the `Available Commands` list printed by `gitleaks --help`. In Dev-OS v2.1.0, this invocation was updated in `.agents/scripts/install-hooks.sh` to the documented current form:
 
 ```bash
-gitleaks protect --staged --verbose
-if [ $? -ne 0 ]; then
+gitleaks git --staged --verbose
 ```
 
-`$?` therefore holds the exit status of Gitleaks, and the failure branch is reachable. This was also confirmed end to end: with the hook installed in a scratch repository, staging a file containing a recognisable AWS access key produced the Gitleaks finding, the `[ FAIL ] GITLEAKS ERROR` message, a `git commit` exit status of `1`, and no commit in the log. The same layout is present on `origin/main` and on `feat/devos-npm-cli`. **The secret gate works as documented.**
+### Issue 2 — Fragile `$?` testing between commands (HARDENED in v2.1.0)
 
-One point from the report is still worth acting on, as a robustness matter rather than a bug. Testing `$?` on a later line is a fragile idiom: it is correct only for as long as nothing is inserted between the two lines, and inserting a log line there — an entirely reasonable-looking edit — would silently disable the gate with no test failure and no visible symptom. The sturdier forms are to test the command directly:
+Testing `$?` on a later line is a fragile idiom: inserting an echo or log line can reset `$?` and silently bypass failure handling. In Dev-OS v2.1.0, this was hardened to test the command directly:
 
 ```bash
 if ! gitleaks git --staged --verbose; then
+    echo ""
+    echo "[ FAIL ] GITLEAKS ERROR: Hardcoded secret or API key detected in staged files."
+    echo "[ WARN ] Commit aborted to prevent secret leak."
+    echo ""
+    exit 1
+fi
 ```
 
-or, when the status is needed more than once, to capture it on the immediately following line (`status=$?`) and test `$status` thereafter. Either form removes the ordering hazard permanently.
+This eliminates the ordering hazard completely.
 
 ---
 

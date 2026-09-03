@@ -97,6 +97,14 @@ try {
   const backupDir = path.join(proj, '.agents', '_backup');
   const backups = fs.existsSync(backupDir) ? fs.readdirSync(backupDir) : [];
   check('re-running init backs up .agents/ to _backup/<timestamp>/', reinit.status === 0 && backups.length >= 1);
+
+  // -------------------------------------------------------------------------
+  // 3b. devos update safely refreshes components
+  // -------------------------------------------------------------------------
+  const update = runCli(['update', '--quiet'], proj);
+  check('devos update exits 0', update.status === 0, (update.stderr || update.stdout || '').trim().slice(0, 300));
+  const claudeContent = fs.readFileSync(path.join(proj, 'CLAUDE.md'), 'utf8');
+  check('CLAUDE.md contains Hard Rules digest', claudeContent.includes('Hard Rules Digest'));
 } finally {
   fs.rmSync(proj, { recursive: true, force: true });
   fs.rmSync(empty, { recursive: true, force: true });

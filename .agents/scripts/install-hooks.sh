@@ -50,8 +50,7 @@ fi
 # 2. Secret Scanning via Gitleaks
 if command -v gitleaks >/dev/null 2>&1; then
     echo "[ INFO ] Scanning staged diff for hardcoded secrets with Gitleaks..."
-    gitleaks protect --staged --verbose
-    if [ $? -ne 0 ]; then
+    if ! gitleaks git --staged --verbose; then
         echo ""
         echo "[ FAIL ] GITLEAKS ERROR: Hardcoded secret or API key detected in staged files."
         echo "[ WARN ] Commit aborted to prevent secret leak."

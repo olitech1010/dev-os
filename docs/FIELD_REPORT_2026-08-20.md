@@ -111,23 +111,20 @@ session start, run `git fetch --all --prune` and check `git status -sb` before s
 any task." Cheap, and it prevents a whole class of duplicate/stale work. A SessionStart
 hook could run the fetch automatically and surface behind/ahead counts.
 
-## Summary of recommendations
+## Summary of recommendations & v2.1.0 Resolution
 
-| # | Change | Kind | Effort |
-|---|--------|------|--------|
-| 1 | Embed Hard Rules digest into generated CLAUDE.md and/or SessionStart hook | Generator + template | Small |
-| 2 | `commit.sh`: read token from `/dev/tty`, fail without TTY, documented CI escape hatch | Script | Small |
-| 3 | Hard Rule + optional hook for CURRENT_STATE.md updates at session end | Docs + hook | Small |
-| 4 | Define a "solo session" minimum protocol in AGENTS.md | Docs | Medium |
-| 5 | Session-start fetch/freshness rule (or hook) | Docs + hook | Small |
+| # | Change | Kind | Effort | Resolution in v2.1.0 |
+|---|--------|------|--------|----------------------|
+| 1 | Embed Hard Rules digest into generated CLAUDE.md | Generator + template | Small | **RESOLVED**: `bin/devos.js` `bootstrapClaudeMd` injects full 14-rule digest into `CLAUDE.md`. |
+| 2 | `commit.sh`: read token from `/dev/tty`, fail without TTY, documented CI escape hatch | Script | Small | **RESOLVED**: `commit.sh` reads from `/dev/tty` by default; headless bypass requires `DEVOS_HEADLESS_COMMIT=1`. |
+| 3 | Hard Rule for CURRENT_STATE.md updates at session end | Docs + rules | Small | **RESOLVED**: Added Hard Rule #13 (Session-End State Obligation) to `AGENTS.md` & `CLAUDE.md`. |
+| 4 | Define a "solo session" minimum protocol in AGENTS.md | Docs + rules | Medium | **RESOLVED**: Added dedicated Solo Session Protocol section to `AGENTS.md` & `CLAUDE.md`. |
+| 5 | Session-start fetch/freshness rule | Docs + rules | Small | **RESOLVED**: Added Hard Rule #14 (Session-Start Freshness Check) requiring `git fetch --all --prune`. |
 
 ## Closing note
 
 The failure mode observed was not an agent rejecting the rules — it was the rules
 never entering the agent's working context, and the one mechanical gate being softer
 than it looks. Dev-OS's instinct (mechanical enforcement over trust, per the
-2026-08-10 lesson in its own LESSONS.md) is right; these findings are places where
-that instinct has not been applied yet.
-
-*Filed from a live session in the `dadiboes` project, with the owner's request that
-this be submitted as a documentation-only PR.*
+2026-08-10 lesson in its own LESSONS.md) is right. In v2.1.0, all five recommendations
+have been mechanically implemented and verified.

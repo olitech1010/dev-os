@@ -262,6 +262,17 @@ Dev-OS uses a **Staged Review** commit model:
 6. If discarded: Developer deletes the exploration branch
 ```
 
+### Solo Session Protocol (Minimum Viable Gate)
+When an AI assistant operates as a solo working agent in an interactive session without an active Orchestrator:
+1. **Session-Start Freshness**: Run `git fetch --all --prune` and check `git status -sb` before scoping or modifying files to prevent working against stale commits.
+2. **Pre-Implementation Verification**: Verify APIs, signatures, and patterns against documentation or existing code before authoring logic.
+3. **Self-Verification Quality Gate**: Before staging, run automated linting, type-checking (`tsc --noEmit` or equivalent), and test suites locally.
+4. **Standards Review**: Explicitly check modifications against `CODING_STANDARDS.md`.
+5. **Staged Review**: Present a clear summary of all modified files and test results to the human for review.
+6. **Commit via Gate**: Route commits through `.agents/scripts/commit.sh` (never raw `git commit`).
+7. **Session-End State Obligation**: Update `docs/CURRENT_STATE.md` with active tasks, status, and summary before closing the session. If an incident or notable bug fix occurred, log it in `docs/LESSONS.md`.
+8. **Mandatory Escalation Boundary**: If changes require database schema alterations (DBA), security-critical logic (Security), or if any debugging loop reaches 3 iterations, HALT and escalate to the human and multi-agent workflow.
+
 ---
 
 ## Available Skills
@@ -301,3 +312,5 @@ All agents can reference these skills from `skills/`. Each skill is a directory 
 10. **Circuit Breaker.** If any agent loop (e.g., Developer ↔ QA, Developer ↔ Tester) exceeds 3 iterations on the same task without resolution, the Orchestrator MUST halt the loop, compile a diagnostic summary of all attempts, and escalate to the Human for guidance.
 11. **Verify Before Implementing.** Agents must confirm library APIs, version compatibility, and patterns via the Researcher agent or official documentation before using unfamiliar features. No hallucinated API usage.
 12. **No Heavy Dependencies Without Approval.** Adding new dependencies with >5MB install size or >50 transitive dependencies requires explicit Human approval.
+13. **Session-End State Obligation.** Before concluding any working session that modifies code, dependencies, or configuration, the active agent MUST update `docs/CURRENT_STATE.md` with the completed/in-progress task, current status, and active branch. If an incident or notable failure was resolved, log it in `docs/LESSONS.md`.
+14. **Session-Start Freshness Check.** At session start, always run `git fetch --all --prune` and check `git status -sb` before scoping or beginning any task to prevent duplicate or regressive work on stale clones.

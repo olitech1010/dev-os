@@ -1,6 +1,6 @@
 {
-  "name": "@olitech010/dev-os",
-  "version": "2.0.0",
+  "name": "@olitech1010/dev-os",
+  "version": "2.1.0",
   "publishConfig": {
     "access": "public"
   },

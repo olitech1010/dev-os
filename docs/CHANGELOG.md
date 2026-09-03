@@ -3,6 +3,24 @@
 All notable changes to Dev-OS are documented in this file.
 This project follows [Semantic Versioning](https://semver.org/).
 
+## [2.1.0] — 2026-09-03
+
+### Added
+- **Corrected npm Package Scope (`@olitech1010/dev-os`)**: Fixed npm package scope from `@olitech010` to `@olitech1010`, ensuring full alignment with the GitHub organization and repo URLs.
+- **`devos update` CLI Command**: Safely refreshes `.agents/`, specialist skills, slash commands, and git hooks in existing projects without overwriting custom documentation or stack coding standards.
+- **Automated Pre-Commit Hook Installation**: `devos init` now automatically runs `install-hooks.sh` to install `.git/hooks/pre-commit` whenever initialized within a Git repository.
+- **Hard Rules Digest in CLAUDE.md**: `bootstrapClaudeMd` injects a complete 14-rule digest directly into `CLAUDE.md` to guarantee AI working agents always load the rules into active context on turn 1.
+- **Solo Session Protocol**: Defined the official minimum viable quality gate in `AGENTS.md` and `CLAUDE.md` for single-agent interactive workflows (freshness check, lint/typecheck/test self-verification, standards review, staged human review, commit gate, state obligation).
+- **Hard Rule #13 (Session-End State Obligation)**: Requires active agents to update `docs/CURRENT_STATE.md` (and `docs/LESSONS.md` on incidents) before concluding any working session modifying code.
+- **Hard Rule #14 (Session-Start Freshness Check)**: Enforces running `git fetch --all --prune` and `git status -sb` before scoping tasks to prevent regressions against stale branches.
+- **Pre-Commit Hook Reference**: Added `docs/PRE_COMMIT_HOOK.md` detailing mechanical gate architecture, Gitleaks scanning, and verification procedures.
+- **Field Audit Report**: Added `docs/FIELD_REPORT_2026-08-20.md` capturing findings from a real-world multi-day project audit and documenting the resolution of all five recommendations.
+
+### Security & Hardening
+- **Un-Pipeable Human Approval Gate**: Hardened `commit.sh` to read the approval token directly from the controlling terminal (`/dev/tty`). Piped stdin (e.g. `printf 'approve\n...' | commit.sh`) is rejected by policy; automated CI environments must explicitly export `DEVOS_HEADLESS_COMMIT=1`.
+- **Modern Gitleaks Subcommand**: Replaced legacy `gitleaks protect` with the officially documented `gitleaks git --staged --verbose` in `install-hooks.sh`.
+- **Robust Gate Status Check**: Hardened `install-hooks.sh` from fragile `if [ $? -ne 0 ]` checking to direct command execution testing (`if ! gitleaks git --staged --verbose; then`).
+
 ## [2.0.0] — 2026-08-14
 
 ### Added

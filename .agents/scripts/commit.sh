@@ -12,8 +12,37 @@ echo ""
 echo "Code must pass QA and receive Human Approval before committing."
 echo ""
 
+# Helper: Prompt from controlling terminal (/dev/tty) to prevent piped stdin bypass
+prompt_interactive() {
+    local prompt="$1"
+    local var_name="$2"
+    if [ "$DEVOS_HEADLESS_COMMIT" = "1" ] || [ "$DEVOS_HEADLESS_COMMIT" = "true" ]; then
+        read -p "$prompt" "$var_name"
+    elif [ -r /dev/tty ]; then
+        read -p "$prompt" "$var_name" < /dev/tty
+    else
+        echo ""
+        echo "[ FAIL ] Error: Human approval requires an interactive terminal."
+        echo "         Cannot read from /dev/tty (piped input is blocked by policy)."
+        echo "         For authorized automated CI pipelines, export DEVOS_HEADLESS_COMMIT=1."
+        echo ""
+        exit 1
+    fi
+}
+
 # 1. Enforce Human Checkpoint
-read -p "Human Approval Token (type 'approve' to proceed): " token
+if [ ! -r /dev/tty ] && [ "$DEVOS_HEADLESS_COMMIT" != "1" ] && [ "$DEVOS_HEADLESS_COMMIT" != "true" ]; then
+    echo "[ FAIL ] Error: Human approval requires an interactive terminal."
+    echo "         Cannot read from /dev/tty (piped input is blocked by policy)."
+    echo "         For authorized automated CI pipelines, export DEVOS_HEADLESS_COMMIT=1."
+    exit 1
+fi
+
+if [ "$DEVOS_HEADLESS_COMMIT" = "1" ] || [ "$DEVOS_HEADLESS_COMMIT" = "true" ]; then
+    echo "[ WARN ] Headless commit authorized via DEVOS_HEADLESS_COMMIT."
+fi
+
+prompt_interactive "Human Approval Token (type 'approve' to proceed): " token
 
 if [ "$token" != "approve" ]; then
     echo "[ FAIL ] Error: Invalid human approval token. Commit aborted."
@@ -23,13 +52,13 @@ fi
 echo "[ OK ] Human approval verified."
 
 # 2. Get Commit Details
-read -p "Commit Type (feat, fix, docs, refactor, perf, style, test, chore): " commit_type
+prompt_interactive "Commit Type (feat, fix, docs, refactor, perf, style, test, chore): " commit_type
 if [[ ! "$commit_type" =~ ^(feat|fix|docs|refactor|perf|style|test|chore)$ ]]; then
     echo "[ FAIL ] Error: Invalid commit type."
     exit 1
 fi
 
-read -p "Commit Message: " commit_message
+prompt_interactive "Commit Message: " commit_message
 if [ -z "$commit_message" ]; then
     echo "[ FAIL ] Error: Commit message cannot be empty."
     exit 1

@@ -14,7 +14,7 @@ const readline = require('readline');
 const TEMPLATE_DIR = path.resolve(__dirname, '..');
 const TARGET_DIR = process.cwd();
 const PKG_PATH = path.join(TEMPLATE_DIR, 'package.json');
-const PKG = fs.existsSync(PKG_PATH) ? JSON.parse(fs.readFileSync(PKG_PATH, 'utf8')) : { version: '2.0.0' };
+const PKG = fs.existsSync(PKG_PATH) ? JSON.parse(fs.readFileSync(PKG_PATH, 'utf8')) : { version: '2.1.0' };
 
 const STACKS = ['nextjs', 'laravel', 'django', 'react-native', 'express', 'fastapi', 'universal'];
 
@@ -113,12 +113,13 @@ function printHelp() {
   console.log(`  $ ${colors.cyan}devos${colors.reset} <command> [flags]\n`);
 
   console.log(`${colors.bold}CORE COMMANDS${colors.reset}`);
-  console.log(`  ${colors.green}init${colors.reset}, ${colors.green}setup${colors.reset}      Initialize or update Dev-OS multi-agent environment in target project`);
-  console.log(`  ${colors.green}doctor${colors.reset}, ${colors.green}check${colors.reset}    Diagnose project setup, permissions, commit script, and health`);
-  console.log(`  ${colors.green}list${colors.reset}, ${colors.green}agents${colors.reset}     Display active agent personas and installed specialist skills`);
-  console.log(`  ${colors.green}status${colors.reset}           Show active project configuration, detected stack, and health summary`);
-  console.log(`  ${colors.green}version${colors.reset}          Print Dev-OS CLI version, Node runtime, and environment information`);
-  console.log(`  ${colors.green}help${colors.reset}             Display this command reference\n`);
+  console.log(`  ${colors.green}init${colors.reset}, ${colors.green}setup${colors.reset}        Initialize Dev-OS multi-agent environment in target project`);
+  console.log(`  ${colors.green}update${colors.reset}, ${colors.green}upgrade${colors.reset}    Safely refresh .agents/, skills, commands, and hooks`);
+  console.log(`  ${colors.green}doctor${colors.reset}, ${colors.green}check${colors.reset}      Diagnose project setup, permissions, commit script, and health`);
+  console.log(`  ${colors.green}list${colors.reset}, ${colors.green}agents${colors.reset}       Display active agent personas and installed specialist skills`);
+  console.log(`  ${colors.green}status${colors.reset}             Show active project configuration, detected stack, and health summary`);
+  console.log(`  ${colors.green}version${colors.reset}            Print Dev-OS CLI version, Node runtime, and environment information`);
+  console.log(`  ${colors.green}help${colors.reset}               Display this command reference\n`);
 
   console.log(`${colors.bold}FLAGS${colors.reset}`);
   console.log(`  ${colors.cyan}-s, --stack <name>${colors.reset}  Target stack (${STACKS.join(', ')})`);
@@ -131,10 +132,10 @@ function printHelp() {
   console.log(`  ${colors.cyan}-h, --help${colors.reset}          Show command options\n`);
 
   console.log(`${colors.bold}EXAMPLES${colors.reset}`);
-  console.log(`  $ ${colors.cyan}npx @olitech010/dev-os init${colors.reset}`);
-  console.log(`  $ ${colors.cyan}npx @olitech010/dev-os init --stack nextjs --existing${colors.reset}`);
-  console.log(`  $ ${colors.cyan}npx @olitech010/dev-os doctor${colors.reset}`);
-  console.log(`  $ ${colors.cyan}npx @olitech010/dev-os list${colors.reset}\n`);
+  console.log(`  $ ${colors.cyan}npx @olitech1010/dev-os init${colors.reset}`);
+  console.log(`  $ ${colors.cyan}npx @olitech1010/dev-os init --stack nextjs --existing${colors.reset}`);
+  console.log(`  $ ${colors.cyan}npx @olitech1010/dev-os doctor${colors.reset}`);
+  console.log(`  $ ${colors.cyan}npx @olitech1010/dev-os list${colors.reset}\n`);
 
   console.log(`${colors.gray}Documentation & Guides: https://github.com/olitech1010/dev-os${colors.reset}\n`);
 }
@@ -342,25 +343,52 @@ function generateClaudeAgents(destAgents, destClaude) {
 
 function bootstrapClaudeMd(targetDir) {
   const claudeMdPath = path.join(targetDir, 'CLAUDE.md');
-  const marker = '<!-- BEGIN DEV-OS -->';
+  const startMarker = '<!-- BEGIN DEV-OS -->';
+  const endMarker = '<!-- END DEV-OS -->';
   const block = [
-    marker,
+    startMarker,
     '## Dev-OS — Multi-Agent Engineering OS',
     '',
     'This project uses Dev-OS by Olives Technologies.',
     '',
-    '- Read `.agents/AGENTS.md` for the agent roster, workflow protocols, and the Hard Rules before making changes.',
-    '- Slash commands live in `.claude/commands/` (generated from `.agents/commands/` — regenerate with `devos init`).',
-    '- Agent personas live in `.claude/agents/` (generated from `.agents/agents/`).',
-    '- Never run `git commit` directly — use `.agents/scripts/commit.sh` (human-approved commit gate).',
+    '### Hard Rules Digest (Must be strictly obeyed at all times)',
+    '1. Zero Destructive Actions: Never delete, drop, or truncate without an approved dry-run plan.',
+    '2. Zero Secrets Stored or Logged: API keys & credentials must NEVER be hardcoded. Use `process.env.*`.',
+    '3. Mechanical Commit Gate: Raw `git commit` is BLOCKED. Always commit via `.agents/scripts/commit.sh`.',
+    '4. Staged Review: Agents write code but NEVER auto-commit. Present summaries for human review first.',
+    '5. Circuit Breaker: Halt after 3 failed agent loop iterations and escalate to the human.',
+    '6. Verify Before Implementing: Confirm actual library APIs and patterns before authoring code.',
+    '7. No Heavy Dependencies: Packages >5MB or >50 dependencies require explicit human approval.',
+    '8. Documentation in /docs: All plans, PRDs, architecture notes, and reports belong in `/docs/`.',
+    '9. Session-Start Freshness: Run `git fetch --all --prune` and check `git status -sb` before scoping work.',
+    '10. Session-End State Obligation: Update `docs/CURRENT_STATE.md` before concluding any session modifying code.',
+    '',
+    '### Solo Session Protocol (Single-Agent Work)',
+    '- Step 1: Check freshness via `git fetch --all --prune` and `git status -sb`.',
+    '- Step 2: Implement following `CODING_STANDARDS.md`.',
+    '- Step 3: Self-verify with typecheck (`tsc --noEmit` or equivalent) and automated tests.',
+    '- Step 4: Present staged review summary to human.',
+    '- Step 5: Route commit through `.agents/scripts/commit.sh`.',
+    '- Step 6: Update `docs/CURRENT_STATE.md` and log incidents in `docs/LESSONS.md`.',
+    '- Escalation: DB schema changes (DBA), security alterations (Security), or loops exceeding 3 attempts must escalate to human.',
+    '',
+    '### Tooling & Personas',
+    '- Slash commands: `.claude/commands/` (generated from `.agents/commands/` — refresh with `devos update`).',
+    '- Agent personas: `.claude/agents/` (generated from `.agents/agents/`).',
     '- Coding standards: `CODING_STANDARDS.md`.',
-    '<!-- END DEV-OS -->',
+    '- Master roster & full rules: `.agents/AGENTS.md`.',
+    endMarker,
     ''
   ].join('\n');
 
   if (fs.existsSync(claudeMdPath)) {
     const current = fs.readFileSync(claudeMdPath, 'utf8');
-    if (current.includes(marker)) return 'exists';
+    if (current.includes(startMarker) && current.includes(endMarker)) {
+      const regex = new RegExp(`${startMarker}[\\s\\S]*?${endMarker}`, 'g');
+      const updated = current.replace(regex, block.trim());
+      fs.writeFileSync(claudeMdPath, updated.trimEnd() + '\n', 'utf8');
+      return 'updated';
+    }
     fs.writeFileSync(claudeMdPath, current.trimEnd() + '\n\n' + block, 'utf8');
     return 'appended';
   }
@@ -431,6 +459,21 @@ async function runInit(flags) {
     if (missing.length === scripts.length) throw new Error('commit gate scripts are missing from .agents/scripts/');
     return missing.length ? `partial (missing: ${missing.join(', ')})` : 'executable (755)';
   });
+
+  // Step 2b: Install git pre-commit hook automatically if inside a git repository
+  const gitDir = path.join(TARGET_DIR, '.git');
+  if (fs.existsSync(gitDir)) {
+    step('Installing mechanical pre-commit hook (.git/hooks/pre-commit)', () => {
+      const hookInstaller = path.join(destAgents, 'scripts', 'install-hooks.sh');
+      if (fs.existsSync(hookInstaller)) {
+        const { spawnSync } = require('child_process');
+        const res = spawnSync('bash', [hookInstaller], { cwd: TARGET_DIR, encoding: 'utf8' });
+        if (res.status === 0) return 'installed';
+        return `warning (installer exited ${res.status})`;
+      }
+      return 'skipped (install-hooks.sh missing)';
+    });
+  }
 
   // Step 3: Copy docs directory if fresh or missing
   const destDocs = path.join(TARGET_DIR, 'docs');
@@ -521,6 +564,92 @@ async function runInit(flags) {
     console.log(`  3. Prompt the Orchestrator: ${colors.yellow}"Use your grill-me skill to brainstorm our project requirements."${colors.reset}`);
     console.log(`  4. Run ${colors.cyan}devos doctor${colors.reset} anytime to verify system health.\n`);
   }
+}
+
+// ---------------------------------------------------------------------------
+// update
+// ---------------------------------------------------------------------------
+
+async function runUpdate(flags) {
+  if (!flags.quiet) printBanner();
+
+  const destAgents = path.join(TARGET_DIR, '.agents');
+  if (!fs.existsSync(destAgents)) {
+    console.error(`${colors.red}[ FAIL ] Dev-OS is not initialized in this directory (${TARGET_DIR}).${colors.reset}`);
+    console.error(`${colors.yellow}         Run 'devos init' first to set up Dev-OS.${colors.reset}\n`);
+    process.exit(1);
+  }
+
+  console.log(`\n${colors.cyan}[ INFO ] Updating Dev-OS components in target directory...${colors.reset}`);
+  console.log(`${colors.gray}Target Path: ${TARGET_DIR}${colors.reset}\n`);
+
+  const srcAgents = path.join(TEMPLATE_DIR, '.agents');
+  const insideSource = TEMPLATE_DIR === TARGET_DIR;
+
+  const step = (label, fn) => {
+    process.stdout.write(`${colors.gray}${label}... ${colors.reset}`);
+    try {
+      const result = fn();
+      console.log(`${colors.green}${result || 'done'}${colors.reset}`);
+    } catch (err) {
+      console.log(`${colors.red}failed${colors.reset}`);
+      console.error(`${colors.red}[ FAIL ] ${label}: ${err.message}${colors.reset}`);
+      process.exit(1);
+    }
+  };
+
+  if (!insideSource) {
+    // 1. Back up existing .agents/
+    step('Backing up existing .agents/ to .agents/_backup/', () => {
+      const stamp = new Date().toISOString().replace(/[:.]/g, '-');
+      const backupDir = path.join(destAgents, '_backup', stamp);
+      copyRecursiveSync(destAgents, backupDir);
+      return `saved (${path.relative(TARGET_DIR, backupDir)})`;
+    });
+
+    // 2. Refresh .agents/
+    step('Refreshing agent personas, skills, and scripts', () => {
+      copyRecursiveSync(srcAgents, destAgents);
+    });
+  }
+
+  // 3. Ensure executable permissions
+  step('Verifying script permissions (commit.sh, install-hooks.sh)', () => {
+    const scripts = ['commit.sh', 'install-hooks.sh'];
+    scripts.forEach((name) => {
+      const p = path.join(destAgents, 'scripts', name);
+      if (fs.existsSync(p)) fs.chmodSync(p, '755');
+    });
+    return 'executable (755)';
+  });
+
+  // 4. Claude Code integration
+  if (flags.claude) {
+    step('Refreshing Claude Code commands and subagents', () => {
+      const destClaude = path.join(TARGET_DIR, '.claude');
+      const cmdCount = generateClaudeCommands(destAgents, destClaude);
+      const agentCount = generateClaudeAgents(destAgents, destClaude);
+      const claudeMd = bootstrapClaudeMd(TARGET_DIR);
+      return `${cmdCount} commands, ${agentCount} agents (CLAUDE.md ${claudeMd})`;
+    });
+  }
+
+  // 5. Pre-commit hook
+  const gitDir = path.join(TARGET_DIR, '.git');
+  if (fs.existsSync(gitDir)) {
+    step('Updating mechanical pre-commit hook', () => {
+      const hookInstaller = path.join(destAgents, 'scripts', 'install-hooks.sh');
+      if (fs.existsSync(hookInstaller)) {
+        const { spawnSync } = require('child_process');
+        const res = spawnSync('bash', [hookInstaller], { cwd: TARGET_DIR, encoding: 'utf8' });
+        if (res.status === 0) return 'updated';
+        return `warning (installer exited ${res.status})`;
+      }
+      return 'skipped';
+    });
+  }
+
+  console.log(`\n${colors.green}${colors.bold}[ OK ] Dev-OS updated to v${PKG.version} successfully.${colors.reset}\n`);
 }
 
 // ---------------------------------------------------------------------------
@@ -665,7 +794,7 @@ function runDoctor(flags) {
     }
     console.log();
   } else {
-    console.log(`${colors.yellow}[ WARN ] System check incomplete. Run ${colors.bold}npx @olitech010/dev-os init${colors.reset}${colors.yellow} to repair your setup.${colors.reset}\n`);
+    console.log(`${colors.yellow}[ WARN ] System check incomplete. Run ${colors.bold}npx @olitech1010/dev-os init${colors.reset}${colors.yellow} to repair your setup.${colors.reset}\n`);
     process.exit(1);
   }
 }
@@ -705,7 +834,7 @@ function runStatus(flags) {
   console.log(`  Claude Code:   ${hasClaude ? colors.green + 'Wired (.claude/)' : colors.gray + 'Not Wired'}${colors.reset}\n`);
 
   if (!hasAgents) {
-    console.log(`Run ${colors.cyan}npx @olitech010/dev-os init${colors.reset} to install Dev-OS in this project.\n`);
+    console.log(`Run ${colors.cyan}npx @olitech1010/dev-os init${colors.reset} to install Dev-OS in this project.\n`);
   }
 }
 
@@ -727,6 +856,10 @@ async function main() {
     case 'init':
     case 'setup':
       await runInit(flags);
+      break;
+    case 'update':
+    case 'upgrade':
+      await runUpdate(flags);
       break;
     case 'doctor':
     case 'check':
