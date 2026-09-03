@@ -6,19 +6,19 @@ This guide explains how to initialize Dev-OS in a new or existing repository usi
 
 ## 1. Installation Options
 
-> **Note on the package name:** The npm registry package is **`@olitech1010/dev-os`** (scoped, because the name `devos` on npm belongs to an unrelated package and npm blocks unscoped look-alike names — do not install `devos`). Once installed, the CLI binaries are `devos`, `olives-devos`, and `devos-init`.
+> **Note on the package name:** The npm registry package is **`@olives/devos`** (under the official Olives organization on npm). Once installed, the CLI binaries are `devos`, `olives-devos`, and `devos-init`.
 
 ### Option A: Global NPM / NPX (Recommended)
 Run the automated installer in your target project root:
 ```bash
-npx @olitech1010/dev-os init
+npx @olives/devos init
 ```
-*(Or install globally: `npm install -g @olitech1010/dev-os`. After a global install, the command is simply `devos` — the bin name — so you run `devos init`. With `npx` you use the package name `dev-os`.)*
+*(Or install globally: `npm install -g @olives/devos`. After a global install, the command is simply `devos` — the bin name — so you run `devos init`.)*
 
 ### Option B: Non-Interactive Flag Execution
 For automated environments, CI scripts, or quick setup:
 ```bash
-npx @olitech1010/dev-os init --stack nextjs --existing
+npx @olives/devos init --stack nextjs --existing
 ```
 
 ### Option C: Direct GitHub Installation

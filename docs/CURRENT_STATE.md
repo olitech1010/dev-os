@@ -3,7 +3,7 @@
 > This file is maintained by the Orchestrator agent. It is updated at each phase transition to preserve context across long sessions.
 
 ## Current Task
-- **Task:** Dev-OS v2.1.0 release (audit hardening, Gitleaks modernization, update command, scope corrected to @olitech1010).
+- **Task:** Dev-OS v2.1.0 release (audit hardening, Gitleaks modernization, update command, official scope @olives/devos).
 - **Branch:** main
 - **Triage Level:** STANDARD
 - **Status:** RELEASE READY (v2.1.0 merged to main, smoke tests passed)
@@ -29,7 +29,7 @@
 - **Added Hard Rule #14 (Session-Start Freshness Check)**: Enforces `git fetch --all --prune` at session start.
 - **Added `devos update` CLI Command**: Safely upgrades `.agents/` and `.claude/` without touching customized docs or standards.
 - **Auto-installed Pre-Commit Hook**: `devos init` now automatically runs `install-hooks.sh` when inside a Git repo.
-- **Corrected Scope to @olitech1010/dev-os**: Fixed package scope across package.json, bin/devos.js, README.md, and documentation to @olitech1010.
+- **Registered Package Under @olives/devos**: Configured npm package scope under official olives organization on npm.
 - **Version Bumped to 2.1.0**: Ready for release.
 
 ## Blockers

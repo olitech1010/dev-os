@@ -5,8 +5,7 @@ This project follows [Semantic Versioning](https://semver.org/).
 
 ## [2.1.0] — 2026-09-03
 
-### Added
-- **Corrected npm Package Scope (`@olitech1010/dev-os`)**: Fixed npm package scope from `@olitech010` to `@olitech1010`, ensuring full alignment with the GitHub organization and repo URLs.
+- **Official npm Package Scope (`@olives/devos`)**: Formally registered under the official Olives organization on npm as `@olives/devos` (executable CLI binaries remain `devos`, `olives-devos`, and `devos-init`).
 - **`devos update` CLI Command**: Safely refreshes `.agents/`, specialist skills, slash commands, and git hooks in existing projects without overwriting custom documentation or stack coding standards.
 - **Automated Pre-Commit Hook Installation**: `devos init` now automatically runs `install-hooks.sh` to install `.git/hooks/pre-commit` whenever initialized within a Git repository.
 - **Hard Rules Digest in CLAUDE.md**: `bootstrapClaudeMd` injects a complete 14-rule digest directly into `CLAUDE.md` to guarantee AI working agents always load the rules into active context on turn 1.

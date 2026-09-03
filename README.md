@@ -5,12 +5,12 @@
 **by Clement Olives · Olives Technologies**
 
 ![Version](https://img.shields.io/badge/version-v2.1.0-blue.svg)
-![npm](https://img.shields.io/badge/npm-%40olitech1010%2Fdev--os-red.svg)
+![npm](https://img.shields.io/badge/npm-%40olives%2Fdevos-red.svg)
 ![License](https://img.shields.io/badge/license-MIT-green.svg)
 ![Status](https://img.shields.io/badge/status-production--ready-brightgreen.svg)
 
 ```bash
-npx @olitech1010/dev-os init
+npx @olives/devos init
 ```
 
 ---
@@ -91,15 +91,15 @@ Run the installer **from the root of your own project** (new or existing). Pick 
 
 ```bash
 # One-off run (no install)
-npx @olitech1010/dev-os init
+npx @olives/devos init
 
 # Or install globally, then use the `devos` command anywhere
-npm install -g @olitech1010/dev-os
+npm install -g @olives/devos
 devos init
 ```
 
 > [!NOTE]
-> The npm package is named **`@olitech1010/dev-os`** — scoped, because the name `devos` on npm belongs to an unrelated 2016 package and npm blocks unscoped look-alike names. Once installed, the command you type is simply `devos`.
+> The npm package is named **`@olives/devos`** under the official Olives organization on npm. Once installed, the command you type is simply `devos`.
 
 **Option B — straight from GitHub (no registry needed):**
 
@@ -126,7 +126,7 @@ The interactive wizard asks two questions (fresh vs. existing project, and your 
 Non-interactive setup:
 
 ```bash
-npx @olitech1010/dev-os init --existing --stack nextjs
+npx @olives/devos init --existing --stack nextjs
 ```
 
 ### Step 2: Install Mechanical Pre-Commit Hooks
@@ -501,7 +501,7 @@ dev-os/
 ├── CODING_STANDARDS.md         # Universal coding standards template
 ├── LICENSE                     # MIT
 ├── VERSION
-├── package.json                # npm package: @olitech1010/dev-os (bin: devos)
+├── package.json                # npm package: @olives/devos (bin: devos)
 └── README.md                   # All-in-one Master Readme (This file)
 ```
 
@@ -546,7 +546,7 @@ For deep dives beyond this README:
 npm test               # end-to-end smoke test must pass
 npm pack --dry-run     # inspect the tarball contents
 npm login              # one-time authentication
-npm publish            # publishes @olitech1010/dev-os to the registry
+npm publish            # publishes @olives/devos to the registry
 ```
 
 ---
