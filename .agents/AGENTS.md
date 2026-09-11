@@ -295,6 +295,8 @@ All agents can reference these skills from `skills/`. Each skill is a directory 
 | `backend-patterns/` | Backend architecture patterns | Developer |
 | `agent-browser/` | Browser automation CLI | Developer, Tester |
 | `stacks/` | Stack-specific coding standards | Developer |
+| `shared-memory/` | Structured episodic & decision memory vault | Memory Manager, Orchestrator |
+| `task-board/` | Deterministic DAG task board state governance | Orchestrator |
 
 ---
 

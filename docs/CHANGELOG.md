@@ -3,6 +3,15 @@
 All notable changes to Dev-OS are documented in this file.
 This project follows [Semantic Versioning](https://semver.org/).
 
+## [3.0.0] — 2026-09-11
+
+### Major Features & Upgrades
+- **Runtime Lifecycle Hook Framework (F1)**: Introduced `.agents/hooks/` (`session-start.sh`, `pre-tool-use.sh`, `session-end.sh`) and `.claude/hooks.json` mapping `SessionStart`, `PreToolUse`, and `SessionEnd`. Mechanically enforces Hard Rule #1 (blocks destructive actions), Hard Rule #8 (blocks raw git commit), Hard Rule #13 (session-end state obligation), and Hard Rule #14 (freshness check).
+- **Composable Capability Packs (F2)**: Added pack registry (`.agents/packs.json`) and project manifest (`.agents/manifest.json`). `devos init` now installs lean stack-tailored packs (`core` + target stack), reducing initial token context by 60–75%. Added `devos pack list` and `devos pack add <name>` CLI commands.
+- **Structured Shared Memory Vault (F3)**: Added `.agents/memory/` containing Architecture Decision Records (`decisions/ADR-000-template.md`), session handoffs (`handoffs/handoff-template.md`), and `context.json`. Added `devos memory list`, `devos memory handoff`, and `devos memory doctor` CLI commands, along with `.agents/skills/shared-memory/SKILL.md`.
+- **Deterministic Task Board & DAG Workflow State (F4)**: Added `docs/TASK_BOARD.md` state machine (`[BACKLOG]`, `[QUEUED]`, `[IN_PROGRESS]`, `[PARALLEL_GATE]`, `[HUMAN_CHECKPOINT]`, `[DONE]`), `/task` slash command (`.agents/commands/task.md`), and `.agents/skills/task-board/SKILL.md`.
+- **Multi-Harness Expansion + OpenCode (F5)**: Expanded compilation engine to natively generate rules and configuration across major AI IDEs: **Claude Code** (`.claude/`), **Cursor** (`.cursor/rules/devos.mdc`, `.cursorrules`), **OpenCode** (`OPENCODE.md`, `.opencode/rules/devos-rules.md`, `.opencode/opencode.json`), **Google Antigravity & Gemini** (`ANTIGRAVITY.md`, `GEMINI.md`), and **Codex & Windsurf** (`.codex/instructions.md`, `.windsurfrules`). Added interactive platform selector (Step 3 in `devos init`) and CLI flags (`-p, --platform <name>`, `--harness <list>`) so developers can tailor their workspace for specific tools or generate universal configurations.
+
 ## [2.1.1] — 2026-09-10
 
 - **Official npm Scope Release**: Successfully published to npm under `@olives/devos` as public package.
