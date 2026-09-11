@@ -3,6 +3,10 @@
 All notable changes to Dev-OS are documented in this file.
 This project follows [Semantic Versioning](https://semver.org/).
 
+## [2.1.1] — 2026-09-10
+
+- **Official npm Scope Release**: Successfully published to npm under `@olives/devos` as public package.
+
 ## [2.1.0] — 2026-09-03
 
 - **Official npm Package Scope (`@olives/devos`)**: Formally registered under the official Olives organization on npm as `@olives/devos` (executable CLI binaries remain `devos`, `olives-devos`, and `devos-init`).

@@ -3,10 +3,10 @@
 > This file is maintained by the Orchestrator agent. It is updated at each phase transition to preserve context across long sessions.
 
 ## Current Task
-- **Task:** Dev-OS v2.1.0 release (audit hardening, Gitleaks modernization, update command, official scope @olives/devos).
+- **Task:** Dev-OS v2.1.1 release (@olives/devos live on npm, audit hardening, update command, un-pipeable commit gate).
 - **Branch:** main
 - **Triage Level:** STANDARD
-- **Status:** RELEASE READY (v2.1.0 merged to main, smoke tests passed)
+- **Status:** RELEASED (v2.1.1 published to npm as @olives/devos@2.1.1, smoke tests passed)
 
 ## Active Agents
 | Agent | Status | Current Assignment |
