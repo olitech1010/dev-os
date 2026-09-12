@@ -108,6 +108,41 @@ Use $ARGUMENTS to reference user input after the command.
 - **Workflow**: direct
 - **Usage**: `/deploy production`
 
+### `/task`
+- **Description**: Inspect or update the deterministic task board DAG.
+- **Target Agent**: Orchestrator
+- **Triage Level**: STANDARD
+- **Workflow**: standard
+- **Usage**: `/task` or `/task list`
+
+### `/auto`
+- **Description**: Launch autonomous SDLC mode to build an MVP from an idea hands-off.
+- **Target Agent**: Executive Proxy
+- **Triage Level**: STANDARD
+- **Workflow**: autonomous-sdlc
+- **Usage**: `/auto Build an offline-first markdown note taking application with full-text search`
+
+### `/design`
+- **Description**: Execute Mandatory Design Gate; extract tokens from ui-ux-pro-max and author docs/DESIGN.md.
+- **Target Agent**: UI Designer
+- **Triage Level**: STANDARD
+- **Workflow**: standard
+- **Usage**: `/design Minimalist developer portfolio with terminal aesthetics`
+
+### `/humanize`
+- **Description**: Audit and scrub AI writing tells from documentation and marketing copy.
+- **Target Agent**: Release Manager
+- **Triage Level**: STANDARD
+- **Workflow**: standard
+- **Usage**: `/humanize docs/README.md`
+
+### `/telemetry`
+- **Description**: Inspect local failure logs and generate RCA diagnostics.
+- **Target Agent**: Telemetry
+- **Triage Level**: TRIVIAL
+- **Workflow**: direct
+- **Usage**: `/telemetry` or `/telemetry report`
+
 ## Creating Custom Commands
 
 To create a new command:

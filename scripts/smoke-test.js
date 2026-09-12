@@ -104,8 +104,11 @@ try {
   const packList = runCli(['pack', 'list', '--json'], proj);
   check('devos pack list exits 0', packList.status === 0, packList.stderr);
 
-  const packAdd = runCli(['pack', 'add', 'nextjs'], proj);
+   const packAdd = runCli(['pack', 'add', 'nextjs'], proj);
   check('devos pack add exits 0', packAdd.status === 0, packAdd.stderr);
+
+  const skillList = runCli(['skill', 'list', '--json'], proj);
+  check('devos skill list exits 0', skillList.status === 0, skillList.stderr);
 
   const memList = runCli(['memory', 'list', '--json'], proj);
   check('devos memory list exits 0', memList.status === 0, memList.stderr);
@@ -115,6 +118,39 @@ try {
 
   const memHandoff = runCli(['memory', 'handoff'], proj);
   check('devos memory handoff exits 0', memHandoff.status === 0, memHandoff.stderr);
+
+  // Telemetry & SDLC Mode in Manifest verification
+  const manifestData = JSON.parse(fs.readFileSync(path.join(proj, '.agents', 'manifest.json'), 'utf8'));
+  check('manifest default telemetry is on', manifestData.telemetry === 'on');
+  check('manifest default mode is interactive', manifestData.mode === 'interactive');
+
+  // Humanizer scanner script verification
+  const humanizeScript = path.join(proj, '.agents', 'scripts', 'humanize-check.sh');
+  check('humanize-check.sh script installed and executable', fs.existsSync(humanizeScript) && (fs.statSync(humanizeScript).mode & 0o111) !== 0);
+
+  // Mandatory Design Gate hook enforcement verification
+  const uiCheckFail = spawnSync('bash', [path.join(proj, '.agents', 'hooks', 'pre-tool-use.sh'), 'touch src/components/App.tsx'], { cwd: proj, encoding: 'utf8' });
+  check('pre-tool-use.sh blocks UI file creation when docs/DESIGN.md is absent', uiCheckFail.status === 1 && uiCheckFail.stdout.includes('Mandatory Design Gate'));
+
+  // Verify telemetry logged the gate violation
+  const telemetryLog = path.join(proj, '.agents', 'telemetry', 'events.jsonl');
+  check('telemetry events.jsonl logged gate violation', fs.existsSync(telemetryLog) && fs.readFileSync(telemetryLog, 'utf8').includes('MANDATORY_DESIGN_GATE'));
+
+  // Create docs/DESIGN.md and verify pre-tool-use.sh passes
+  fs.mkdirSync(path.join(proj, 'docs'), { recursive: true });
+  fs.writeFileSync(path.join(proj, 'docs', 'DESIGN.md'), '# Design Specification\n', 'utf8');
+  const uiCheckPass = spawnSync('bash', [path.join(proj, '.agents', 'hooks', 'pre-tool-use.sh'), 'touch src/components/App.tsx'], { cwd: proj, encoding: 'utf8' });
+  check('pre-tool-use.sh passes UI file creation when docs/DESIGN.md is present', uiCheckPass.status === 0);
+
+  // CLI Subcommands verification: run/auto & telemetry
+  const autoRun = runCli(['auto', 'Build an MVP habit tracker', '--quiet'], proj);
+  check('devos auto exits 0', autoRun.status === 0 && autoRun.stdout.includes('Autonomous (Founder / Executive Proxy)'));
+
+  const telemStatus = runCli(['telemetry', 'status', '--quiet'], proj);
+  check('devos telemetry status exits 0', telemStatus.status === 0 && telemStatus.stdout.includes('Enabled (on - recommended)'));
+
+  const telemReport = runCli(['telemetry', 'report', '--quiet'], proj);
+  check('devos telemetry report exits 0', telemReport.status === 0);
 
   // -------------------------------------------------------------------------
   // 2. doctor: passes in the project, fails in an empty directory

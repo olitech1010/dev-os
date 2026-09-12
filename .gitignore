@@ -24,3 +24,7 @@ npm-debug.log*
 
 # Dev-OS temporary backups
 .agents/_backup/
+
+# Local telemetry logs
+.agents/telemetry/*.jsonl
+

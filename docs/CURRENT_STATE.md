@@ -3,33 +3,43 @@
 > This file is maintained by the Orchestrator agent. It is updated at each phase transition to preserve context across long sessions.
 
 ## Current Task
-- **Task:** Dev-OS v3.0.0 Architecture & Multi-Harness Release (F1 Runtime Hooks, F2 Capability Packs, F3 Shared Memory Vault, F4 Task Board, F5 Multi-Harness Expansion with OpenCode and User Platform Selection).
-- **Branch:** main
+- **Task:** Dev-OS v4.0.0 Autonomous Engineering OS (Mechanical Design Gate, Autonomous SDLC Modes, Default Telemetry, Humanizer Gate, Testing Guide Deliverable with `devos123` password, and Expanded Agent Roster).
+- **Branch:** feat/v4-autonomous-enforcement-telemetry
 - **Triage Level:** STANDARD
-- **Status:** COMPLETED & MERGED (PR #12 merged to main; 55/55 smoke tests passing)
+- **Status:** READY FOR STAGED REVIEW & HUMAN APPROVAL (80/80 smoke tests passing, 100%)
 
 ## Active Agents
 | Agent | Status | Current Assignment |
 |---|---|---|
-| Orchestrator | IDLE | v3.0.0 architectural upgrade & multi-harness engine complete |
-| Developer | IDLE | Implemented runtime hooks, pack manager, memory vault, task board, and harness adapters |
-| QA | IDLE | Verified coding standards, zero-dependency constraints, and docs consistency |
-| Tester | IDLE | Verified end-to-end smoke test suite (55 assertions passing) |
-| Security | IDLE | Audited pre-tool-use destructive command blocker and secret hygiene |
-| DevOps | IDLE | Merged PR #12 into main; synced local workspace |
+| Orchestrator | IDLE | Coordinating v4.0.0 autonomous SDLC and gate architecture |
+| Executive Proxy | IDLE | Autonomous Tech Lead proxy for `devos run` / `/auto` mode |
+| UI Designer | IDLE | Mandatory Design Gate (`docs/DESIGN.md`) and `ui-ux-pro-max` integration |
+| Developer | IDLE | Implemented hook gates, CLI runners, and manifest telemetry settings |
+| Tester | IDLE | Verified end-to-end smoke test suite (80/80 passing) & Testing Guide protocol |
+| QA | IDLE | Verified Design Gate, Humanizer scanner, and coding standards compliance |
+| Security | IDLE | Audited telemetry sanitization (zero secrets, zero code logged) |
+| Telemetry | IDLE | Configured local failure buffer (`.agents/telemetry/events.jsonl`) & RCA engine |
+| Eval Engineer | IDLE | Evaluated multi-harness parity across Claude, Antigravity, Cursor, OpenCode, Codex |
+| Release Manager | IDLE | Humanizer documentation scrubbing and version bump to 4.0.0 |
 
 ## Recent Decisions
-- **Merged PR #11 (ECC/Agent-Harness Gap Analysis)**: Integrated the architectural comparative analysis into `docs/2026-09-03-devos-ecc-gap-analysis.md`.
-- **Implemented F1 (Runtime Hook Framework)**: Added `.agents/hooks/` (`session-start.sh`, `pre-tool-use.sh`, `session-end.sh`) and `.claude/hooks.json` mapping `SessionStart`, `PreToolUse`, `SessionEnd`.
-- **Implemented F2 (Composable Capability Packs)**: Created `.agents/packs.json` and `.agents/manifest.json`. `devos init` now installs lean stack packs (`core` + target stack), saving 60–75% token context. Added `devos pack list` and `devos pack add <name>`.
-- **Implemented F3 (Structured Shared Memory Vault)**: Added `.agents/memory/` with Architecture Decision Records (`decisions/ADR-000-template.md`), session handoffs (`handoffs/handoff-template.md`), and `context.json`. Added `devos memory list`, `devos memory handoff`, and `devos memory doctor` CLI commands and `.agents/skills/shared-memory/SKILL.md`.
-- **Implemented F4 (Deterministic Task Board & DAG Workflow State)**: Added `docs/TASK_BOARD.md` state machine (`[BACKLOG]`, `[QUEUED]`, `[IN_PROGRESS]`, `[PARALLEL_GATE]`, `[HUMAN_CHECKPOINT]`, `[DONE]`), `/task` slash command (`.agents/commands/task.md`), and `.agents/skills/task-board/SKILL.md`.
-- **Implemented F5 (Multi-Harness Expansion + OpenCode + Platform Selection)**: Created multi-harness generators for **Claude Code** (`.claude/`), **Cursor** (`.cursor/rules/devos.mdc`, `.cursorrules`), **OpenCode** (`OPENCODE.md`, `.opencode/rules/devos-rules.md`, `.opencode/opencode.json`), **Google Antigravity & Gemini** (`ANTIGRAVITY.md`, `GEMINI.md`), and **Codex & Windsurf** (`.codex/instructions.md`, `.windsurfrules`). Added interactive platform selector (Step 3) and CLI flags (`-p, --platform <name>`, `--harness <list>`).
-- **Bumped Version to 3.0.0**: Prepared manifests for next major version release.
-- **Merged Pull Request #12 into main**: Integrated all features with 100% test coverage and clean mechanical gate verification.
+- **Ratified v4.0 Architecture Roadmap**: Updated `docs/2026-09-12-devos-v4-roadmap-research.md` with user-approved architectural decisions.
+- **Mandatory Design Gate**: Added mechanical enforcement in `.agents/hooks/pre-tool-use.sh` blocking frontend UI creation/modification (`*.tsx`, `*.jsx`, `*.vue`, `*.svelte`, `*.html`, `*.css`) when `docs/DESIGN.md` is absent. Added UI Designer agent (`.agents/agents/ui-designer.md`).
+- **Integrated Humanizer Skill (`blader/humanizer`)**: Authored `.agents/skills/humanizer/SKILL.md` (full 25-rule tell catalog) and created executable scanner `.agents/scripts/humanize-check.sh` to mechanically audit documentation against robotic AI clichés.
+- **Interactive Human Testing Guide**: Authored `.agents/skills/testing-guide/SKILL.md` enforcing `docs/TESTING_GUIDE.md` deliverable with step-by-step interactive checklists and the universal dev test password: `devos123`.
+- **Telemetry Enabled by Default**: Configured installation default to `telemetry: on (recommended)`. Runtime hook violations are locally recorded in `.agents/telemetry/events.jsonl`. Added `devos telemetry` CLI commands (`status`, `report`, `enable`, `disable`, `clear`) and Telemetry Agent (`.agents/agents/telemetry.md`).
+- **Standardized 4 Execution Modes**: Created `.agents/skills/autonomous-sdlc/SKILL.md` defining `interactive` (default), `guided`, `auto` (`devos run` / `/auto` hands-off MVP builder for founders/CEOs), and `audit`. Added Executive Proxy agent (`.agents/agents/executive-proxy.md`).
+- **Expanded Agent Catalog from ECC/DeepSeek**: Added `ui-designer.md`, `executive-proxy.md`, `telemetry.md`, and `eval-engineer.md` bringing total active agent personas to 15.
+- **Updated Capability Packs**: Added `humanizer`, `testing-guide`, `autonomous-sdlc`, and `telemetry` to core pack in `.agents/packs.json`. Total installed specialist skills reached 66.
+- **Added New Slash Commands**: Created `/auto`, `/design`, `/humanize`, and `/telemetry` in `.agents/commands/` and updated `docs/SLASH_COMMANDS.md`.
+- **Established Hard Rules 15–18**: Documented Mandatory Design Gate (#15), Mechanical Humanizer Gate (#16), Universal Test Credentials (#17), and Anti-Amnesia Delegation Mandate (#18) in `.agents/AGENTS.md`.
+- **Bumped Version to 4.0.0**: Updated `package.json` and `VERSION`.
+- **Verified Smoke Test Suite**: Extended `scripts/smoke-test.js` to assert all v4.0 gates, hooks, telemetry, skill commands, and CLI runners. All 81 assertions pass with 0 failures.
+- **Skills Ecosystem Resolution (`skills.sh` / `npx skills`)**: Added `devos skill` command suite (`add`, `update`, `check`, `find`, `list`) natively bridging Dev-OS with the open agent skills ecosystem (`https://skills.sh`), supporting `.skill-lock.json` and bi-directional upstream updates.
 
 ## Blockers
-- None.
+- None. Ready for staged review and human commit approval.
 
 ## Context Summary
-Successfully implemented and verified features F1 through F5 from the ECC gap analysis, including composable capability packs, runtime hooks, memory vault, task board DAG state, and multi-harness platform support (Claude, Antigravity/Gemini, Cursor, OpenCode, Codex). All 55 smoke test assertions pass cleanly with zero external runtime dependencies. PR #12 is merged into `main`.
+Dev-OS v4.0.0 transforms the framework into an active, self-enforcing, self-improving autonomous engineering operating system. It introduces the Mandatory Design Gate (blocking UI edits without `docs/DESIGN.md`), default anonymous failure telemetry with local buffering and RCA reports, the `blader/humanizer` documentation scanner, the interactive `docs/TESTING_GUIDE.md` deliverable with universal password `devos123`, four standardized execution modes (interactive, guided, auto, audit), native integration with `skills.sh` (`npx skills`), and an expanded 15-agent / 66-skill roster. All 81 smoke test assertions pass cleanly with zero external npm runtime dependencies.
+
