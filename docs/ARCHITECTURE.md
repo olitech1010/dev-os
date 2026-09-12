@@ -103,12 +103,63 @@ flowchart LR
     Target --> Workflow[Execute Workflow / Prompt]
 ```
 
+### Runtime Lifecycle Hooks Flow (F1)
+
+```mermaid
+flowchart TD
+    SessionStart[SessionStart Hook] --> Fetch[git fetch --all --prune]
+    Fetch --> Digest[Display Hard Rules Digest]
+    
+    ToolInvocation[Tool Execution / Bash] --> PreToolUse{PreToolUse Hook}
+    PreToolUse -- Destructive Command Blocked --> Abort[Abort & Require Dry-Run Plan]
+    PreToolUse -- Raw git commit Blocked --> GateMsg[Redirect to commit.sh]
+    PreToolUse -- Valid Command --> Execute[Execute Tool]
+    
+    SessionClose[SessionEnd Hook] --> StateCheck{CURRENT_STATE.md Updated?}
+    StateCheck -- No & Code Modified --> Warn[Display Rule #13 Reminder]
+    StateCheck -- Yes --> End[Clean Exit]
+```
+
+### Deterministic Task Board & DAG State (F4)
+
+```mermaid
+flowchart LR
+    Backlog[BACKLOG] --> Queued[QUEUED]
+    Queued --> InProgress[IN_PROGRESS]
+    InProgress --> ParallelGate[PARALLEL_GATE]
+    ParallelGate --> HumanCheck[HUMAN_CHECKPOINT]
+    HumanCheck --> Done[DONE]
+```
+
+### Multi-Harness Engine (F5)
+
+```mermaid
+flowchart TD
+    Core[Dev-OS Core: .agents/] --> Compiler[devos init / update]
+    Compiler --> Claude[Claude Code: .claude/ + CLAUDE.md + hooks.json]
+    Compiler --> Cursor[Cursor: .cursor/rules/devos.mdc + .cursorrules]
+    Compiler --> OpenCode[OpenCode: OPENCODE.md + .opencode/rules/]
+    Compiler --> Gemini[Gemini / Antigravity: GEMINI.md]
+    Compiler --> Codex[Codex / Windsurf: .codex/ + .windsurfrules]
+```
+
 ## Directory Structure
 
 - `.agents/`: The core logic of the OS.
-  - `agents/`: System prompts for each agent.
-  - `commands/`: Slash commands.
-  - `skills/`: Agent capabilities.
-  - `scripts/`: Tooling (e.g., `commit.sh`).
-- `docs/`: User documentation.
-- `src/` (or similar): The actual project source code being managed.
+  - `agents/`: System prompts for each agent persona.
+  - `commands/`: Slash commands (YAML frontmatter + instructions).
+  - `skills/`: Specialist engineering skills.
+  - `hooks/`: Runtime lifecycle hooks (`session-start.sh`, `pre-tool-use.sh`, `session-end.sh`).
+  - `memory/`: Shared memory vault (`decisions/ADRs`, `handoffs/`, `context.json`).
+  - `scripts/`: Tooling (e.g., `commit.sh`, `install-hooks.sh`).
+  - `packs.json`: Composable capability pack definitions.
+  - `manifest.json`: Installed pack tracking and version metadata.
+- `docs/`: Project documentation.
+  - `TASK_BOARD.md`: Deterministic DAG task board state machine.
+  - `CURRENT_STATE.md`: Single source of truth for active tasks and blockers.
+  - `LESSONS.md`: Episodic memory and incident learnings.
+- Multi-Harness Outputs:
+  - `.claude/`: Claude Code commands, agents, and lifecycle hooks.
+  - `.cursor/rules/`: Cursor MDC rule definition.
+  - `.opencode/`: OpenCode configuration and rules.
+  - `CLAUDE.md`, `OPENCODE.md`, `GEMINI.md`: Root harness guidance.

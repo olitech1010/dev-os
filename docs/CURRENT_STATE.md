@@ -3,37 +3,33 @@
 > This file is maintained by the Orchestrator agent. It is updated at each phase transition to preserve context across long sessions.
 
 ## Current Task
-- **Task:** Dev-OS v2.1.1 release (@olives/devos live on npm, audit hardening, update command, un-pipeable commit gate).
-- **Branch:** main
+- **Task:** Dev-OS v3.0.0 Feature Upgrades (F1 Runtime Hooks, F2 Capability Packs, F3 Shared Memory Vault, F4 Task Board, F5 Multi-Harness Expansion with OpenCode and User Platform Selection).
+- **Branch:** feat/v3-runtime-harness-packs
 - **Triage Level:** STANDARD
-- **Status:** RELEASED (v2.1.1 published to npm as @olives/devos@2.1.1, smoke tests passed)
+- **Status:** PR #12 OPEN (https://github.com/olitech1010/dev-os/pull/12)
 
 ## Active Agents
 | Agent | Status | Current Assignment |
 |---|---|---|
-| Orchestrator | ACTIVE | Coordinating PR #9 & #10 consolidation and v2.1.0 release |
-| Developer | ACTIVE | Script hardening in commit.sh, install-hooks.sh, bin/devos.js |
-| QA | ACTIVE | Verifying coding standards, docs consistency, and smoke test pass |
-| Tester | ACTIVE | Running end-to-end smoke tests and testing un-pipeable TTY gate |
-| Security | ACTIVE | Auditing secret scanner gate and commit token protection |
-| DevOps | IDLE | Prepared for npm release and PR merges |
+| Orchestrator | ACTIVE | Coordinating v3.0.0 architectural upgrade & multi-harness engine |
+| Developer | ACTIVE | Implemented runtime hooks, pack manager, memory vault, task board, and harness adapters |
+| QA | ACTIVE | Verified coding standards, zero-dependency constraints, and docs consistency |
+| Tester | ACTIVE | Verified end-to-end smoke test suite (55 assertions passing) |
+| Security | ACTIVE | Audited pre-tool-use destructive command blocker and secret hygiene |
+| DevOps | ACTIVE | Pushed branch and opened PR #12 |
 
 ## Recent Decisions
-- **Merged PR #9 & PR #10 into feat/devos-v2.1-hardening**: Unified hook reference documentation and field audit report.
-- **Modernized Gitleaks Subcommand**: Swapped `gitleaks protect` for documented `gitleaks git --staged --verbose`.
-- **Hardened Gate Status Evaluation**: Replaced fragile `$?` checking with direct `if ! gitleaks git --staged --verbose; then`.
-- **Un-pipeable Human Approval Token**: Updated `commit.sh` to read directly from `/dev/tty`, blocking automated stdin bypass, with `DEVOS_HEADLESS_COMMIT=1` for authorized headless CI pipelines.
-- **Added Hard Rules Digest in CLAUDE.md**: `bootstrapClaudeMd()` now embeds an active 14-rule digest directly into generated `CLAUDE.md`.
-- **Defined Solo Session Protocol**: Added explicit minimum quality gate to `AGENTS.md` and `CLAUDE.md` for single-agent interactive workflows.
-- **Added Hard Rule #13 (Session-End State Obligation)**: Mandates updating `CURRENT_STATE.md` before concluding sessions.
-- **Added Hard Rule #14 (Session-Start Freshness Check)**: Enforces `git fetch --all --prune` at session start.
-- **Added `devos update` CLI Command**: Safely upgrades `.agents/` and `.claude/` without touching customized docs or standards.
-- **Auto-installed Pre-Commit Hook**: `devos init` now automatically runs `install-hooks.sh` when inside a Git repo.
-- **Registered Package Under @olives/devos**: Configured npm package scope under official olives organization on npm.
-- **Version Bumped to 2.1.0**: Ready for release.
+- **Merged PR #11 (ECC/Agent-Harness Gap Analysis)**: Integrated the architectural comparative analysis into `docs/2026-09-03-devos-ecc-gap-analysis.md`.
+- **Implemented F1 (Runtime Hook Framework)**: Added `.agents/hooks/` (`session-start.sh`, `pre-tool-use.sh`, `session-end.sh`) and `.claude/hooks.json` mapping `SessionStart`, `PreToolUse`, `SessionEnd`.
+- **Implemented F2 (Composable Capability Packs)**: Created `.agents/packs.json` and `.agents/manifest.json`. `devos init` now installs lean stack packs (`core` + target stack), saving 60–75% token context. Added `devos pack list` and `devos pack add <name>`.
+- **Implemented F3 (Structured Shared Memory Vault)**: Added `.agents/memory/` with Architecture Decision Records (`decisions/ADR-000-template.md`), session handoffs (`handoffs/handoff-template.md`), and `context.json`. Added `devos memory list`, `devos memory handoff`, and `devos memory doctor` CLI commands and `.agents/skills/shared-memory/SKILL.md`.
+- **Implemented F4 (Deterministic Task Board & DAG Workflow State)**: Added `docs/TASK_BOARD.md` state machine (`[BACKLOG]`, `[QUEUED]`, `[IN_PROGRESS]`, `[PARALLEL_GATE]`, `[HUMAN_CHECKPOINT]`, `[DONE]`), `/task` slash command (`.agents/commands/task.md`), and `.agents/skills/task-board/SKILL.md`.
+- **Implemented F5 (Multi-Harness Expansion + OpenCode + Platform Selection)**: Created multi-harness generators for **Claude Code** (`.claude/`), **Cursor** (`.cursor/rules/devos.mdc`, `.cursorrules`), **OpenCode** (`OPENCODE.md`, `.opencode/rules/devos-rules.md`, `.opencode/opencode.json`), **Google Antigravity & Gemini** (`ANTIGRAVITY.md`, `GEMINI.md`), and **Codex & Windsurf** (`.codex/instructions.md`, `.windsurfrules`). Added interactive platform selector (Step 3) and CLI flags (`-p, --platform <name>`, `--harness <list>`).
+- **Bumped Version to 3.0.0**: Prepared manifests for next major version release.
+- **Pushed Branch & Opened PR #12**: Created PR against `main` (https://github.com/olitech1010/dev-os/pull/12).
 
 ## Blockers
 - None.
 
 ## Context Summary
-Successfully implemented and mechanically verified all five recommendations from the Dadiboes compliance audit (PR #10) and both issues from the pre-commit hook reference (PR #9). Smoke tests pass 100%. Package and docs bumped to v2.1.0.
+Successfully implemented and verified features F1 through F5 from the ECC gap analysis, including composable capability packs, runtime hooks, memory vault, task board DAG state, and multi-harness platform support (Claude, Antigravity/Gemini, Cursor, OpenCode, Codex). All 55 smoke test assertions pass cleanly with zero external runtime dependencies. PR #12 opened and awaiting review.

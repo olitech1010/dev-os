@@ -1,0 +1,114 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "version": "1.0.0",
+  "packs": {
+    "core": {
+      "name": "Core Engineering Foundation",
+      "description": "Essential multi-agent orchestration, git-ops, task contracts, shared memory, and task board.",
+      "default": true,
+      "skills": [
+        "brainstorming",
+        "task-contract",
+        "task-board",
+        "shared-memory",
+        "git-workflow",
+        "git-ops",
+        "git-commit",
+        "code-reviewer",
+        "human-checkpoint",
+        "token-optimization",
+        "deployment-checklist",
+        "project-requirements",
+        "stacks",
+        "workflow-metrics"
+      ]
+    },
+    "nextjs": {
+      "name": "Next.js & Modern Web Stack",
+      "description": "Next.js App Router, React Server Components, Vercel, Supabase, Tailwind, and UI engineering.",
+      "stack": "nextjs",
+      "skills": [
+        "nextjs-app-router-patterns",
+        "nextjs-developer",
+        "nextjs-supabase-auth",
+        "vercel-react-best-practices",
+        "vercel-composition-patterns",
+        "vercel-react-view-transitions",
+        "vercel-optimize",
+        "vercel-cli-with-tokens",
+        "deploy-to-vercel",
+        "shadcn-ui",
+        "frontend-ui-engineering",
+        "ui-ux-pro-max",
+        "ui-designer",
+        "web-design-guidelines",
+        "seo-aeo-best-practices",
+        "seo-geo",
+        "supabase",
+        "supabase-postgres-best-practices"
+      ]
+    },
+    "laravel": {
+      "name": "Laravel Specialist Stack",
+      "description": "PHP 8.2+, Eloquent, Sanctum, Livewire, Pest/PHPUnit TDD, and security hardening.",
+      "stack": "laravel",
+      "skills": [
+        "laravel-specialist",
+        "laravel-security",
+        "laravel-tdd",
+        "laravel-verification",
+        "backend-patterns",
+        "backend-dev-guidelines"
+      ]
+    },
+    "python": {
+      "name": "Python, Django & FastAPI Stack",
+      "description": "Python backend architecture, Django REST framework, FastAPI, and async backend patterns.",
+      "stack": "django",
+      "skills": [
+        "backend-patterns",
+        "backend-dev-guidelines",
+        "backend-development",
+        "nodejs-backend-patterns"
+      ]
+    },
+    "mobile": {
+      "name": "Mobile & React Native Stack",
+      "description": "React Native, Expo Router, mobile performance, gestures, and native transitions.",
+      "stack": "react-native",
+      "skills": [
+        "vercel-react-native-skills",
+        "ui-ux-pro-max",
+        "design"
+      ]
+    },
+    "agentic": {
+      "name": "Agent Development & Automation",
+      "description": "Agent creation, Google ADK patterns, browser automation CLI, and skill benchmarking.",
+      "skills": [
+        "agent-browser",
+        "agent-development",
+        "google-agents-cli-adk-code",
+        "google-agents-cli-workflow",
+        "skill-creator",
+        "find-skills",
+        "design-an-interface",
+        "grill-me",
+        "grill-with-docs"
+      ]
+    },
+    "creative": {
+      "name": "Creative & Design Assets",
+      "description": "UI/UX styling, image generation prompts, content strategy, and writing guidelines.",
+      "skills": [
+        "design",
+        "image",
+        "image-generation",
+        "imagegen",
+        "imagegen-frontend-web",
+        "content-strategy",
+        "writing-guidelines"
+      ]
+    }
+  }
+}

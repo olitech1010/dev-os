@@ -81,6 +81,41 @@ try {
     check('generated subagents have name + description frontmatter', Boolean(fm && fm.name && fm.description));
   }
 
+  // Multi-Harness verification
+  check('Cursor rules generated (.cursor/rules/devos.mdc)', fs.existsSync(path.join(proj, '.cursor', 'rules', 'devos.mdc')));
+  check('OpenCode integration generated (OPENCODE.md)', fs.existsSync(path.join(proj, 'OPENCODE.md')));
+  check('OpenCode rules generated (.opencode/rules/devos-rules.md)', fs.existsSync(path.join(proj, '.opencode', 'rules', 'devos-rules.md')));
+  check('Gemini integration generated (GEMINI.md)', fs.existsSync(path.join(proj, 'GEMINI.md')));
+  check('Antigravity integration generated (ANTIGRAVITY.md)', fs.existsSync(path.join(proj, 'ANTIGRAVITY.md')));
+  check('Codex instructions generated (.codex/instructions.md)', fs.existsSync(path.join(proj, '.codex', 'instructions.md')));
+
+  // Runtime Hooks verification
+  check('.claude/hooks.json generated', fs.existsSync(path.join(proj, '.claude', 'hooks.json')));
+  const hookStart = path.join(proj, '.agents', 'hooks', 'session-start.sh');
+  const hookPre = path.join(proj, '.agents', 'hooks', 'pre-tool-use.sh');
+  check('runtime hooks installed', fs.existsSync(hookStart) && fs.existsSync(hookPre));
+
+  // Shared Memory Vault & Task Board verification
+  check('memory vault installed (.agents/memory/)', fs.existsSync(path.join(proj, '.agents', 'memory', 'decisions', 'ADR-000-template.md')));
+  check('task board installed (docs/TASK_BOARD.md)', fs.existsSync(path.join(proj, 'docs', 'TASK_BOARD.md')));
+  check('manifest tracking installed (.agents/manifest.json)', fs.existsSync(path.join(proj, '.agents', 'manifest.json')));
+
+  // CLI Subcommands verification: pack & memory
+  const packList = runCli(['pack', 'list', '--json'], proj);
+  check('devos pack list exits 0', packList.status === 0, packList.stderr);
+
+  const packAdd = runCli(['pack', 'add', 'nextjs'], proj);
+  check('devos pack add exits 0', packAdd.status === 0, packAdd.stderr);
+
+  const memList = runCli(['memory', 'list', '--json'], proj);
+  check('devos memory list exits 0', memList.status === 0, memList.stderr);
+
+  const memDoctor = runCli(['memory', 'doctor'], proj);
+  check('devos memory doctor exits 0', memDoctor.status === 0, memDoctor.stderr);
+
+  const memHandoff = runCli(['memory', 'handoff'], proj);
+  check('devos memory handoff exits 0', memHandoff.status === 0, memHandoff.stderr);
+
   // -------------------------------------------------------------------------
   // 2. doctor: passes in the project, fails in an empty directory
   // -------------------------------------------------------------------------
@@ -105,6 +140,38 @@ try {
   check('devos update exits 0', update.status === 0, (update.stderr || update.stdout || '').trim().slice(0, 300));
   const claudeContent = fs.readFileSync(path.join(proj, 'CLAUDE.md'), 'utf8');
   check('CLAUDE.md contains Hard Rules digest', claudeContent.includes('Hard Rules Digest'));
+
+  // -------------------------------------------------------------------------
+  // 3c. platform targeting (--platform antigravity)
+  // -------------------------------------------------------------------------
+  const agyProj = fs.mkdtempSync(path.join(os.tmpdir(), 'devos-agy-'));
+  try {
+    const agyInit = runCli(['init', '--existing', '--stack', 'universal', '--platform', 'antigravity', '--quiet'], agyProj);
+    check('devos init --platform antigravity exits 0', agyInit.status === 0, agyInit.stderr);
+    check('ANTIGRAVITY.md created for antigravity platform', fs.existsSync(path.join(agyProj, 'ANTIGRAVITY.md')));
+    check('GEMINI.md created for antigravity platform', fs.existsSync(path.join(agyProj, 'GEMINI.md')));
+    check('.claude/ not created when targeting only antigravity', !fs.existsSync(path.join(agyProj, '.claude')));
+    const agyDoctor = runCli(['doctor', '--quiet'], agyProj);
+    check('devos doctor exits 0 in antigravity-targeted project', agyDoctor.status === 0);
+  } finally {
+    fs.rmSync(agyProj, { recursive: true, force: true });
+  }
+
+  // -------------------------------------------------------------------------
+  // 3d. platform targeting (--platform opencode)
+  // -------------------------------------------------------------------------
+  const ocProj = fs.mkdtempSync(path.join(os.tmpdir(), 'devos-oc-'));
+  try {
+    const ocInit = runCli(['init', '--existing', '--stack', 'universal', '--platform', 'opencode', '--quiet'], ocProj);
+    check('devos init --platform opencode exits 0', ocInit.status === 0, ocInit.stderr);
+    check('OPENCODE.md created for opencode platform', fs.existsSync(path.join(ocProj, 'OPENCODE.md')));
+    check('.opencode/ rules created for opencode platform', fs.existsSync(path.join(ocProj, '.opencode', 'rules', 'devos-rules.md')));
+    check('.claude/ not created when targeting only opencode', !fs.existsSync(path.join(ocProj, '.claude')));
+    const ocDoctor = runCli(['doctor', '--quiet'], ocProj);
+    check('devos doctor exits 0 in opencode-targeted project', ocDoctor.status === 0);
+  } finally {
+    fs.rmSync(ocProj, { recursive: true, force: true });
+  }
 } finally {
   fs.rmSync(proj, { recursive: true, force: true });
   fs.rmSync(empty, { recursive: true, force: true });
