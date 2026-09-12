@@ -3,6 +3,17 @@
 All notable changes to Dev-OS are documented in this file.
 This project follows [Semantic Versioning](https://semver.org/).
 
+## [4.0.0] — 2026-09-13
+
+### Autonomous SDLC, Mechanical Enforcement & Telemetry
+- **Mandatory Design Gate (Hard Rule #15)**: Integrated mechanical pre-tool-use hook (`.agents/hooks/pre-tool-use.sh`) that blocks creation or editing of frontend UI files (`*.tsx`, `*.jsx`, `*.vue`, `*.svelte`, `*.html`, `*.css`) until `docs/DESIGN.md` is authored. Added UI Designer agent (`.agents/agents/ui-designer.md`), `/design` slash command, and design token extraction from `ui-ux-pro-max`.
+- **Autonomous SDLC Modes & Executive Proxy**: Added four standardized SDLC modes (`interactive`, `guided`, `auto`, `audit`) in `.agents/skills/autonomous-sdlc/SKILL.md`. Introduced the Executive Proxy persona (`.agents/agents/executive-proxy.md`) and `devos run "<idea>"` / `devos auto` CLI runners to enable hands-off MVP delivery for non-technical startup founders.
+- **Default Anonymous Telemetry & Local RCA Engine**: Telemetry is now enabled by default (`telemetry: on (recommended)`). Gate rejections and failure events are buffered locally in `.agents/telemetry/events.jsonl` with strict zero-secret sanitization. Added Telemetry Agent (`.agents/agents/telemetry.md`), `/telemetry` slash command, and CLI operations (`devos telemetry status/report/enable/disable/clear`).
+- **Humanizer Documentation Gate (Hard Rule #16)**: Integrated `blader/humanizer` into `.agents/skills/humanizer/SKILL.md` with an executable scanner (`.agents/scripts/humanize-check.sh`) to mechanically detect and eliminate 25 cataloged robotic AI writing tells across all markdown documents.
+- **Interactive Testing Guide (Hard Rule #17)**: Authored `.agents/skills/testing-guide/SKILL.md` enforcing `docs/TESTING_GUIDE.md` deliverable with step-by-step interactive checklists and standardized universal development test credentials (`devos123`).
+- **Skills Registry Integration (`skills.sh` / `npx skills`)**: Added first-class `devos skill` CLI suite (`add`, `update`, `check`, `find`, `list`) bridging Dev-OS seamlessly with the open agent skills ecosystem, supporting `.skill-lock.json` and bi-directional upstream updates.
+- **Expanded Specialist Roster (15 Agents, 66 Skills)**: Added `ui-designer`, `executive-proxy`, `telemetry`, and `eval-engineer` personas, and updated capability packs (`core`, `frontend-pro`, `backend-pro`, `autonomous`, `cloud-data`).
+
 ## [3.0.0] — 2026-09-11
 
 ### Major Features & Upgrades

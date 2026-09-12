@@ -79,7 +79,10 @@ function parseArgs(args) {
     allSkills: false,
     allHarnesses: false,
     harness: null,
-    hooks: true
+    hooks: true,
+    telemetry: true,
+    mode: null,
+    skills: false
   };
 
   const positional = [];
@@ -106,6 +109,15 @@ function parseArgs(args) {
       flags.allSkills = true;
     } else if (arg === '--all-harnesses') {
       flags.allHarnesses = true;
+    } else if (arg === '--no-telemetry') {
+      flags.telemetry = false;
+    } else if (arg === '--telemetry') {
+      flags.telemetry = true;
+    } else if (arg === '--skills') {
+      flags.skills = true;
+    } else if (arg === '--mode' || arg === '-m') {
+      flags.mode = args[i + 1] || null;
+      i++;
     } else if (arg === '--platform' || arg === '-p') {
       flags.platform = args[i + 1] || null;
       i++;
@@ -160,8 +172,11 @@ function printHelp() {
   console.log(`${colors.bold}CORE COMMANDS${colors.reset}`);
   console.log(`  ${colors.green}init${colors.reset}, ${colors.green}setup${colors.reset}        Initialize Dev-OS multi-agent environment in target project`);
   console.log(`  ${colors.green}update${colors.reset}, ${colors.green}upgrade${colors.reset}    Safely refresh .agents/, skills, commands, harnesses, and hooks`);
+  console.log(`  ${colors.green}run${colors.reset}, ${colors.green}auto${colors.reset}         Launch autonomous hands-off SDLC mode (devos run "<product idea>")`);
+  console.log(`  ${colors.green}telemetry${colors.reset}            Manage anonymous failure telemetry (status, report, enable, disable)`);
   console.log(`  ${colors.green}doctor${colors.reset}, ${colors.green}check${colors.reset}      Diagnose setup, hooks, memory vault, task board, and health`);
   console.log(`  ${colors.green}pack${colors.reset}, ${colors.green}packs${colors.reset}        Manage composable capability packs (pack list, pack add <name>)`);
+  console.log(`  ${colors.green}skill${colors.reset}, ${colors.green}skills${colors.reset}       Manage agent skills from skills.sh (skill list, add <repo>, update, find)`);
   console.log(`  ${colors.green}memory${colors.reset}             Shared memory vault operations (memory list, memory handoff, memory doctor)`);
   console.log(`  ${colors.green}list${colors.reset}, ${colors.green}agents${colors.reset}       Display active agent personas and installed specialist skills`);
   console.log(`  ${colors.green}status${colors.reset}             Show active project configuration, detected stack, and health summary`);
@@ -171,9 +186,12 @@ function printHelp() {
   console.log(`${colors.bold}FLAGS${colors.reset}`);
   console.log(`  ${colors.cyan}-s, --stack <name>${colors.reset}    Target stack (${STACKS.join(', ')})`);
   console.log(`  ${colors.cyan}-p, --platform <name>${colors.reset} Target AI platform (${PLATFORMS.join(', ')})`);
+  console.log(`  ${colors.cyan}-m, --mode <name>${colors.reset}     SDLC execution mode (interactive, guided, auto, audit)`);
+  console.log(`  ${colors.cyan}--telemetry / --no-telemetry${colors.reset} Enable or disable anonymous failure telemetry (default: on)`);
   console.log(`  ${colors.cyan}--harness <list>${colors.reset}      Target AI harnesses: ${HARNESSES.join(', ')}`);
   console.log(`  ${colors.cyan}--all-harnesses${colors.reset}       Generate configurations for all supported AI harnesses`);
   console.log(`  ${colors.cyan}--all-skills${colors.reset}          Install all skills instead of lean stack pack`);
+  console.log(`  ${colors.cyan}--skills${colors.reset}              Update or sync installed skills from upstream registry`);
   console.log(`  ${colors.cyan}--no-hooks${colors.reset}            Skip wiring runtime lifecycle hooks (.claude/hooks.json)`);
   console.log(`  ${colors.cyan}--fresh${colors.reset}             Non-interactive fresh project initialization`);
   console.log(`  ${colors.cyan}--existing${colors.reset}          Non-interactive existing project initialization`);
@@ -335,13 +353,41 @@ async function promptInitOptions(flags) {
         default: platform = 'all'; break;
       }
     }
+
+    let telemetry = flags.telemetry;
+    if (flags.telemetry === undefined || flags.telemetry === null) {
+      console.log(`\n${colors.bold}Step 4 · Anonymous Failure Telemetry${colors.reset}`);
+      console.log(`  1) On (Recommended) — Anonymously captures execution errors & RCA reports to improve Dev-OS`);
+      console.log(`  2) Off — Completely disable anonymous failure logging`);
+      const telemAns = await ask(`\n${colors.cyan}Select option [1-2] (default 1): ${colors.reset}`);
+      telemetry = telemAns.trim() !== '2';
+    }
+
+    let mode = flags.mode || 'interactive';
+    if (!flags.mode) {
+      console.log(`\n${colors.bold}Step 5 · Default SDLC Execution Mode${colors.reset}`);
+      console.log(`  1) Interactive (Default pair-programming with staged human reviews)`);
+      console.log(`  2) Guided (Step-by-step confirmation checkpoints at each SDLC stage)`);
+      console.log(`  3) Auto (Hands-off MVP builder for founders/CEOs — idea to full working MVP)`);
+      console.log(`  4) Audit (Read-only security, architecture, and code health evaluation)`);
+      const modeAns = await ask(`\n${colors.cyan}Select option [1-4] (default 1): ${colors.reset}`);
+      switch (modeAns.trim()) {
+        case '2': mode = 'guided'; break;
+        case '3': mode = 'auto'; break;
+        case '4': mode = 'audit'; break;
+        default: mode = 'interactive'; break;
+      }
+    }
+
     rl.close();
   }
 
   return {
     isFresh,
     stack: stack.toLowerCase(),
-    platform: (platform || 'all').toLowerCase()
+    platform: (platform || 'all').toLowerCase(),
+    telemetry: flags.telemetry !== false,
+    mode: (flags.mode || 'interactive').toLowerCase()
   };
 }
 
@@ -360,7 +406,11 @@ const AGENT_DESCRIPTIONS = {
   architect: 'Dev-OS system architect. Runs project inception (grill-me), designs architecture, and produces requirements documents.',
   researcher: 'Dev-OS research specialist. Investigates libraries, APIs, compatibility, and best practices; returns concise verdicts.',
   'memory-manager': 'Dev-OS memory custodian. Maintains docs/CURRENT_STATE.md and docs/LESSONS.md, compacts context, and manages session handoffs.',
-  'release-manager': 'Dev-OS release specialist. Owns semantic versioning, changelog entries, and release notes.'
+  'release-manager': 'Dev-OS release specialist. Owns semantic versioning, changelog entries, and release notes.',
+  'ui-designer': 'Dev-OS UI/UX design specialist. Formulates design systems, extracts tokens from ui-ux-pro-max, and authors docs/DESIGN.md to satisfy the Mandatory Design Gate.',
+  'executive-proxy': 'Dev-OS autonomous tech lead proxy. Oversees hands-off MVP delivery from idea to working software across all 10 SDLC stages.',
+  telemetry: 'Dev-OS observability specialist. Tracks runtime errors, failure logs in .agents/telemetry/, and drafts RCA reports.',
+  'eval-engineer': 'Dev-OS evaluation engineer. Measures capability benchmarks, pass@k, and prevents workflow regressions.'
 };
 
 function generateClaudeCommands(destAgents, destClaude) {
@@ -653,7 +703,7 @@ function wireHooks(destAgents, destClaude) {
 // Capability Packs & Skills Copying Helper
 // ---------------------------------------------------------------------------
 
-function installSkillsAndPacks(srcAgents, destAgents, stack, allSkills) {
+function installSkillsAndPacks(srcAgents, destAgents, stack, allSkills, telemetry = true, mode = 'interactive') {
   const srcSkills = path.join(srcAgents, 'skills');
   const destSkills = path.join(destAgents, 'skills');
   const packsPath = path.join(srcAgents, 'packs.json');
@@ -665,7 +715,14 @@ function installSkillsAndPacks(srcAgents, destAgents, stack, allSkills) {
   if (allSkills || !packsData) {
     copyRecursiveSync(srcSkills, destSkills);
     const installed = packsData ? Object.keys(packsData.packs) : ['all'];
-    const manifest = { version: PKG.version, installedPacks: installed, updatedAt: new Date().toISOString() };
+    const manifest = {
+      version: PKG.version,
+      installedPacks: installed,
+      hooksEnabled: true,
+      telemetry: telemetry ? 'on' : 'off',
+      mode: mode || 'interactive',
+      updatedAt: new Date().toISOString()
+    };
     fs.writeFileSync(manifestPath, JSON.stringify(manifest, null, 2) + '\n', 'utf8');
     return { count: countSkills(destSkills), packs: installed };
   }
@@ -695,6 +752,8 @@ function installSkillsAndPacks(srcAgents, destAgents, stack, allSkills) {
     version: PKG.version,
     installedPacks,
     hooksEnabled: true,
+    telemetry: telemetry ? 'on' : 'off',
+    mode: mode || 'interactive',
     updatedAt: new Date().toISOString()
   };
   fs.writeFileSync(manifestPath, JSON.stringify(manifest, null, 2) + '\n', 'utf8');
@@ -714,7 +773,7 @@ async function runInit(flags) {
     console.log(`${colors.yellow}[ WARN ] You are running init inside the Dev-OS source repository itself. Template copy steps will be skipped.${colors.reset}\n`);
   }
 
-  const { isFresh, stack, platform } = await promptInitOptions(flags);
+  const { isFresh, stack, platform, telemetry, mode } = await promptInitOptions(flags);
 
   // Determine target AI harnesses
   const selectedHarnesses = new Set();
@@ -791,14 +850,17 @@ async function runInit(flags) {
     });
 
     step('Installing specialist skills and capability packs', () => {
-      packSummary = installSkillsAndPacks(srcAgents, destAgents, stack, flags.allSkills);
+      packSummary = installSkillsAndPacks(srcAgents, destAgents, stack, flags.allSkills, telemetry, mode);
       return `${packSummary.count} skills (packs: ${packSummary.packs.join(', ')})`;
     });
   }
 
-  // Step 2: Ensure script permissions (commit gate + hook installer)
-  step('Configuring commit gate scripts (commit.sh, install-hooks.sh)', () => {
-    const scripts = ['commit.sh', 'install-hooks.sh'];
+  // Ensure telemetry buffer directory exists
+  fs.mkdirSync(path.join(destAgents, 'telemetry'), { recursive: true });
+
+  // Step 2: Ensure script permissions (commit gate, hook installer, humanizer check)
+  step('Configuring commit gate and verification scripts', () => {
+    const scripts = ['commit.sh', 'install-hooks.sh', 'humanize-check.sh'];
     const missing = [];
     scripts.forEach((name) => {
       const scriptPath = path.join(destAgents, 'scripts', name);
@@ -808,7 +870,7 @@ async function runInit(flags) {
         missing.push(name);
       }
     });
-    if (missing.length === scripts.length) throw new Error('commit gate scripts are missing from .agents/scripts/');
+    if (missing.length === scripts.length) throw new Error('critical scripts are missing from .agents/scripts/');
     return missing.length ? `partial (missing: ${missing.join(', ')})` : 'executable (755)';
   });
 
@@ -1033,8 +1095,8 @@ async function runUpdate(flags) {
   }
 
   // 3. Ensure executable script permissions
-  step('Verifying script permissions (commit.sh, install-hooks.sh, hooks/*.sh)', () => {
-    const scripts = ['commit.sh', 'install-hooks.sh'];
+  step('Verifying script permissions (commit.sh, install-hooks.sh, humanize-check.sh, hooks/*.sh)', () => {
+    const scripts = ['commit.sh', 'install-hooks.sh', 'humanize-check.sh'];
     scripts.forEach((name) => {
       const p = path.join(destAgents, 'scripts', name);
       if (fs.existsSync(p)) fs.chmodSync(p, '755');
@@ -1067,6 +1129,28 @@ async function runUpdate(flags) {
     generateCodexConfig(TARGET_DIR);
     return 'Claude Code, Cursor, OpenCode, Antigravity/Gemini, Codex synchronized';
   });
+
+  // 5b. Refresh skills if requested
+  if (flags.skills || flags.allSkills) {
+    step('Refreshing specialist skills and capability packs', () => {
+      const srcSkills = path.join(srcAgents, 'skills');
+      const destSkills = path.join(destAgents, 'skills');
+      let msg = 'skipped';
+      if (fs.existsSync(srcSkills)) {
+        copyRecursiveSync(srcSkills, destSkills);
+        msg = `${countSkills(destSkills)} skills synchronized`;
+      }
+      try {
+        const { spawnSync } = require('child_process');
+        spawnSync('npx', ['skills', 'update', '-y'], {
+          cwd: TARGET_DIR,
+          stdio: 'ignore',
+          env: { ...process.env, CI: '1' }
+        });
+      } catch (e) {}
+      return msg;
+    });
+  }
 
   // 6. Pre-commit hook
   const gitDir = path.join(TARGET_DIR, '.git');
@@ -1319,6 +1403,225 @@ function runList(flags) {
 }
 
 // ---------------------------------------------------------------------------
+// skill / skills
+// ---------------------------------------------------------------------------
+
+function runSkill(flags, positional) {
+  const subCmd = positional[0] || 'list';
+  const { spawnSync } = require('child_process');
+
+  if (subCmd === 'list') {
+    runList(flags);
+    return;
+  }
+
+  if (subCmd === 'add' || subCmd === 'install') {
+    const pkg = positional[1];
+    if (!pkg) {
+      console.error(`${colors.red}[ FAIL ] Missing skill package or repository name.${colors.reset}`);
+      console.log(`\nUsage: ${colors.cyan}devos skill add <owner/repo>${colors.reset}`);
+      console.log(`Example: ${colors.cyan}devos skill add vercel-labs/agent-skills${colors.reset}`);
+      console.log(`Browse skills: https://skills.sh\n`);
+      process.exit(1);
+    }
+    console.log(`${colors.bold}INSTALLING AGENT SKILL${colors.reset}`);
+    console.log(`${colors.gray}${RULE}${colors.reset}\n`);
+    console.log(`Fetching from skills.sh / GitHub (${colors.cyan}npx skills add ${pkg}${colors.reset})...\n`);
+    const res = spawnSync('npx', ['skills', 'add', pkg, '--yes'], {
+      cwd: TARGET_DIR,
+      stdio: 'inherit',
+      env: { ...process.env, CI: '1' }
+    });
+    if (res.status !== 0) {
+      console.error(`\n${colors.red}[ FAIL ] Failed to install skill '${pkg}'. Check package name or network connectivity.${colors.reset}`);
+      process.exit(res.status || 1);
+    }
+    console.log(`\n${colors.green}[ OK ] Skill '${pkg}' successfully installed into .agents/skills/.${colors.reset}\n`);
+    return;
+  }
+
+  if (subCmd === 'update' || subCmd === 'upgrade') {
+    console.log(`${colors.bold}UPDATING AGENT SKILLS${colors.reset}`);
+    console.log(`${colors.gray}${RULE}${colors.reset}\n`);
+    console.log(`Checking upstream repositories (${colors.cyan}npx skills update${colors.reset})...\n`);
+    const res = spawnSync('npx', ['skills', 'update', '-y'], {
+      cwd: TARGET_DIR,
+      stdio: 'inherit',
+      env: { ...process.env, CI: '1' }
+    });
+    if (res.status === 0) {
+      console.log(`\n${colors.green}[ OK ] Upstream skills updated successfully.${colors.reset}`);
+    }
+
+    const srcSkills = path.join(TEMPLATE_DIR, '.agents', 'skills');
+    const destSkills = path.join(TARGET_DIR, '.agents', 'skills');
+    if (fs.existsSync(srcSkills)) {
+      copyRecursiveSync(srcSkills, destSkills);
+      console.log(`${colors.green}[ OK ] Dev-OS core skills synchronized (${countSkills(destSkills)} total).${colors.reset}\n`);
+    }
+    return;
+  }
+
+  if (subCmd === 'find' || subCmd === 'search') {
+    const query = positional.slice(1).join(' ');
+    console.log(`${colors.bold}SEARCHING AGENT SKILLS (skills.sh)${colors.reset}`);
+    console.log(`${colors.gray}${RULE}${colors.reset}\n`);
+    const args = ['skills', 'find'];
+    if (query) args.push(query);
+    spawnSync('npx', args, {
+      cwd: TARGET_DIR,
+      stdio: 'inherit',
+      env: process.env
+    });
+    return;
+  }
+
+  if (subCmd === 'check') {
+    console.log(`${colors.bold}CHECKING SKILL UPDATES${colors.reset}`);
+    console.log(`${colors.gray}${RULE}${colors.reset}\n`);
+    spawnSync('npx', ['skills', 'check'], {
+      cwd: TARGET_DIR,
+      stdio: 'inherit',
+      env: { ...process.env, CI: '1' }
+    });
+    return;
+  }
+
+  console.error(`${colors.red}[ FAIL ] Unknown skill subcommand '${subCmd}'. Use 'list', 'add', 'update', 'check', or 'find'.${colors.reset}`);
+  process.exit(1);
+}
+
+// ---------------------------------------------------------------------------
+// run / auto
+// ---------------------------------------------------------------------------
+
+function runAuto(flags, positional) {
+  if (!flags.quiet && !flags.json) printBanner();
+  const idea = positional.join(' ').trim();
+
+  console.log(`${colors.bold}AUTONOMOUS SDLC RUNNER (devos run / devos auto)${colors.reset}`);
+  console.log(`${colors.gray}${RULE}${colors.reset}`);
+  console.log(`  Execution Mode: ${colors.green}Autonomous (Founder / Executive Proxy)${colors.reset}`);
+  if (idea) {
+    console.log(`  Target Goal:    ${colors.cyan}"${idea}"${colors.reset}\n`);
+  } else {
+    console.log(`  Target Goal:    ${colors.cyan}Continuous Autonomous Delivery${colors.reset}\n`);
+  }
+
+  console.log(`${colors.bold}10-Stage Professional SDLC Execution Pipeline:${colors.reset}`);
+  console.log(`  ${colors.cyan}1. Inception:${colors.reset}            Architect (grill-me) → docs/PROJECT_REQUIREMENTS.md`);
+  console.log(`  ${colors.cyan}2. Design Gate:${colors.reset}          UI Designer (ui-ux-pro-max) → docs/DESIGN.md`);
+  console.log(`  ${colors.cyan}3. Architecture & DB:${colors.reset}    DBA → Migrations + Seed Fixtures (test password: devos123)`);
+  console.log(`  ${colors.cyan}4. Task Decomposition:${colors.reset}   Orchestrator → docs/TASK_BOARD.md DAG`);
+  console.log(`  ${colors.cyan}5. Implementation:${colors.reset}       Developer → Code authoring (dynamic subagents)`);
+  console.log(`  ${colors.cyan}6. Test Suite:${colors.reset}           Tester → Automated unit & integration tests`);
+  console.log(`  ${colors.cyan}7. Testing Guide:${colors.reset}        Tester → Interactive docs/TESTING_GUIDE.md`);
+  console.log(`  ${colors.cyan}8. Quality Assurance:${colors.reset}    QA → Lint, types, standards & Design Gate audit`);
+  console.log(`  ${colors.cyan}9. Security Audit:${colors.reset}       Security → OWASP, auth & secret scan`);
+  console.log(`  ${colors.cyan}10. Humanizer Audit:${colors.reset}     Release Manager → Scrub AI tells from docs & copy\n`);
+
+  console.log(`${colors.bold}Next Action:${colors.reset}`);
+  console.log(`  To trigger this autonomous run in your AI coding harness, use:`);
+  console.log(`    $ ${colors.green}/auto ${idea || '<your product idea>'}${colors.reset}`);
+  console.log(`  Or hand off to the Executive Proxy:`);
+  console.log(`    "Executive Proxy, run autonomous SDLC mode for: ${idea || '<your product idea>'}"\n`);
+}
+
+// ---------------------------------------------------------------------------
+// telemetry
+// ---------------------------------------------------------------------------
+
+function runTelemetry(flags, positional) {
+  if (!flags.quiet && !flags.json) printBanner();
+  const sub = positional[0] || 'status';
+  const manifestPath = path.join(TARGET_DIR, '.agents', 'manifest.json');
+  const manifest = fs.existsSync(manifestPath) ? JSON.parse(fs.readFileSync(manifestPath, 'utf8')) : { telemetry: 'on' };
+  const telemetryDir = path.join(TARGET_DIR, '.agents', 'telemetry');
+  const eventsPath = path.join(telemetryDir, 'events.jsonl');
+
+  if (sub === 'enable') {
+    manifest.telemetry = 'on';
+    fs.writeFileSync(manifestPath, JSON.stringify(manifest, null, 2) + '\n', 'utf8');
+    console.log(`${colors.green}[ OK ] Anonymous failure telemetry enabled.${colors.reset}\n`);
+    return;
+  }
+
+  if (sub === 'disable') {
+    manifest.telemetry = 'off';
+    fs.writeFileSync(manifestPath, JSON.stringify(manifest, null, 2) + '\n', 'utf8');
+    console.log(`${colors.yellow}[ OK ] Anonymous failure telemetry disabled.${colors.reset}\n`);
+    return;
+  }
+
+  if (sub === 'clear') {
+    if (fs.existsSync(eventsPath)) {
+      fs.writeFileSync(eventsPath, '', 'utf8');
+    }
+    console.log(`${colors.green}[ OK ] Telemetry event buffer cleared.${colors.reset}\n`);
+    return;
+  }
+
+  const isEnabled = manifest.telemetry !== 'off';
+  let eventCount = 0;
+  let lines = [];
+  if (fs.existsSync(eventsPath)) {
+    const raw = fs.readFileSync(eventsPath, 'utf8').trim();
+    if (raw.length > 0) {
+      lines = raw.split('\n').filter(Boolean);
+      eventCount = lines.length;
+    }
+  }
+
+  if (sub === 'report') {
+    console.log(`${colors.bold}TELEMETRY & ROOT CAUSE ANALYSIS (RCA) REPORT${colors.reset}`);
+    console.log(`${colors.gray}${RULE}${colors.reset}`);
+    console.log(`  Status:       ${isEnabled ? colors.green + 'Enabled (on)' : colors.yellow + 'Disabled (off)'}${colors.reset}`);
+    console.log(`  Event Buffer: ${colors.cyan}${eventCount} events recorded${colors.reset}\n`);
+
+    if (eventCount === 0) {
+      console.log(`  ${colors.green}✓ Zero failure events recorded. All runtime hooks and gates are operating cleanly.${colors.reset}\n`);
+      return;
+    }
+
+    const rules = {};
+    lines.forEach((l) => {
+      try {
+        const parsed = JSON.parse(l);
+        const rule = parsed.rule || parsed.eventType || 'UNKNOWN';
+        rules[rule] = (rules[rule] || 0) + 1;
+      } catch (e) {}
+    });
+
+    console.log(`${colors.bold}Failure Breakdown:${colors.reset}`);
+    Object.keys(rules).forEach((r) => {
+      console.log(`  - ${colors.yellow}${r}${colors.reset}: ${rules[r]} occurrences`);
+    });
+
+    console.log(`\n${colors.bold}Recent Events (Last 3):${colors.reset}`);
+    lines.slice(-3).forEach((l) => {
+      try {
+        const p = JSON.parse(l);
+        console.log(`  ${colors.gray}[${p.timestamp || 'N/A'}]${colors.reset} ${colors.cyan}${p.rule || p.eventType}${colors.reset} — ${p.detail || ''}`);
+      } catch (e) {}
+    });
+    console.log(`\nTo clear the buffer: ${colors.cyan}devos telemetry clear${colors.reset}\n`);
+    return;
+  }
+
+  // default 'status'
+  console.log(`${colors.bold}DEV-OS TELEMETRY STATUS${colors.reset}`);
+  console.log(`${colors.gray}${RULE}${colors.reset}`);
+  console.log(`  Status:       ${isEnabled ? colors.green + 'Enabled (on - recommended)' : colors.yellow + 'Disabled (off)'}${colors.reset}`);
+  console.log(`  Log Buffer:   ${path.relative(TARGET_DIR, eventsPath)}`);
+  console.log(`  Total Events: ${eventCount}`);
+  console.log(`\nCommands:`);
+  console.log(`  $ ${colors.cyan}devos telemetry report${colors.reset}   View RCA failure breakdown`);
+  console.log(`  $ ${colors.cyan}devos telemetry enable${colors.reset}   Enable anonymous failure logging`);
+  console.log(`  $ ${colors.cyan}devos telemetry disable${colors.reset}  Disable failure logging`);
+  console.log(`  $ ${colors.cyan}devos telemetry clear${colors.reset}    Clear local event buffer\n`);
+}
+
+// ---------------------------------------------------------------------------
 // doctor
 // ---------------------------------------------------------------------------
 
@@ -1331,9 +1634,13 @@ function runDoctor(flags) {
     { name: 'Specialist skills (.agents/skills/)', path: path.join(TARGET_DIR, '.agents', 'skills'), type: 'dir' },
     { name: 'Human commit script (.agents/scripts/commit.sh)', path: path.join(TARGET_DIR, '.agents', 'scripts', 'commit.sh'), type: 'file', exec: true },
     { name: 'Hook installer (.agents/scripts/install-hooks.sh)', path: path.join(TARGET_DIR, '.agents', 'scripts', 'install-hooks.sh'), type: 'file', exec: true },
+    { name: 'Humanizer scanner (.agents/scripts/humanize-check.sh)', path: path.join(TARGET_DIR, '.agents', 'scripts', 'humanize-check.sh'), type: 'file', exec: true },
     { name: 'Runtime lifecycle hooks (.agents/hooks/)', path: path.join(TARGET_DIR, '.agents', 'hooks'), type: 'dir', optional: true },
     { name: 'Shared memory vault (.agents/memory/)', path: path.join(TARGET_DIR, '.agents', 'memory'), type: 'dir', optional: true },
     { name: 'Task board (docs/TASK_BOARD.md)', path: path.join(TARGET_DIR, 'docs', 'TASK_BOARD.md'), type: 'file', optional: true },
+    { name: 'Telemetry buffer (.agents/telemetry/)', path: path.join(TARGET_DIR, '.agents', 'telemetry'), type: 'dir', optional: true },
+    { name: 'Mandatory Design Gate (docs/DESIGN.md)', path: path.join(TARGET_DIR, 'docs', 'DESIGN.md'), type: 'file', optional: true },
+    { name: 'Interactive Testing Guide (docs/TESTING_GUIDE.md)', path: path.join(TARGET_DIR, 'docs', 'TESTING_GUIDE.md'), type: 'file', optional: true },
     { name: 'Team roster (.agents/AGENTS.md)', path: path.join(TARGET_DIR, '.agents', 'AGENTS.md'), type: 'file' },
     { name: 'Coding standards (CODING_STANDARDS.md)', path: path.join(TARGET_DIR, 'CODING_STANDARDS.md'), type: 'file' },
     { name: 'Documentation (docs/)', path: path.join(TARGET_DIR, 'docs'), type: 'dir' },
@@ -1433,6 +1740,8 @@ function runStatus(flags) {
   const hasCodex = fs.existsSync(path.join(TARGET_DIR, '.codex', 'instructions.md')) || fs.existsSync(path.join(TARGET_DIR, '.windsurfrules'));
   const hasMemory = fs.existsSync(path.join(TARGET_DIR, '.agents', 'memory'));
   const hasTaskBoard = fs.existsSync(path.join(TARGET_DIR, 'docs', 'TASK_BOARD.md'));
+  const hasDesign = fs.existsSync(path.join(TARGET_DIR, 'docs', 'DESIGN.md'));
+  const hasTestingGuide = fs.existsSync(path.join(TARGET_DIR, 'docs', 'TESTING_GUIDE.md'));
   const manifestPath = path.join(TARGET_DIR, '.agents', 'manifest.json');
   const manifest = fs.existsSync(manifestPath) ? JSON.parse(fs.readFileSync(manifestPath, 'utf8')) : null;
 
@@ -1445,6 +1754,8 @@ function runStatus(flags) {
       preCommitHook: hasHook,
       memoryVault: hasMemory,
       taskBoard: hasTaskBoard,
+      designGate: hasDesign,
+      testingGuide: hasTestingGuide,
       manifest,
       harnesses: {
         claude: hasClaude,
@@ -1461,6 +1772,10 @@ function runStatus(flags) {
   console.log(`${colors.gray}${RULE}${colors.reset}`);
   console.log(`  Target Path:   ${colors.cyan}${TARGET_DIR}${colors.reset}`);
   console.log(`  Dev-OS Status: ${hasAgents ? colors.green + 'Initialized' : colors.yellow + 'Not Initialized'}${colors.reset}`);
+  console.log(`  Telemetry:     ${manifest && manifest.telemetry === 'off' ? colors.gray + 'Off' : colors.green + 'Active (on - recommended)'}${colors.reset}`);
+  console.log(`  SDLC Mode:     ${manifest && manifest.mode ? colors.cyan + manifest.mode : colors.cyan + 'interactive'}${colors.reset}`);
+  console.log(`  Design Gate:   ${hasDesign ? colors.green + 'Ready (docs/DESIGN.md)' : colors.yellow + 'Pending docs/DESIGN.md'}${colors.reset}`);
+  console.log(`  Testing Guide: ${hasTestingGuide ? colors.green + 'Ready (docs/TESTING_GUIDE.md)' : colors.gray + 'None'}${colors.reset}`);
   console.log(`  Standards:     ${hasStandards ? colors.green + 'Present' : colors.gray + 'None'}${colors.reset}`);
   console.log(`  Commit Gate:   ${hasCommitScript ? colors.green + 'Active' : colors.gray + 'Disabled'}${colors.reset}`);
   console.log(`  Git Hook:      ${hasHook ? colors.green + 'Installed' : colors.gray + 'Not Installed'}${colors.reset}`);
@@ -1499,6 +1814,13 @@ async function main() {
     case 'upgrade':
       await runUpdate(flags);
       break;
+    case 'run':
+    case 'auto':
+      runAuto(flags, positional);
+      break;
+    case 'telemetry':
+      runTelemetry(flags, positional);
+      break;
     case 'doctor':
     case 'check':
       runDoctor(flags);
@@ -1512,8 +1834,15 @@ async function main() {
       break;
     case 'list':
     case 'agents':
-    case 'skills':
       runList(flags);
+      break;
+    case 'skill':
+    case 'skills':
+      if (positional.length > 0 && ['add', 'install', 'update', 'upgrade', 'check', 'find', 'search'].includes(positional[0])) {
+        runSkill(flags, positional);
+      } else {
+        runList(flags);
+      }
       break;
     case 'status':
       runStatus(flags);

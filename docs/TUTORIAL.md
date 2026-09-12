@@ -4,7 +4,7 @@ Welcome to Dev-OS! This step-by-step guide will walk you through using the Engin
 
 ## 1. What is Dev-OS?
 
-Dev-OS is an AI-augmented Engineering Operating System. Instead of a single AI assistant, you have a full development team comprising an Orchestrator, Developer, QA, Tester, Security, and more. They follow strict workflows, require human approval for crucial steps, and prevent common AI mistakes through mechanical gates.
+Dev-OS is an AI-augmented Engineering Operating System. Instead of a single AI assistant, you have a full development team comprising an Orchestrator, Developer, QA, Tester, Security, and more. They follow strict workflows, require human approval for critical steps, and prevent common AI mistakes through mechanical gates.
 
 ## 2. Setting up Dev-OS
 

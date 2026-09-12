@@ -4,10 +4,14 @@
   "packs": {
     "core": {
       "name": "Core Engineering Foundation",
-      "description": "Essential multi-agent orchestration, git-ops, task contracts, shared memory, and task board.",
+      "description": "Essential multi-agent orchestration, autonomous SDLC, design gate, humanizer, telemetry, shared memory, and task board.",
       "default": true,
       "skills": [
         "brainstorming",
+        "autonomous-sdlc",
+        "testing-guide",
+        "humanizer",
+        "telemetry",
         "task-contract",
         "task-board",
         "shared-memory",
