@@ -3,10 +3,10 @@
 > This file is maintained by the Orchestrator agent. It is updated at each phase transition to preserve context across long sessions.
 
 ## Current Task
-- **Task:** Dev-OS v4.0.0 Autonomous Engineering OS (Mechanical Design Gate, Autonomous SDLC Modes, Default Telemetry, Humanizer Gate, Testing Guide Deliverable with `devos123` password, and Expanded Agent Roster).
-- **Branch:** feat/v4-autonomous-enforcement-telemetry
+- **Task:** Dev-OS v4.0.0 Autonomous Engineering OS (Mechanical Design Gate, Autonomous SDLC Modes, Default Telemetry, Humanizer Gate, Testing Guide Deliverable with `devos123` password, Skills Registry Integration, and Expanded Agent Roster).
+- **Branch:** main
 - **Triage Level:** STANDARD
-- **Status:** READY FOR STAGED REVIEW & HUMAN APPROVAL (80/80 smoke tests passing, 100%)
+- **Status:** COMPLETED, MERGED & PUBLISHED (v4.0.0 live on npm as `@olives/devos@4.0.0`, PR #13 merged to `main`, GitHub Release v4.0.0 live)
 
 ## Active Agents
 | Agent | Status | Current Assignment |
