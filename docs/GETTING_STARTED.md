@@ -87,9 +87,9 @@ Step 7 · Anonymous Failure Telemetry & Local RCA Buffer
   1) On (Recommended) — Anonymously captures execution errors & RCA reports in .agents/telemetry/
   2) Off — Completely disable anonymous failure logging
 
-Step 8 · Git Pre-Commit Hook & Secret Gate
-  1) Install Now (Mechanically enforce approval gate & gitleaks secret scanning) [Recommended]
-  2) Skip (Install later via .agents/scripts/install-hooks.sh)
+Step 8 · Automated Verification & Secret Scanner Gate
+  1) Enable (Install git pre-commit hook, gitleaks secret scanner & lifecycle hooks) [Recommended]
+  2) Disable (Bypass mechanical gates — not recommended for production)
 ```
 
 ---

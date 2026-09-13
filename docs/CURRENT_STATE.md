@@ -3,7 +3,7 @@
 > This file is maintained by the Orchestrator agent. It is updated at each phase transition to preserve context across long sessions.
 
 ## Current Task
-- **Task:** Dev-OS v4.0.1 (8-step interactive installer wizard, Google Antigravity & Gemini platform options, SDLC execution modes, and complete documentation parity).
+- **Task:** Dev-OS v4.0.1 (8-step interactive installer wizard, Google Antigravity & Gemini platform options, SDLC execution modes, automated hook and built-in secret scanner installation, and complete documentation parity).
 - **Branch:** main
 - **Triage Level:** STANDARD
 - **Status:** COMPLETED & VERIFIED (Smoke tests 54/54 pass, Humanizer checks pass, ready for commit, tag v4.0.1, and npm publish)

@@ -23,6 +23,16 @@ echo ""
 
 mkdir -p "$HOOKS_DIR"
 
+# Check and attempt automated gitleaks installation if missing
+if ! command -v gitleaks >/dev/null 2>&1; then
+    if command -v brew >/dev/null 2>&1; then
+        echo "[ INFO ] Gitleaks not found. Attempting automated install via Homebrew..."
+        brew install gitleaks || echo "[ WARN ] Automated Homebrew install failed. Built-in secret scanner will be used."
+    else
+        echo "[ INFO ] Gitleaks not found in PATH. Built-in Dev-OS secret scanner will be active."
+    fi
+fi
+
 # Back up any existing pre-commit hook that is not a Dev-OS hook before overwriting it.
 if [ -f "$PRE_COMMIT_HOOK" ] && ! grep -q "DEVOS_COMMIT_APPROVED" "$PRE_COMMIT_HOOK"; then
     BACKUP_PATH="$PRE_COMMIT_HOOK.backup.$(date +%Y%m%d%H%M%S)"
@@ -47,7 +57,7 @@ if [ "$DEVOS_COMMIT_APPROVED" != "true" ]; then
     exit 1
 fi
 
-# 2. Secret Scanning via Gitleaks
+# 2. Secret Scanning via Gitleaks or Built-in Scanner
 if command -v gitleaks >/dev/null 2>&1; then
     echo "[ INFO ] Scanning staged diff for hardcoded secrets with Gitleaks..."
     if ! gitleaks git --staged --verbose; then
@@ -57,10 +67,19 @@ if command -v gitleaks >/dev/null 2>&1; then
         echo ""
         exit 1
     fi
-    echo "[ OK ] Secret scan clean."
+    echo "[ OK ] Gitleaks secret scan clean."
 else
-    echo "[ WARN ] 'gitleaks' is not installed on your system."
-    echo "   Install gitleaks to enable automated mechanical secret scanning: 'brew install gitleaks'"
+    echo "[ INFO ] Running Dev-OS built-in secret scanner..."
+    STAGED_DIFF=$(git diff --cached --unified=0 2>/dev/null || true)
+    SECRET_PATTERN='(AKIA[0-9A-Z]{16}|ghp_[0-9a-zA-Z]{36}|github_pat_[0-9a-zA-Z_]{82}|sk-[0-9a-zA-Z]{32,}|sk-ant-[0-9a-zA-Z_-]{32,}|-----BEGIN [A-Z ]*PRIVATE KEY-----|AIza[0-9A-Za-z\-_]{35}|xox[baprs]-[0-9a-zA-Z]{10,48})'
+    if echo "$STAGED_DIFF" | grep -E -q "$SECRET_PATTERN"; then
+        echo ""
+        echo "[ FAIL ] DEV-OS SECRET SCANNER ERROR: Hardcoded credentials or private keys detected in staged changes."
+        echo "[ WARN ] Commit aborted to prevent secret leak."
+        echo ""
+        exit 1
+    fi
+    echo "[ OK ] Built-in secret scan clean."
 fi
 
 echo "[ OK ] Dev-OS pre-commit checks passed."

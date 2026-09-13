@@ -124,7 +124,7 @@ The interactive wizard guides you through 8 targeted configuration steps:
 5. **Autonomous Goal / Product Idea:** If `auto` mode is selected, record the target MVP or feature goal into `docs/TASK_BOARD.md` and `.agents/manifest.json`.
 6. **Capability Scope & Specialist Skills:** Lean Stack Pack (core + target stack skills — token-optimized) [Recommended] vs Full Skills Arsenal (all 66 specialist skills).
 7. **Anonymous Failure Telemetry & Local RCA Buffer:** On [Recommended] (anonymously buffers execution errors and root cause analyses into `.agents/telemetry/events.jsonl` with zero secret exposure) vs Off.
-8. **Git Pre-Commit Hook & Secret Gate:** Install now [Recommended] (mechanically enforce commit approval token and secret scanning) vs Skip.
+8. **Automated Verification & Secret Scanner Gate:** Enable [Recommended] (automatically installs git pre-commit hook, wires runtime lifecycle hooks, and configures secret scanning with automated Gitleaks installation and built-in fallback) vs Disable.
 
 Non-interactive setup with flags:
 
@@ -132,28 +132,15 @@ Non-interactive setup with flags:
 npx @olives/devos init --existing --stack nextjs --platform antigravity --mode auto
 ```
 
-### Step 2: Install Mechanical Pre-Commit Hooks
+### Automated Hook, Gate & Secret Scanner Setup
 
-Dev-OS uses a mechanical Git pre-commit hook to physically block raw `git commit` commands and prevent hardcoded secret leaks. Install it by running:
+`devos init` takes care of all setup out of the box without requiring manual steps:
+- **Git Repository & Mechanical Pre-Commit Hook:** Automatically initializes git if needed and installs `.git/hooks/pre-commit` to physically block raw `git commit` commands and prevent secret leaks.
+- **Secret Scanning with Fallback:** Verifies or automatically installs `gitleaks` via Homebrew when available, and provides an active built-in zero-dependency regex scanner covering AWS, GitHub, OpenAI, Anthropic, Google, and private keys.
+- **Runtime Lifecycle Hooks:** Automatically configures `.agents/hooks/` and `.claude/hooks.json` to enforce session start synchronization and tool validations.
+- **Script Permissions:** Configures executable permissions (`chmod 755`) for all enforcement scripts.
 
-```bash
-./.agents/scripts/install-hooks.sh
-```
-
-The hook lives in `.git/hooks/`, which Git does not track, so every clone must run this command. See [docs/PRE_COMMIT_HOOK.md](docs/PRE_COMMIT_HOOK.md) for the full behaviour reference, the installer's backup rule, and known limits.
-
-### Step 3: Secret Scanner Verification
-
-Verify that Gitleaks is installed and operational:
-
-```bash
-gitleaks version
-```
-
-> [!NOTE]
-> If Gitleaks is not installed on the host machine, the pre-commit hook will issue a warning and continue enforcing the `DEVOS_COMMIT_APPROVED` token gate. Installing Gitleaks enables automated binary secret scanning.
-
-### Step 4: Verify Installation
+### Step 2: Verify Installation
 
 Run the built-in diagnostic tool to confirm environment readiness:
 

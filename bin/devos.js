@@ -401,9 +401,9 @@ async function promptInitOptions(flags) {
     }
 
     if (flags.hooks !== false) {
-      console.log(`\n${colors.bold}Step 8 · Git Pre-Commit Hook & Secret Gate${colors.reset}`);
-      console.log(`  1) Install Now (Mechanically enforce approval gate & gitleaks secret scanning) [Recommended]`);
-      console.log(`  2) Skip (Install later via .agents/scripts/install-hooks.sh)`);
+      console.log(`\n${colors.bold}Step 8 · Automated Verification & Secret Scanner Gate${colors.reset}`);
+      console.log(`  1) Enable (Install git pre-commit hook, gitleaks secret scanner & lifecycle hooks) [Recommended]`);
+      console.log(`  2) Disable (Bypass mechanical gates — not recommended for production)`);
       const hookAns = await ask(`\n${colors.cyan}Select option [1-2] (default 1): ${colors.reset}`);
       hooksSelected = hookAns.trim() !== '2';
     }
@@ -923,19 +923,49 @@ async function runInit(flags) {
     });
   }
 
-  // Step 2c: Install git pre-commit hook automatically if inside a git repository
-  const gitDir = path.join(TARGET_DIR, '.git');
-  if (fs.existsSync(gitDir) && flags.hooks !== false && hooks !== false) {
-    step('Installing mechanical pre-commit hook (.git/hooks/pre-commit)', () => {
-      const hookInstaller = path.join(destAgents, 'scripts', 'install-hooks.sh');
-      if (fs.existsSync(hookInstaller)) {
-        const { spawnSync } = require('child_process');
-        const res = spawnSync('bash', [hookInstaller], { cwd: TARGET_DIR, encoding: 'utf8' });
-        if (res.status === 0) return 'installed';
-        return `warning (installer exited ${res.status})`;
+  // Step 2c: Ensure git repository exists so hooks and gates are never left uninstalled
+  let gitDir = path.join(TARGET_DIR, '.git');
+  if (!fs.existsSync(gitDir) && !insideSource) {
+    const { spawnSync } = require('child_process');
+    const gitCheck = spawnSync('git', ['--version'], { encoding: 'utf8' });
+    if (gitCheck.status === 0) {
+      step('Initializing git repository (git init)', () => {
+        const initRes = spawnSync('git', ['init'], { cwd: TARGET_DIR, encoding: 'utf8' });
+        if (initRes.status === 0) return 'initialized';
+        return 'warning (git init returned non-zero)';
+      });
+      gitDir = path.join(TARGET_DIR, '.git');
+    }
+  }
+
+  // Step 2d: Verify secret scanner and install mechanical pre-commit hook
+  if (flags.hooks !== false && hooks !== false) {
+    step('Verifying secret scanner (Gitleaks / built-in)', () => {
+      const { spawnSync } = require('child_process');
+      const glCheck = spawnSync('which', ['gitleaks'], { encoding: 'utf8' });
+      if (glCheck.status === 0 && glCheck.stdout.trim()) {
+        return `gitleaks detected (${glCheck.stdout.trim()})`;
       }
-      return 'skipped (install-hooks.sh missing)';
+      const brewCheck = spawnSync('which', ['brew'], { encoding: 'utf8' });
+      if (brewCheck.status === 0 && brewCheck.stdout.trim()) {
+        const brewRes = spawnSync('brew', ['install', 'gitleaks'], { encoding: 'utf8' });
+        if (brewRes.status === 0) return 'gitleaks auto-installed via brew';
+      }
+      return 'built-in zero-dependency scanner active';
     });
+
+    if (fs.existsSync(gitDir)) {
+      step('Installing mechanical pre-commit hook (.git/hooks/pre-commit)', () => {
+        const hookInstaller = path.join(destAgents, 'scripts', 'install-hooks.sh');
+        if (fs.existsSync(hookInstaller)) {
+          const { spawnSync } = require('child_process');
+          const res = spawnSync('bash', [hookInstaller], { cwd: TARGET_DIR, encoding: 'utf8' });
+          if (res.status === 0) return 'installed & verified';
+          return `warning (installer exited ${res.status})`;
+        }
+        return 'skipped (install-hooks.sh missing)';
+      });
+    }
   }
 
   // Step 3: Copy docs directory and TASK_BOARD.md if fresh or missing

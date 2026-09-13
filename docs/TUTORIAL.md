@@ -16,10 +16,8 @@ Dev-OS is an AI-augmented Engineering Operating System. Instead of a single AI a
    - **Autonomous Goal:** Target MVP idea if running in `auto` mode (recorded into `docs/TASK_BOARD.md`).
    - **Skills Depth:** Lean Stack Pack (token-optimized) vs Full Skills Arsenal (all 66 specialist skills).
    - **Anonymous Failure Telemetry:** On (buffers execution failures locally in `.agents/telemetry/events.jsonl` with zero secret exposure) vs Off.
-   - **Git Pre-Commit Hook:** Install now (mechanical commit gate & secret scanner) vs Skip.
-2. **Install hooks**: If skipped during init, run `.agents/scripts/install-hooks.sh` to install the Git pre-commit hook.
-3. **Verify gitleaks**: The hook enforces secret scanning using `gitleaks`. Any commits containing secrets will be mechanically rejected.
-4. **Check health**: Run `devos doctor` — it confirms all required checks pass.
+   - **Verification & Secret Gate:** Automatically installs git pre-commit hook, wires runtime lifecycle hooks, and configures secret scanning (Gitleaks + built-in fallback).
+2. **Check health**: Run `devos doctor` — it confirms all required checks pass out of the box. No manual hook or secret scanner installation is needed.
 
 ## 3. Understanding the Agent Roster
 
