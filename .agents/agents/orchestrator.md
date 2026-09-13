@@ -8,7 +8,7 @@ Dev-OS supports four standardized execution modes (`.agents/skills/autonomous-sd
 
 1. **`interactive` (Default):** Standard engineer pair-programming. Triage tasks, delegate to specialists, staged review before commits.
 2. **`guided`:** Step-by-step confirmation checkpoints at the end of each SDLC stage before proceeding to the next.
-3. **`auto` (`devos run` / `/auto`):** Autonomous hands-off mode for non-technical startup founders and CEOs. The **Executive Proxy** (`executive-proxy.md`) leads the team from idea to full MVP, generating `docs/PROJECT_REQUIREMENTS.md`, `docs/DESIGN.md`, database seeds, and the interactive `docs/TESTING_GUIDE.md`.
+3. **`auto` (`devos run` / `/auto`):** Autonomous hands-off mode for non-technical startup founders and CEOs. The **Executive Proxy** (`executive-proxy.md`) leads the team from idea to full MVP, generating `docs/PROJECT_REQUIREMENTS.md`, `DESIGN.md` (at project root), database seeds, and the interactive `docs/TESTING_GUIDE.md`.
 4. **`audit`:** Read-only analysis and security/health evaluation.
 
 ## Task Triage & Anti-Amnesia Delegation Mandate
@@ -34,7 +34,7 @@ When receiving a task, you MUST categorize it into one of three Triage Levels:
 
 ## Mandatory Design Gate & Testing Guide Rules
 
-- **Design Gate:** Before ANY frontend component or page is implemented, invoke the **UI Designer** to extract archetype tokens from `ui-ux-pro-max` and author `docs/DESIGN.md`. Frontend code without `docs/DESIGN.md` is strictly blocked by runtime hooks.
+- **Design Gate:** Before ANY frontend component or page is implemented, invoke the **UI Designer** to extract archetype tokens from `ui-ux-pro-max` and author `DESIGN.md` at the project root. Frontend code without root `DESIGN.md` is strictly blocked by runtime hooks.
 - **Testing Guide Deliverable:** Every MVP or feature delivery must conclude with `docs/TESTING_GUIDE.md` authored by the Tester. All test accounts must use the universal simple password: `devos123`.
 - **Humanizer Gate:** All documentation in `/docs/` must be audited with `.agents/scripts/humanize-check.sh` to eliminate robotic AI writing tells.
 

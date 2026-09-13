@@ -26,28 +26,32 @@ npx @olives/devos init
   - [Step 4: Verify Installation](#step-4-verify-installation)
   - [CLI Command Reference](#cli-command-reference)
 - [3. Agent Roster & Team Architecture](#3-agent-roster--team-architecture)
-- [4. Slash Commands Reference](#4-slash-commands-reference)
+- [4. How to Prompt Dev-OS: Prompt the What, Not the How](#4-how-to-prompt-dev-os-prompt-the-what-not-the-how)
+  - [What Dev-OS Handles Automatically](#what-dev-os-handles-automatically)
+  - [The Golden Prompt Formula](#the-golden-prompt-formula)
+  - [Case Study: Restaurant POS & Voice Ordering](#case-study-restaurant-pos--voice-ordering)
+- [5. Slash Commands Reference](#5-slash-commands-reference)
   - [Command List & Usage](#command-list--usage)
   - [Creating Custom Slash Commands](#creating-custom-slash-commands)
-- [5. Workflow Protocols & Delivery Cycles](#5-workflow-protocols--delivery-cycles)
+- [6. Workflow Protocols & Delivery Cycles](#6-workflow-protocols--delivery-cycles)
   - [Standard Feature Delivery (Parallel Quality Gate)](#standard-feature-delivery-parallel-quality-gate)
   - [Bug Fix Delivery Workflow](#bug-fix-delivery-workflow)
   - [Rollback Protocol](#rollback-protocol)
   - [Exploratory Refactoring](#exploratory-refactoring)
   - [Project Inception (Grill-Me)](#project-inception-grill-me)
-- [6. Commit Model & Mechanical Gate Protocol](#6-commit-model--mechanical-gate-protocol)
+- [7. Commit Model & Mechanical Gate Protocol](#7-commit-model--mechanical-gate-protocol)
   - [Staged Review Model](#staged-review-model)
   - [How `commit.sh` Works](#how-commitsh-works)
   - [Mechanical Pre-Commit Hook & Secret Scanning](#mechanical-pre-commit-hook--secret-scanning)
-- [7. Memory System & Context Management](#7-memory-system--context-management)
+- [8. Memory System & Context Management](#8-memory-system--context-management)
   - [Working Memory (`CURRENT_STATE.md`)](#working-memory-current_statemd)
   - [Episodic Memory (`LESSONS.md`)](#episodic-memory-lessonsmd)
   - [Pinned Safety Rules](#pinned-safety-rules)
   - [Circuit Breaker Protocol (Rule #10)](#circuit-breaker-protocol-rule-10)
-- [8. System Architecture Diagrams](#8-system-architecture-diagrams)
-- [9. Directory Structure](#9-directory-structure)
-- [10. Best Practices & Troubleshooting](#10-best-practices--troubleshooting)
-- [11. Documentation](#11-documentation)
+- [9. System Architecture Diagrams](#9-system-architecture-diagrams)
+- [10. Directory Structure](#10-directory-structure)
+- [11. Best Practices & Troubleshooting](#11-best-practices--troubleshooting)
+- [12. Documentation](#12-documentation)
 
 ---
 
@@ -74,14 +78,7 @@ Follow this step-by-step walkthrough to set up and verify Dev-OS in any reposito
 - **Git** (v2.20+)
 - **Bash** (v4.0+)
 - **Node.js** (v18+)
-- **Gitleaks** (Recommended for automated secret scanning):
-  ```bash
-  # macOS (Homebrew)
-  brew install gitleaks
-
-  # Linux / WSL
-  sudo snap install gitleaks
-  ```
+- **Secret Scanner** (Gitleaks is automatically detected, installed, or updated by `devos init`; built-in zero-dependency scanner active as fallback).
 
 ### Step 1: Install Dev-OS Into Your Project
 
@@ -198,7 +195,7 @@ Dev-OS organizes AI capabilities into 15 distinct specialist roles. Every agent 
 |---|---|---|---|
 | **Orchestrator** | `agents/orchestrator.md` | Tech lead. Triages tasks, delegates to specialists, manages loops. | **NEVER** writes code or runs `git commit` directly. |
 | **Architect** | `agents/architect.md` | System design & interrogation. | Uses `grill-me` skill to turn vague ideas into `PROJECT_REQUIREMENTS.md`. |
-| **UI Designer** | `agents/ui-designer.md` | Enforces Mandatory Design Gate before frontend implementation. | Extracts tokens from `ui-ux-pro-max` and authors `docs/DESIGN.md`. |
+| **UI Designer** | `agents/ui-designer.md` | Enforces Mandatory Design Gate before frontend implementation. | Extracts tokens from `ui-ux-pro-max` and authors `DESIGN.md` at project root. |
 | **DBA** | `agents/dba.md` | Database architecture & migrations. | Writes schema migrations and RLS policies. Requires dry-run plan before execution. |
 | **Developer** | `agents/developer.md` | Feature implementation and bug fixing. | Writes code, never auto-commits. Presents work for Staged Review. |
 | **Tester** | `agents/tester.md` | Test creation and execution. | Owns test creation and interactive `docs/TESTING_GUIDE.md` (universal password: `devos123`). |
@@ -214,7 +211,46 @@ Dev-OS organizes AI capabilities into 15 distinct specialist roles. Every agent 
 
 ---
 
-## 4. Slash Commands Reference
+## 4. How to Prompt Dev-OS: Prompt the What, Not the How
+
+Dev-OS is designed as an operating system where safety gates, multi-agent delegation, and engineering standards run mechanically. You do not need to spend prompt tokens micromanaging the process.
+
+### What Dev-OS Handles Automatically
+
+- **Multi-Agent Routing:** The Orchestrator and Executive Proxy automatically delegate tasks across the 15 specialist agents (Architect, UI Designer, DBA, Developer, Tester, QA, Security, Release Manager).
+- **Mandatory Design Gate:** Frontend files are blocked by pre-tool hooks until `DESIGN.md` is authored at the project root with typography, color, and spacing tokens.
+- **Zero Hardcoded Secrets:** Credentials and keys are blocked by git pre-commit hooks and runtime scripts. Agents pause and prompt for `.env` variables before executing migrations.
+- **Automated Verification:** The Tester agent writes unit and integration suites, plus the step-by-step interactive walkthrough guide in `docs/TESTING_GUIDE.md` (universal password: `devos123`).
+
+### The Golden Prompt Formula
+
+Use this template when triggering autonomous mode (`devos run` or `/auto`):
+
+```text
+/auto Build a [product] for [target user].
+Features: [key capabilities and user workflows]
+Integrations: [database / auth / payments / external APIs]
+Seed data: [initial sample records or files in /docs]
+```
+
+### Case Study: Restaurant POS & Voice Ordering
+
+Instead of an over-instructed prompt telling the AI how to behave, write this:
+
+```text
+/auto Build a single-location restaurant management and POS web app in Next.js and Supabase.
+
+Core capabilities:
+- Staff POS with an interactive voice AI assistant named "Olives" (via Gemini) to record orders hands-free.
+- Customer QR code scan-to-order at tables with Paystack checkout.
+- Marketing & sales: Ad banner carousel, custom bulk event order inquiries, and gift packages.
+- Daily, weekly, monthly, and annual sales reports, with full admin CRUD for menus and pricing.
+- Seed data: Initial menu items and prices documented in /docs.
+```
+
+---
+
+## 5. Slash Commands Reference
 
 Slash commands provide pre-configured, metadata-driven shortcuts for common agent tasks. They bypass manual prompt typing and route directly to the target agent.
 
@@ -254,7 +290,7 @@ After adding or editing commands, re-run `devos init` — it regenerates the nat
 
 ---
 
-## 5. Workflow Protocols & Delivery Cycles
+## 6. Workflow Protocols & Delivery Cycles
 
 ### Standard Feature Delivery (Parallel Quality Gate)
 
@@ -321,7 +357,7 @@ After adding or editing commands, re-run `devos init` — it regenerates the nat
 
 ---
 
-## 6. Commit Model & Mechanical Gate Protocol
+## 7. Commit Model & Mechanical Gate Protocol
 
 ### Staged Review Model
 
@@ -365,7 +401,7 @@ git commit
 
 ---
 
-## 7. Memory System & Context Management
+## 8. Memory System & Context Management
 
 To prevent agents from "forgetting" instructions during long sessions, Dev-OS implements a **3-tier memory system**:
 
@@ -412,7 +448,7 @@ The following hard rules are pinned in agent system prompts and can **never** be
 
 ---
 
-## 8. System Architecture Diagrams
+## 9. System Architecture Diagrams
 
 ### Agent Communication & Hierarchy
 
@@ -457,7 +493,7 @@ flowchart LR
 
 ---
 
-## 9. Directory Structure
+## 10. Directory Structure
 
 ```
 dev-os/
@@ -517,27 +553,28 @@ Installed into *target* projects (by `devos init`): `.agents/`, `.claude/command
 ---
 
 ## 10. Best Practices & Troubleshooting
+## 11. Best Practices & Troubleshooting
 
-### Best Practices
+### Golden Rules
 
-1. **Run `devos doctor` after initial setup** to verify that scripts, directories, and hooks are correctly configured.
-2. **Use Slash Commands** (`/review`, `/test`, `/secure`) to save tokens and trigger direct agent execution.
-3. **Check `/status` periodically** during long debugging sessions to confirm active state in `CURRENT_STATE.md`.
+1. **Let agents loop, but watch the circuit breaker**. The 3-loop limit is there to protect your tokens. If an agent loops 3 times without passing QA, step in and give manual guidance.
+2. **Commit early, commit often**. Agents commit after each logical unit of work. Don't let changes accumulate.
+3. **Use `/status`** if you ever lose track of what the agents are doing. It pulls the current state from `CURRENT_STATE.md`.
 4. **Never bypass `commit.sh`**. If a commit fails due to Gitleaks, revoke the exposed secret immediately on your provider platform.
-5. **Respect the Circuit Breaker**. If agents trip the 3-loop limit, review their diagnostic summary rather than forcing a 4th automated retry.
+5. **Always dry-run migrations and infrastructure**. Review the plan before saying yes.
 
-### Troubleshooting
+### Common Issues & Resolutions
 
-| Issue | Cause | Solution |
+| Symptom | Probable Cause | Immediate Action |
 |---|---|---|
 | `DEV-OS GATE ERROR: Direct 'git commit' is disabled` | `git commit` run directly without `commit.sh` | Run `.agents/scripts/commit.sh` instead of raw `git commit`. |
 | `GITLEAKS ERROR: Hardcoded secret detected` | Staged file contains an API key or password | Remove the secret from code, use `process.env.KEY_NAME`, and revoke exposed key on provider. |
 | Agent loops continuously without completing | Agent encountered edge case or failing test | Circuit Breaker will trip after 3 loops. Inspect `docs/CURRENT_STATE.md` or intervene manually. |
-| `gitleaks: command not found` warning | Gitleaks binary not installed on host OS | Install Gitleaks (`brew install gitleaks`) for automated binary scanning. |
+| `gitleaks: command not found` warning | Gitleaks binary not installed on host OS | Run `devos update` to auto-install Gitleaks, or rely on active built-in regex scanner. |
 
 ---
 
-## 11. Documentation
+## 12. Documentation
 
 For deep dives beyond this README:
 

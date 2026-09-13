@@ -2,7 +2,7 @@
 
 # Dev-OS Runtime Hook: PreToolUse
 # Enforces Hard Rule #1 (Zero Destructive Actions), Hard Rule #8 (Commit Gate),
-# and the Mandatory Design Gate (docs/DESIGN.md must precede frontend UI authoring).
+# and the Mandatory Design Gate (DESIGN.md at project root must precede frontend UI authoring).
 
 INPUT_CMD="$*"
 if [ -z "$INPUT_CMD" ] && [ ! -t 0 ]; then
@@ -57,19 +57,19 @@ if echo "$INPUT_CMD" | grep -Eq '\bgit\s+commit\b' && [ "$DEVOS_COMMIT_APPROVED"
     fi
 fi
 
-# 3. Mandatory Design Gate: Block frontend UI creation if docs/DESIGN.md is missing
+# 3. Mandatory Design Gate: Block frontend UI creation if DESIGN.md is missing
 # Checks if command creates/edits .tsx, .jsx, .vue, .svelte, .html, or .css files
 if echo "$INPUT_CMD" | grep -Eq '\.(tsx|jsx|vue|svelte|html|css)\b'; then
     # Allow modifications to DESIGN.md itself, documentation, tests, and config files
     if ! echo "$INPUT_CMD" | grep -Eq 'DESIGN\.md|docs/|\.agents/|package\.json|tailwind\.config'; then
-        if [ ! -f "docs/DESIGN.md" ]; then
+        if [ ! -f "DESIGN.md" ] && [ ! -f "docs/DESIGN.md" ]; then
             echo ""
             echo "[ FAIL ] Dev-OS Policy Violation (Mandatory Design Gate)"
-            echo "         Cannot create or modify frontend code without an established 'docs/DESIGN.md'."
+            echo "         Cannot create or modify frontend code without an established 'DESIGN.md' at project root."
             echo "         Remediation:"
             echo "           1. Invoke the UI Designer agent with skill 'ui-ux-pro-max'."
             echo "           2. Extract design tokens and archetype matching this project."
-            echo "           3. Author 'docs/DESIGN.md' and obtain QA approval before writing UI components."
+            echo "           3. Author 'DESIGN.md' at project root and obtain QA approval before writing UI components."
             echo ""
             LOG_TELEMETRY "MANDATORY_DESIGN_GATE" "$INPUT_CMD"
             exit 1

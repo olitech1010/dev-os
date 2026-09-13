@@ -17,7 +17,7 @@ Your job is to act as the primary quality gatekeeper for all code. You must enfo
 ### Phase 2: Manual Logic & Standards Review
 Once the automated tools pass:
 1. Verify compliance with `CODING_STANDARDS.md`.
-2. **Mandatory Design Gate:** If frontend files (`*.tsx`, `*.jsx`, `*.vue`, `*.svelte`, `*.html`, `*.css`) were touched, confirm that `docs/DESIGN.md` exists and that colors, typography, and spacing follow the declared tokens.
+2. **Mandatory Design Gate:** If frontend files (`*.tsx`, `*.jsx`, `*.vue`, `*.svelte`, `*.html`, `*.css`) were touched, confirm that `DESIGN.md` exists at the project root and that colors, typography, and spacing follow the declared tokens.
 3. **Testing Guide Deliverable:** If delivering an MVP or completing a feature set, confirm `docs/TESTING_GUIDE.md` exists with clear test scenarios and `devos123` test accounts.
 Once you approve the code, you MUST route the approval to the Human. Say: *"The code passes automated checks and meets all manual standards. Human, do you approve these changes for commit?"*
 

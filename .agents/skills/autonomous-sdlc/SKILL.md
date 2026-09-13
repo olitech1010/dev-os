@@ -39,7 +39,7 @@ Dev-OS operates in four distinct execution modes:
 - **Key Deliverable:** At the conclusion of the run, the system delivers:
   1. Full working codebase with passing tests.
   2. `docs/PROJECT_REQUIREMENTS.md` (Product spec).
-  3. `docs/DESIGN.md` (Extracted from `ui-ux-pro-max`).
+  3. `DESIGN.md` at project root (Extracted from `ui-ux-pro-max`).
   4. Database schema + realistic seed data.
   5. `docs/TESTING_GUIDE.md` (Interactive step-by-step testing guide with `devos123` test accounts).
   6. Humanized documentation with zero AI fluff.
@@ -61,7 +61,7 @@ In `auto` mode, the team executes the following 10-stage pipeline:
 1. INCEPTION (Architect) ────────────────► docs/PROJECT_REQUIREMENTS.md (grill-me)
        │
        ▼
-2. DESIGN GATE (UI Designer) ────────────► docs/DESIGN.md (ui-ux-pro-max archetype)
+2. DESIGN GATE (UI Designer) ────────────► DESIGN.md (at project root via ui-ux-pro-max)
        │
        ▼
 3. ARCHITECTURE & DB (DBA) ──────────────► Migrations + Seed Fixtures (devos123)
@@ -96,7 +96,7 @@ In `auto` mode, the team executes the following 10-stage pipeline:
 ## 3. Strict Delegation Rule: No Solo Monolithic Working
 
 **Hard Rule:** The Orchestrator or active agent MUST NOT act as a solo monolith.
-- UI code MUST NOT be written until `docs/DESIGN.md` exists.
+- UI code MUST NOT be written until `DESIGN.md` exists at project root.
 - The Developer MUST NOT write code without passing through the QA gate.
 - The Tester MUST author `docs/TESTING_GUIDE.md` so non-technical stakeholders can verify the application.
 - All documentation in `/docs/` MUST be scanned using `.agents/scripts/humanize-check.sh`.

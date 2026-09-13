@@ -33,6 +33,10 @@
 - Co-locate tests: Place test files next to the implementation files (e.g. feature.ts and feature.test.ts).
 - Organized imports: Group imports logically (external libraries, internal modules, types).
 
+## Frontend & Design Gate
+- Mandatory Design Gate: All frontend UI components (`*.tsx`, `*.jsx`, `*.vue`, `*.svelte`, `*.html`, `*.css`) must strictly adhere to the design system and tokens established in `DESIGN.md` at the project root.
+- Design token fidelity: Colors, typography scale, spacing units, and radius values must come from `DESIGN.md`. Frontend code created without `DESIGN.md` is blocked by pre-tool hooks.
+
 ## Naming Conventions
 - camelCase variables: variables, functions, and methods.
 - PascalCase components: Classes and UI Components.

@@ -123,7 +123,7 @@ Use $ARGUMENTS to reference user input after the command.
 - **Usage**: `/auto Build an offline-first markdown note taking application with full-text search`
 
 ### `/design`
-- **Description**: Execute Mandatory Design Gate; extract tokens from ui-ux-pro-max and author docs/DESIGN.md.
+- **Description**: Execute Mandatory Design Gate; extract tokens from ui-ux-pro-max and author DESIGN.md at project root.
 - **Target Agent**: UI Designer
 - **Triage Level**: STANDARD
 - **Workflow**: standard

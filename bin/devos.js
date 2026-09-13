@@ -51,7 +51,10 @@ const DEVOS_RULES_DIGEST = [
   '9. Session-Start Freshness: Run `git fetch --all --prune` and check `git status -sb` before scoping work.',
   '10. Session-End State Obligation: Update `docs/CURRENT_STATE.md` before concluding any session modifying code.',
   '11. Shared Memory Synchronization: Maintain architectural records in `.agents/memory/` (ADRs & handoffs).',
-  '12. Task Board Governance: Keep task states in `docs/TASK_BOARD.md` aligned with current execution.'
+  '12. Task Board Governance: Keep task states in `docs/TASK_BOARD.md` aligned with current execution.',
+  '13. Mandatory Design Gate: Modifying frontend UI files without an approved `DESIGN.md` at project root is strictly blocked.',
+  '14. Mechanical Humanizer Gate: Documentation in `docs/` must pass `.agents/scripts/humanize-check.sh`.',
+  '15. Universal Test Credentials: Seed data and testing accounts must use `devos123`.'
 ];
 
 const SOLO_SESSION_PROTOCOL = [
@@ -402,7 +405,7 @@ async function promptInitOptions(flags) {
 
     if (flags.hooks !== false) {
       console.log(`\n${colors.bold}Step 8 · Automated Verification & Secret Scanner Gate${colors.reset}`);
-      console.log(`  1) Enable (Install git pre-commit hook, gitleaks secret scanner & lifecycle hooks) [Recommended]`);
+      console.log(`  1) Enable (Auto-install/update Gitleaks, pre-commit hook & lifecycle hooks) [Recommended]`);
       console.log(`  2) Disable (Bypass mechanical gates — not recommended for production)`);
       const hookAns = await ask(`\n${colors.cyan}Select option [1-2] (default 1): ${colors.reset}`);
       hooksSelected = hookAns.trim() !== '2';
@@ -439,7 +442,7 @@ const AGENT_DESCRIPTIONS = {
   researcher: 'Dev-OS research specialist. Investigates libraries, APIs, compatibility, and best practices; returns concise verdicts.',
   'memory-manager': 'Dev-OS memory custodian. Maintains docs/CURRENT_STATE.md and docs/LESSONS.md, compacts context, and manages session handoffs.',
   'release-manager': 'Dev-OS release specialist. Owns semantic versioning, changelog entries, and release notes.',
-  'ui-designer': 'Dev-OS UI/UX design specialist. Formulates design systems, extracts tokens from ui-ux-pro-max, and authors docs/DESIGN.md to satisfy the Mandatory Design Gate.',
+  'ui-designer': 'Dev-OS UI/UX design specialist. Formulates design systems, extracts tokens from ui-ux-pro-max, and authors DESIGN.md to satisfy the Mandatory Design Gate.',
   'executive-proxy': 'Dev-OS autonomous tech lead proxy. Oversees hands-off MVP delivery from idea to working software across all 10 SDLC stages.',
   telemetry: 'Dev-OS observability specialist. Tracks runtime errors, failure logs in .agents/telemetry/, and drafts RCA reports.',
   'eval-engineer': 'Dev-OS evaluation engineer. Measures capability benchmarks, pass@k, and prevents workflow regressions.'
@@ -666,7 +669,7 @@ function generateAntigravityConfig(targetDir) {
     '### Core Resources & SDLC Governance',
     '- Personas: `.agents/agents/`',
     '- Specialist Skills: `.agents/skills/` (adheres to open Agent Skills Standard)',
-    '- Mandatory Design Gate: `.agents/hooks/pre-tool-use.sh` blocks UI edits until `docs/DESIGN.md` exists',
+    '- Mandatory Design Gate: `.agents/hooks/pre-tool-use.sh` blocks UI edits until `DESIGN.md` exists',
     '- Humanizer Quality Gate: Documentation in `docs/` must pass `.agents/scripts/humanize-check.sh`',
     '- Universal Test Credentials: Seed data and testing accounts must use `devos123`',
     '- Task Board: `docs/TASK_BOARD.md`',
@@ -733,6 +736,101 @@ function wireHooks(destAgents, destClaude) {
     return 'executable hooks + .claude/hooks.json';
   }
   return 'executable hooks (.agents/hooks/)';
+}
+
+function ensureGitleaks(targetDir) {
+  const { spawnSync } = require('child_process');
+  const localBin = path.join(targetDir, '.agents', 'bin', 'gitleaks');
+  let glBin = null;
+
+  const whichRes = spawnSync('which', ['gitleaks'], { encoding: 'utf8' });
+  if (whichRes.status === 0 && whichRes.stdout.trim()) {
+    glBin = whichRes.stdout.trim();
+  } else if (fs.existsSync(localBin)) {
+    glBin = localBin;
+  }
+
+  const hasBrew = spawnSync('which', ['brew'], { encoding: 'utf8' }).status === 0;
+
+  if (glBin) {
+    let ver = 'active';
+    try {
+      const verRes = spawnSync(glBin, ['version'], { encoding: 'utf8', timeout: 5000 });
+      if (verRes.status === 0 && verRes.stdout && verRes.stdout.trim()) {
+        ver = verRes.stdout.trim().split('\n')[0];
+      }
+    } catch (e) {}
+
+    // Check for update if Homebrew is available
+    if (hasBrew) {
+      try {
+        const outdatedRes = spawnSync('brew', ['outdated', 'gitleaks'], {
+          encoding: 'utf8',
+          timeout: 8000,
+          env: { ...process.env, HOMEBREW_NO_AUTO_UPDATE: '1' }
+        });
+        if (outdatedRes.status === 0 && outdatedRes.stdout && outdatedRes.stdout.trim().includes('gitleaks')) {
+          const upRes = spawnSync('brew', ['upgrade', 'gitleaks'], {
+            encoding: 'utf8',
+            timeout: 20000,
+            env: { ...process.env, HOMEBREW_NO_AUTO_UPDATE: '1' }
+          });
+          if (upRes.status === 0) return 'gitleaks updated to latest via brew';
+        }
+      } catch (e) {}
+    }
+    return `gitleaks v${ver} (verified & active)`;
+  }
+
+  // Gitleaks not found: Attempt automated installation
+  if (hasBrew) {
+    try {
+      const brewRes = spawnSync('brew', ['install', 'gitleaks'], {
+        encoding: 'utf8',
+        timeout: 45000,
+        env: { ...process.env, HOMEBREW_NO_AUTO_UPDATE: '1' }
+      });
+      if (brewRes.status === 0) return 'gitleaks auto-installed via brew';
+    } catch (e) {}
+  }
+
+  if (process.platform === 'linux') {
+    const hasSnap = spawnSync('which', ['snap'], { encoding: 'utf8' }).status === 0;
+    if (hasSnap) {
+      try {
+        const snapRes = spawnSync('snap', ['install', 'gitleaks'], { encoding: 'utf8', timeout: 45000 });
+        if (snapRes.status === 0) return 'gitleaks auto-installed via snap';
+      } catch (e) {}
+    }
+  }
+
+  // Cross-platform standalone binary fallback from GitHub releases
+  try {
+    const osMap = { darwin: 'darwin', linux: 'linux' };
+    const archMap = { arm64: 'arm64', x64: 'x64' };
+    const osName = osMap[process.platform];
+    const archName = archMap[process.arch];
+
+    if (osName && archName) {
+      const binDir = path.join(targetDir, '.agents', 'bin');
+      fs.mkdirSync(binDir, { recursive: true });
+      const dlVersion = '8.30.1';
+      const tarUrl = `https://github.com/gitleaks/gitleaks/releases/download/v${dlVersion}/gitleaks_${dlVersion}_${osName}_${archName}.tar.gz`;
+      const tarPath = path.join(binDir, 'gitleaks.tar.gz');
+
+      const dlRes = spawnSync('curl', ['-sSfL', tarUrl, '-o', tarPath], { timeout: 15000 });
+      if (dlRes.status === 0 && fs.existsSync(tarPath)) {
+        const extractRes = spawnSync('tar', ['-xzf', tarPath, '-C', binDir, 'gitleaks'], { timeout: 5000 });
+        try { fs.unlinkSync(tarPath); } catch (e) {}
+        if (extractRes.status === 0 && fs.existsSync(localBin)) {
+          fs.chmodSync(localBin, 0o755);
+          return `gitleaks v${dlVersion} auto-installed into .agents/bin/`;
+        }
+      }
+    }
+  } catch (e) {}
+
+  return 'built-in zero-dependency scanner active';
 }
 
 // ---------------------------------------------------------------------------
@@ -938,20 +1036,10 @@ async function runInit(flags) {
     }
   }
 
-  // Step 2d: Verify secret scanner and install mechanical pre-commit hook
+  // Step 2d: Verify, auto-install, or update Gitleaks secret scanner and install pre-commit hook
   if (flags.hooks !== false && hooks !== false) {
-    step('Verifying secret scanner (Gitleaks / built-in)', () => {
-      const { spawnSync } = require('child_process');
-      const glCheck = spawnSync('which', ['gitleaks'], { encoding: 'utf8' });
-      if (glCheck.status === 0 && glCheck.stdout.trim()) {
-        return `gitleaks detected (${glCheck.stdout.trim()})`;
-      }
-      const brewCheck = spawnSync('which', ['brew'], { encoding: 'utf8' });
-      if (brewCheck.status === 0 && brewCheck.stdout.trim()) {
-        const brewRes = spawnSync('brew', ['install', 'gitleaks'], { encoding: 'utf8' });
-        if (brewRes.status === 0) return 'gitleaks auto-installed via brew';
-      }
-      return 'built-in zero-dependency scanner active';
+    step('Verifying & configuring Gitleaks secret scanner', () => {
+      return ensureGitleaks(TARGET_DIR);
     });
 
     if (fs.existsSync(gitDir)) {
@@ -1103,11 +1191,21 @@ async function runInit(flags) {
   console.log(`${colors.gray}╰${'─'.repeat(bodyWidth + 2)}╯${colors.reset}`);
 
   if (!flags.quiet) {
-    console.log(`\n${colors.bold}NEXT STEPS${colors.reset}`);
-    console.log(`  1. Open your AI engineering environment (${harnessesList.join(', ')}).`);
-    console.log(`  2. Prompt the Orchestrator: ${colors.yellow}"Use your grill-me skill to brainstorm our project requirements."${colors.reset}`);
-    console.log(`  3. Track tasks with: ${colors.cyan}/task${colors.reset} or inspect ${colors.cyan}docs/TASK_BOARD.md${colors.reset}.`);
-    console.log(`  4. Run ${colors.cyan}devos doctor${colors.reset} anytime to verify system health.\n`);
+    console.log(`\n${colors.bold}NEXT STEPS & PROMPTING GUIDE${colors.reset}`);
+    console.log(`  1. Open your AI coding environment (${harnessesList.join(', ')}).`);
+    console.log(`  2. ${colors.bold}Prompt the What, Not the How:${colors.reset} Dev-OS enforces roles, gates, and safety automatically.`);
+    console.log(`\n${colors.bold}💡 Golden Prompt Formula for Dev-OS:${colors.reset}`);
+    console.log(`  ${colors.green}/auto Build a [product] for [target user].${colors.reset}`);
+    console.log(`  ${colors.cyan}Features:${colors.reset}     [key capabilities & user workflows]`);
+    console.log(`  ${colors.cyan}Integrations:${colors.reset} [database / auth / payments / external APIs]`);
+    console.log(`  ${colors.cyan}Seed Data:${colors.reset}    [initial sample records or assets in /docs]`);
+    console.log(`\n${colors.bold}Example:${colors.reset}`);
+    console.log(`  ${colors.yellow}/auto Build a single-location restaurant management and POS web app with Next.js and Supabase.${colors.reset}`);
+    console.log(`  ${colors.gray}• Staff POS with hands-free voice AI assistant 'Olives' (via Gemini)${colors.reset}`);
+    console.log(`  ${colors.gray}• Customer QR code ordering at tables with Paystack checkout${colors.reset}`);
+    console.log(`  ${colors.gray}• Ad banner carousel, bulk event order inquiries, and gift packages${colors.reset}`);
+    console.log(`  ${colors.gray}• Seed initial menu items and pricing from /docs${colors.reset}`);
+    console.log(`\n  Track execution anytime: inspect ${colors.cyan}docs/TASK_BOARD.md${colors.reset} or run ${colors.cyan}devos doctor${colors.reset}.\n`);
   }
 }
 
@@ -1200,6 +1298,11 @@ async function runUpdate(flags) {
       return wireHooks(destAgents, path.join(TARGET_DIR, '.claude'));
     });
   }
+
+  // 4b. Verify and update Gitleaks secret scanner
+  step('Verifying & updating Gitleaks secret scanner', () => {
+    return ensureGitleaks(TARGET_DIR);
+  });
 
   // 5. Multi-Harness refresh
   step('Refreshing AI harness configurations (Claude Code, Cursor, OpenCode, Antigravity, Codex)', () => {
@@ -1594,7 +1697,7 @@ function runAuto(flags, positional) {
 
   console.log(`${colors.bold}10-Stage Professional SDLC Execution Pipeline:${colors.reset}`);
   console.log(`  ${colors.cyan}1. Inception:${colors.reset}            Architect (grill-me) → docs/PROJECT_REQUIREMENTS.md`);
-  console.log(`  ${colors.cyan}2. Design Gate:${colors.reset}          UI Designer (ui-ux-pro-max) → docs/DESIGN.md`);
+  console.log(`  ${colors.cyan}2. Design Gate:${colors.reset}          UI Designer (ui-ux-pro-max) → DESIGN.md`);
   console.log(`  ${colors.cyan}3. Architecture & DB:${colors.reset}    DBA → Migrations + Seed Fixtures (test password: devos123)`);
   console.log(`  ${colors.cyan}4. Task Decomposition:${colors.reset}   Orchestrator → docs/TASK_BOARD.md DAG`);
   console.log(`  ${colors.cyan}5. Implementation:${colors.reset}       Developer → Code authoring (dynamic subagents)`);
@@ -1609,6 +1712,9 @@ function runAuto(flags, positional) {
   console.log(`    $ ${colors.green}/auto ${idea || '<your product idea>'}${colors.reset}`);
   console.log(`  Or hand off to the Executive Proxy:`);
   console.log(`    "Executive Proxy, run autonomous SDLC mode for: ${idea || '<your product idea>'}"\n`);
+  console.log(`${colors.bold}💡 Prompting Tip (Prompt the What, Not the How):${colors.reset}`);
+  console.log(`  Do not waste prompt tokens micromanaging roles, secret protection, or responsive styling.`);
+  console.log(`  Dev-OS mechanically enforces all gates, roles, and safety rules out of the box.\n`);
 }
 
 // ---------------------------------------------------------------------------
@@ -1723,7 +1829,7 @@ function runDoctor(flags) {
     { name: 'Shared memory vault (.agents/memory/)', path: path.join(TARGET_DIR, '.agents', 'memory'), type: 'dir', optional: true },
     { name: 'Task board (docs/TASK_BOARD.md)', path: path.join(TARGET_DIR, 'docs', 'TASK_BOARD.md'), type: 'file', optional: true },
     { name: 'Telemetry buffer (.agents/telemetry/)', path: path.join(TARGET_DIR, '.agents', 'telemetry'), type: 'dir', optional: true },
-    { name: 'Mandatory Design Gate (docs/DESIGN.md)', path: path.join(TARGET_DIR, 'docs', 'DESIGN.md'), type: 'file', optional: true },
+    { name: 'Mandatory Design Gate (DESIGN.md)', path: (fs.existsSync(path.join(TARGET_DIR, 'DESIGN.md')) || !fs.existsSync(path.join(TARGET_DIR, 'docs', 'DESIGN.md'))) ? path.join(TARGET_DIR, 'DESIGN.md') : path.join(TARGET_DIR, 'docs', 'DESIGN.md'), type: 'file', optional: true },
     { name: 'Interactive Testing Guide (docs/TESTING_GUIDE.md)', path: path.join(TARGET_DIR, 'docs', 'TESTING_GUIDE.md'), type: 'file', optional: true },
     { name: 'Team roster (.agents/AGENTS.md)', path: path.join(TARGET_DIR, '.agents', 'AGENTS.md'), type: 'file' },
     { name: 'Coding standards (CODING_STANDARDS.md)', path: path.join(TARGET_DIR, 'CODING_STANDARDS.md'), type: 'file' },
@@ -1824,7 +1930,7 @@ function runStatus(flags) {
   const hasCodex = fs.existsSync(path.join(TARGET_DIR, '.codex', 'instructions.md')) || fs.existsSync(path.join(TARGET_DIR, '.windsurfrules'));
   const hasMemory = fs.existsSync(path.join(TARGET_DIR, '.agents', 'memory'));
   const hasTaskBoard = fs.existsSync(path.join(TARGET_DIR, 'docs', 'TASK_BOARD.md'));
-  const hasDesign = fs.existsSync(path.join(TARGET_DIR, 'docs', 'DESIGN.md'));
+  const hasDesign = fs.existsSync(path.join(TARGET_DIR, 'DESIGN.md')) || fs.existsSync(path.join(TARGET_DIR, 'docs', 'DESIGN.md'));
   const hasTestingGuide = fs.existsSync(path.join(TARGET_DIR, 'docs', 'TESTING_GUIDE.md'));
   const manifestPath = path.join(TARGET_DIR, '.agents', 'manifest.json');
   const manifest = fs.existsSync(manifestPath) ? JSON.parse(fs.readFileSync(manifestPath, 'utf8')) : null;
@@ -1858,11 +1964,13 @@ function runStatus(flags) {
   console.log(`  Dev-OS Status: ${hasAgents ? colors.green + 'Initialized' : colors.yellow + 'Not Initialized'}${colors.reset}`);
   console.log(`  Telemetry:     ${manifest && manifest.telemetry === 'off' ? colors.gray + 'Off' : colors.green + 'Active (on - recommended)'}${colors.reset}`);
   console.log(`  SDLC Mode:     ${manifest && manifest.mode ? colors.cyan + manifest.mode : colors.cyan + 'interactive'}${colors.reset}`);
-  console.log(`  Design Gate:   ${hasDesign ? colors.green + 'Ready (docs/DESIGN.md)' : colors.yellow + 'Pending docs/DESIGN.md'}${colors.reset}`);
+  console.log(`  Design Gate:   ${hasDesign ? colors.green + 'Ready (DESIGN.md)' : colors.yellow + 'Pending DESIGN.md'}${colors.reset}`);
   console.log(`  Testing Guide: ${hasTestingGuide ? colors.green + 'Ready (docs/TESTING_GUIDE.md)' : colors.gray + 'None'}${colors.reset}`);
   console.log(`  Standards:     ${hasStandards ? colors.green + 'Present' : colors.gray + 'None'}${colors.reset}`);
   console.log(`  Commit Gate:   ${hasCommitScript ? colors.green + 'Active' : colors.gray + 'Disabled'}${colors.reset}`);
   console.log(`  Git Hook:      ${hasHook ? colors.green + 'Installed' : colors.gray + 'Not Installed'}${colors.reset}`);
+  const hasGitleaks = spawnSync('which', ['gitleaks'], { encoding: 'utf8' }).status === 0 || fs.existsSync(path.join(TARGET_DIR, '.agents', 'bin', 'gitleaks'));
+  console.log(`  Secret Scanner:${hasGitleaks ? colors.green + ' Active (Gitleaks)' : colors.cyan + ' Active (Dev-OS built-in)'}${colors.reset}`);
   console.log(`  Memory Vault:  ${hasMemory ? colors.green + 'Active (.agents/memory/)' : colors.gray + 'None'}${colors.reset}`);
   console.log(`  Task Board:    ${hasTaskBoard ? colors.green + 'Active (docs/TASK_BOARD.md)' : colors.gray + 'None'}${colors.reset}`);
   if (manifest && manifest.installedPacks) {

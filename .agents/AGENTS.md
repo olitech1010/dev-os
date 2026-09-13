@@ -187,10 +187,10 @@ Owns versioning, changelogs, release notes, and post-deployment documentation.
 ### UI Designer Agent
 **File:** `agents/ui-designer.md`
 
-Enforces the Mandatory Design Gate. Pulls archetypes, design tokens, and components from `ui-ux-pro-max` and crafts `docs/DESIGN.md` before frontend development starts.
+Enforces the Mandatory Design Gate. Pulls archetypes, design tokens, and components from `ui-ux-pro-max` and crafts `DESIGN.md` at the project root before frontend development starts.
 
 - Queries `ui-ux-pro-max` for project-matched archetypes (colors, fonts, rhythm, elevation)
-- Authors `docs/DESIGN.md` with strict WCAG contrast compliance
+- Authors `DESIGN.md` at project root with strict WCAG contrast compliance
 - Eliminates generic AI aesthetics and arbitrary spacing
 - Does NOT write backend code or database migrations
 
@@ -368,7 +368,7 @@ All agents can reference these skills from `skills/`. Each skill is a directory 
 12. **No Heavy Dependencies Without Approval.** Adding new dependencies with >5MB install size or >50 transitive dependencies requires explicit Human approval.
 13. **Session-End State Obligation.** Before concluding any working session that modifies code, dependencies, or configuration, the active agent MUST update `docs/CURRENT_STATE.md` with the completed/in-progress task, current status, and active branch. If an incident or notable failure was resolved, log it in `docs/LESSONS.md`.
 14. **Session-Start Freshness Check.** At session start, always run `git fetch --all --prune` and check `git status -sb` before scoping or beginning any task to prevent duplicate or regressive work on stale clones.
-15. **Mandatory Design Gate.** Creating or modifying frontend UI files (`*.tsx`, `*.jsx`, `*.vue`, `*.svelte`, `*.html`, `*.css`) without an established and approved `docs/DESIGN.md` is strictly forbidden and mechanically blocked by runtime hooks. The UI Designer must first extract tokens from `ui-ux-pro-max` and produce `docs/DESIGN.md`.
+15. **Mandatory Design Gate.** Creating or modifying frontend UI files (`*.tsx`, `*.jsx`, `*.vue`, `*.svelte`, `*.html`, `*.css`) without an established and approved `DESIGN.md` at the project root is strictly forbidden and mechanically blocked by runtime hooks. The UI Designer must first extract tokens from `ui-ux-pro-max` and produce `DESIGN.md`.
 16. **Mechanical Humanizer Gate.** All documentation, PR summaries, PRDs, and marketing copy in `/docs/` must pass the Humanizer scan (`.agents/scripts/humanize-check.sh`) before acceptance. Robotic AI writing tells (not-X-but-Y, forced triads, inflated fluff) are forbidden.
 17. **Universal Test Credentials.** All development seed fixtures, test accounts, and interactive walkthroughs (`docs/TESTING_GUIDE.md`) must use `devos123` as the universal password to eliminate authentication friction.
 18. **Anti-Amnesia Delegation Mandate.** The Orchestrator and active agents must never act as a monolithic solo worker bypassing specialist agents and skills. Every task must be properly triaged and routed.

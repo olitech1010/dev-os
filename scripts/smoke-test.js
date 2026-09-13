@@ -130,17 +130,16 @@ try {
 
   // Mandatory Design Gate hook enforcement verification
   const uiCheckFail = spawnSync('bash', [path.join(proj, '.agents', 'hooks', 'pre-tool-use.sh'), 'touch src/components/App.tsx'], { cwd: proj, encoding: 'utf8' });
-  check('pre-tool-use.sh blocks UI file creation when docs/DESIGN.md is absent', uiCheckFail.status === 1 && uiCheckFail.stdout.includes('Mandatory Design Gate'));
+  check('pre-tool-use.sh blocks UI file creation when DESIGN.md is absent', uiCheckFail.status === 1 && uiCheckFail.stdout.includes('Mandatory Design Gate'));
 
   // Verify telemetry logged the gate violation
   const telemetryLog = path.join(proj, '.agents', 'telemetry', 'events.jsonl');
   check('telemetry events.jsonl logged gate violation', fs.existsSync(telemetryLog) && fs.readFileSync(telemetryLog, 'utf8').includes('MANDATORY_DESIGN_GATE'));
 
-  // Create docs/DESIGN.md and verify pre-tool-use.sh passes
-  fs.mkdirSync(path.join(proj, 'docs'), { recursive: true });
-  fs.writeFileSync(path.join(proj, 'docs', 'DESIGN.md'), '# Design Specification\n', 'utf8');
+  // Create DESIGN.md at project root and verify pre-tool-use.sh passes
+  fs.writeFileSync(path.join(proj, 'DESIGN.md'), '# Design Specification\n', 'utf8');
   const uiCheckPass = spawnSync('bash', [path.join(proj, '.agents', 'hooks', 'pre-tool-use.sh'), 'touch src/components/App.tsx'], { cwd: proj, encoding: 'utf8' });
-  check('pre-tool-use.sh passes UI file creation when docs/DESIGN.md is present', uiCheckPass.status === 0);
+  check('pre-tool-use.sh passes UI file creation when root DESIGN.md is present', uiCheckPass.status === 0);
 
   // CLI Subcommands verification: run/auto & telemetry
   const autoRun = runCli(['auto', 'Build an MVP habit tracker', '--quiet'], proj);

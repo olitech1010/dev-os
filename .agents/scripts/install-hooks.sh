@@ -23,13 +23,69 @@ echo ""
 
 mkdir -p "$HOOKS_DIR"
 
-# Check and attempt automated gitleaks installation if missing
-if ! command -v gitleaks >/dev/null 2>&1; then
+# Check and attempt automated gitleaks installation or update
+GITLEAKS_FOUND=""
+if command -v gitleaks >/dev/null 2>&1; then
+    GITLEAKS_FOUND="$(command -v gitleaks)"
+elif [ -x "$REPO_ROOT/.agents/bin/gitleaks" ]; then
+    GITLEAKS_FOUND="$REPO_ROOT/.agents/bin/gitleaks"
+fi
+
+if [ -n "$GITLEAKS_FOUND" ]; then
+    GL_VER=$("$GITLEAKS_FOUND" version 2>/dev/null | head -n 1 || echo "active")
+    echo "[ OK ] Gitleaks detected: $GITLEAKS_FOUND (v$GL_VER)"
     if command -v brew >/dev/null 2>&1; then
-        echo "[ INFO ] Gitleaks not found. Attempting automated install via Homebrew..."
-        brew install gitleaks || echo "[ WARN ] Automated Homebrew install failed. Built-in secret scanner will be used."
-    else
-        echo "[ INFO ] Gitleaks not found in PATH. Built-in Dev-OS secret scanner will be active."
+        if HOMEBREW_NO_AUTO_UPDATE=1 brew outdated gitleaks 2>/dev/null | grep -q "gitleaks"; then
+            echo "[ INFO ] Updating Gitleaks via Homebrew..."
+            HOMEBREW_NO_AUTO_UPDATE=1 brew upgrade gitleaks 2>/dev/null || true
+        fi
+    fi
+else
+    echo "[ INFO ] Gitleaks not found. Attempting automated installation..."
+    INSTALLED=0
+    if command -v brew >/dev/null 2>&1; then
+        echo "[ INFO ] Installing Gitleaks via Homebrew..."
+        if HOMEBREW_NO_AUTO_UPDATE=1 brew install gitleaks 2>/dev/null; then
+            INSTALLED=1
+            echo "[ OK ] Gitleaks installed successfully via Homebrew."
+        fi
+    fi
+    if [ "$INSTALLED" -eq 0 ] && command -v snap >/dev/null 2>&1; then
+        echo "[ INFO ] Installing Gitleaks via snap..."
+        if snap install gitleaks 2>/dev/null || sudo snap install gitleaks 2>/dev/null; then
+            INSTALLED=1
+            echo "[ OK ] Gitleaks installed successfully via snap."
+        fi
+    fi
+    if [ "$INSTALLED" -eq 0 ] && command -v curl >/dev/null 2>&1 && command -v tar >/dev/null 2>&1; then
+        OS=$(uname -s | tr '[:upper:]' '[:lower:]')
+        ARCH=$(uname -m)
+        case "$ARCH" in
+            x86_64) ARCH="x64" ;;
+            arm64|aarch64) ARCH="arm64" ;;
+            *) ARCH="" ;;
+        esac
+        if [ "$OS" = "darwin" ] || [ "$OS" = "linux" ]; then
+            if [ -n "$ARCH" ]; then
+                echo "[ INFO ] Downloading standalone Gitleaks binary from GitHub..."
+                mkdir -p "$REPO_ROOT/.agents/bin"
+                DL_VER="8.30.1"
+                TAR_URL="https://github.com/gitleaks/gitleaks/releases/download/v${DL_VER}/gitleaks_${DL_VER}_${OS}_${ARCH}.tar.gz"
+                TMP_TAR="/tmp/gitleaks_${DL_VER}.tar.gz"
+                if curl -sSfL "$TAR_URL" -o "$TMP_TAR" 2>/dev/null; then
+                    tar -xzf "$TMP_TAR" -C "$REPO_ROOT/.agents/bin" gitleaks 2>/dev/null || true
+                    rm -f "$TMP_TAR"
+                    if [ -x "$REPO_ROOT/.agents/bin/gitleaks" ]; then
+                        chmod 755 "$REPO_ROOT/.agents/bin/gitleaks"
+                        INSTALLED=1
+                        echo "[ OK ] Standalone Gitleaks installed into .agents/bin/gitleaks."
+                    fi
+                fi
+            fi
+        fi
+    fi
+    if [ "$INSTALLED" -eq 0 ]; then
+        echo "[ INFO ] Built-in Dev-OS secret scanner active as zero-dependency fallback."
     fi
 fi
 
@@ -58,9 +114,18 @@ if [ "$DEVOS_COMMIT_APPROVED" != "true" ]; then
 fi
 
 # 2. Secret Scanning via Gitleaks or Built-in Scanner
+GITLEAKS_EXEC=""
 if command -v gitleaks >/dev/null 2>&1; then
+    GITLEAKS_EXEC="gitleaks"
+elif [ -x ".agents/bin/gitleaks" ]; then
+    GITLEAKS_EXEC=".agents/bin/gitleaks"
+elif [ -n "$REPO_ROOT" ] && [ -x "$REPO_ROOT/.agents/bin/gitleaks" ]; then
+    GITLEAKS_EXEC="$REPO_ROOT/.agents/bin/gitleaks"
+fi
+
+if [ -n "$GITLEAKS_EXEC" ]; then
     echo "[ INFO ] Scanning staged diff for hardcoded secrets with Gitleaks..."
-    if ! gitleaks git --staged --verbose; then
+    if ! "$GITLEAKS_EXEC" git --staged --verbose; then
         echo ""
         echo "[ FAIL ] GITLEAKS ERROR: Hardcoded secret or API key detected in staged files."
         echo "[ WARN ] Commit aborted to prevent secret leak."

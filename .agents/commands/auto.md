@@ -9,7 +9,7 @@ workflow: autonomous-sdlc
 Execute autonomous SDLC mode on behalf of the startup founder or product sponsor.
 
 1. **Inception:** Invoke the Architect agent with skill `grill-me` to produce `docs/PROJECT_REQUIREMENTS.md`.
-2. **Design System:** Invoke the UI Designer agent with skill `ui-ux-pro-max` to produce `docs/DESIGN.md`.
+2. **Design System:** Invoke the UI Designer agent with skill `ui-ux-pro-max` to produce `DESIGN.md` at the project root.
 3. **Database Architecture:** Invoke the DBA agent to design migrations and realistic seed fixtures with universal test password `devos123`.
 4. **Task DAG:** Initialize `docs/TASK_BOARD.md` and sequence subtasks.
 5. **Implementation:** Supervise the Developer implementing features sequentially.
