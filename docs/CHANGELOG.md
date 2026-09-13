@@ -3,6 +3,14 @@
 All notable changes to Dev-OS are documented in this file.
 This project follows [Semantic Versioning](https://semver.org/).
 
+## [4.0.1] — 2026-09-13
+
+### Interactive Wizard Expansion, Multi-Harness Governance & Documentation Parity
+- **8-Step Interactive Installer Wizard**: Upgraded `devos init` to systematically prompt for Environment Type, Tech Stack, AI Coding Platform / Harness (Google Antigravity & Gemini [Recommended], Claude Code, Cursor, OpenCode, Codex / Windsurf, All), SDLC Execution Mode (`interactive`, `guided`, `auto`, `audit`), Autonomous Goal / Product Idea, Capability Scope (Lean Stack Pack vs Full Skills Arsenal), Anonymous Telemetry buffer, and Git Pre-Commit Hook installation.
+- **Enhanced Google Antigravity & Gemini Support**: Enforced open Agent Skills Standard compliance across all 66 skills in `.agents/skills/`. Extended `generateAntigravityConfig` to generate `ANTIGRAVITY.md` and `GEMINI.md` with explicit SDLC governance, Mandatory Design Gate rules, and universal test password specifications (`devos123`).
+- **Autonomous MVP Goal Integration**: Autonomous product prompts entered during `devos init` or via `devos run "<goal>"` are automatically tracked in `.agents/manifest.json` and initialized as `TASK-001` in `docs/TASK_BOARD.md`.
+- **Documentation & Command Reference Parity**: Completely refreshed `docs/GETTING_STARTED.md`, `README.md`, and `docs/TUTORIAL.md` with complete CLI tables, platform walkthroughs, and mechanical gate instructions.
+
 ## [4.0.0] — 2026-09-13
 
 ### Autonomous SDLC, Mechanical Enforcement & Telemetry

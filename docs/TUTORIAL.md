@@ -8,20 +8,30 @@ Dev-OS is an AI-augmented Engineering Operating System. Instead of a single AI a
 
 ## 2. Setting up Dev-OS
 
-1. **Install Dev-OS**: From your project root, run `npx @olives/devos init` (see [Getting Started](GETTING_STARTED.md) for all installation options). This installs `.agents/`, generates the Claude Code integration in `.claude/`, and sets up your coding standards.
-2. **Install hooks**: Run `.agents/scripts/install-hooks.sh`. This sets up Git hooks.
+1. **Install Dev-OS**: From your project root, run `npx @olives/devos init` (see [Getting Started](GETTING_STARTED.md) for details). The 8-step wizard configures:
+   - **Environment:** Fresh workspace vs Existing codebase.
+   - **Tech Stack:** Next.js, Laravel, Django, React Native, Express, FastAPI, or Universal template.
+   - **AI Coding Harness:** Google Antigravity & Gemini (`ANTIGRAVITY.md`, `GEMINI.md`, Agent Skills Standard) [Recommended], Claude Code, Cursor, OpenCode, Codex, or All Platforms.
+   - **SDLC Mode:** `interactive` (default pair programming), `guided` (checkpoint approvals), `auto` (autonomous hands-off MVP builder for founders/CEOs), or `audit`.
+   - **Autonomous Goal:** Target MVP idea if running in `auto` mode (recorded into `docs/TASK_BOARD.md`).
+   - **Skills Depth:** Lean Stack Pack (token-optimized) vs Full Skills Arsenal (all 66 specialist skills).
+   - **Anonymous Failure Telemetry:** On (buffers execution failures locally in `.agents/telemetry/events.jsonl` with zero secret exposure) vs Off.
+   - **Git Pre-Commit Hook:** Install now (mechanical commit gate & secret scanner) vs Skip.
+2. **Install hooks**: If skipped during init, run `.agents/scripts/install-hooks.sh` to install the Git pre-commit hook.
 3. **Verify gitleaks**: The hook enforces secret scanning using `gitleaks`. Any commits containing secrets will be mechanically rejected.
-4. **Check health**: Run `devos doctor` — it must report all required checks passing.
+4. **Check health**: Run `devos doctor` — it confirms all required checks pass.
 
 ## 3. Understanding the Agent Roster
 
-You communicate primarily with the **Orchestrator**. 
-The Orchestrator delegates to:
-- **Architect**: Designs the system and requirements.
-- **Developer**: Writes the code.
-- **QA, Tester, Security**: The parallel quality gate.
-- **DBA, DevOps**: Infrastructure and databases.
-- **Memory Manager & Release Manager**: Handles state, context, and versioning.
+You communicate primarily with the **Orchestrator** (or the **Executive Proxy** when in autonomous mode).
+The Orchestrator delegates to specialist agents:
+- **Architect**: Explores requirements and edge cases using `grill-me`.
+- **UI Designer**: Crafts `docs/DESIGN.md` before frontend development starts (Mandatory Design Gate).
+- **DBA & DevOps**: Database migrations, seed fixtures, infrastructure, and deployment pipelines.
+- **Developer**: Writes code and presents work for staged review.
+- **QA, Tester, Security**: The parallel quality gate. Tester authors unit tests and `docs/TESTING_GUIDE.md` (universal password: `devos123`).
+- **Telemetry & Eval Engineer**: Local failure diagnostics and test benchmark harnesses.
+- **Memory Manager & Release Manager**: Handles state tracking (`CURRENT_STATE.md`, `LESSONS.md`), changelogs, and document de-fluffing.
 
 For a full breakdown, see `../.agents/AGENTS.md`.
 

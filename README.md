@@ -115,18 +115,21 @@ cd dev-os && npm link
 cd /path/to/your-project && devos init
 ```
 
-The interactive wizard asks two questions (fresh vs. existing project, and your technology stack), then installs:
+The interactive wizard guides you through 8 targeted configuration steps:
 
-- `.agents/` — the full agent roster, 60 specialist skills, slash-command definitions, and enforcement scripts
-- `.claude/commands/` + `.claude/agents/` — generated Claude Code slash commands and subagents (skip with `--no-claude`)
-- `CLAUDE.md` — project bootstrap for Claude Code (appended if one already exists)
-- `docs/` and `CODING_STANDARDS.md` — only for fresh projects or when absent
-- A `.gitignore` rule for `.agents/_backup/` — re-running `init` backs up your existing `.agents/` to `.agents/_backup/<timestamp>/` before updating
+1. **Environment Type:** Fresh project (clean workspace with documentation and standards) vs Existing project (inject `.agents/` team without altering existing code).
+2. **Technology Stack:** `nextjs`, `laravel`, `django`, `react-native`, `express`, `fastapi`, or `universal` template.
+3. **AI Coding Platform / Harness:** Google Antigravity & Gemini (`ANTIGRAVITY.md`, `GEMINI.md`, Agent Skills Standard) [Recommended], Claude Code, Cursor, OpenCode, Codex / Windsurf, or All Platforms.
+4. **Default SDLC Execution Mode:** `interactive` (default pair programming), `guided` (checkpoint approvals), `auto` (hands-off MVP builder for founders/CEOs), or `audit` (read-only diagnostics).
+5. **Autonomous Goal / Product Idea:** If `auto` mode is selected, record the target MVP or feature goal into `docs/TASK_BOARD.md` and `.agents/manifest.json`.
+6. **Capability Scope & Specialist Skills:** Lean Stack Pack (core + target stack skills — token-optimized) [Recommended] vs Full Skills Arsenal (all 66 specialist skills).
+7. **Anonymous Failure Telemetry & Local RCA Buffer:** On [Recommended] (anonymously buffers execution errors and root cause analyses into `.agents/telemetry/events.jsonl` with zero secret exposure) vs Off.
+8. **Git Pre-Commit Hook & Secret Gate:** Install now [Recommended] (mechanically enforce commit approval token and secret scanning) vs Skip.
 
-Non-interactive setup:
+Non-interactive setup with flags:
 
 ```bash
-npx @olives/devos init --existing --stack nextjs
+npx @olives/devos init --existing --stack nextjs --platform antigravity --mode auto
 ```
 
 ### Step 2: Install Mechanical Pre-Commit Hooks
@@ -160,7 +163,7 @@ devos doctor
 
 Expected output:
 ```
-Diagnostic Summary: 8/8 required checks passed.
+Diagnostic Summary: 9/9 required checks passed.
 [ OK ] Dev-OS environment is fully operational.
 ```
 
@@ -170,18 +173,31 @@ Diagnostic Summary: 8/8 required checks passed.
 
 | Command | Aliases | Description |
 |---|---|---|
-| `devos init` | `setup` | Install or update Dev-OS in the current project (interactive wizard) |
-| `devos doctor` | `check` | Diagnose setup, permissions, commit gate, and Claude Code integration |
-| `devos list` | `agents`, `skills` | Show installed agent personas and specialist skills |
-| `devos status` | — | One-screen summary of the project's Dev-OS state |
+| `devos init` | `setup` | Install or update Dev-OS in the current project (8-step interactive wizard) |
+| `devos update` | `upgrade` | Safely refresh `.agents/`, skills, commands, harnesses, and memory templates |
+| `devos run <goal>` | `auto` | Autonomous SDLC runner for hands-off MVP builds from an idea prompt |
+| `devos doctor` | `check` | Diagnose setup, permissions, commit gate, hooks, and multi-harness readiness |
+| `devos telemetry` | — | Inspect or manage anonymous failure buffer (`status`, `report`, `enable`, `disable`, `clear`) |
+| `devos pack` | `packs` | Inspect and install stack capability packs (`pack list`, `pack add <name>`) |
+| `devos skill` | `skills` | Discovers and installs individual skills (`skill list`, `skill add <name>`, `skill find <query>`) |
+| `devos memory` | — | Inspect episodic memory vault (`memory list`, `memory doctor`, `memory handoff`) |
+| `devos list` | `agents` | Show installed agent personas and specialist skills |
+| `devos status` | — | One-screen summary of the project's Dev-OS configuration and health |
 | `devos version` | `-v` | Print CLI version and environment info |
 | `devos help` | `-h` | Full command reference |
 
 | Flag | Description |
 |---|---|
 | `-s, --stack <name>` | Target stack: `nextjs`, `laravel`, `django`, `react-native`, `express`, `fastapi`, `universal` |
+| `-p, --platform <name>` | Target AI harness: `antigravity`, `claude`, `cursor`, `opencode`, `codex`, `all` |
+| `-m, --mode <name>` | Execution mode: `interactive`, `guided`, `auto`, `audit` |
+| `--all-skills` | Install all 66 specialist skills |
+| `--all-harnesses` | Generate configuration files for all supported AI coding platforms |
 | `--fresh` / `--existing` | Non-interactive fresh or existing project initialization |
 | `--no-claude` | Skip generating `.claude/` (Claude Code commands & agents) |
+| `--no-hooks` | Skip wiring runtime lifecycle hooks (`.claude/hooks.json`) |
+| `--no-telemetry` | Disable anonymous failure telemetry |
+| `--telemetry` | Explicitly enable anonymous failure telemetry |
 | `--json` | Machine-readable output for `doctor`, `list`, and `status` |
 | `-q, --quiet` | Suppress the banner and non-essential output |
 
@@ -189,21 +205,25 @@ Diagnostic Summary: 8/8 required checks passed.
 
 ## 3. Agent Roster & Team Architecture
 
-Dev-OS organizes AI capabilities into 11 distinct roles. Every agent operates under strict boundary constraints defined in `.agents/agents/`.
+Dev-OS organizes AI capabilities into 15 distinct specialist roles. Every agent operates under strict boundary constraints defined in `.agents/agents/`.
 
 | Agent | Prompt File | Primary Responsibility | Key Rule |
 |---|---|---|---|
 | **Orchestrator** | `agents/orchestrator.md` | Tech lead. Triages tasks, delegates to specialists, manages loops. | **NEVER** writes code or runs `git commit` directly. |
-| **Developer** | `agents/developer.md` | Feature implementation and bug fixing. | Writes code, never auto-commits. Presents work for Staged Review. |
-| **QA** | `agents/qa.md` | Quality gatekeeper. Reviews code quality, standards, and test results. | Does **NOT** write tests. Approves or requests changes with itemized feedback. |
-| **Tester** | `agents/tester.md` | Test creation and execution. | Owns test creation (happy path, edge cases, regressions). Never fixes implementation code. |
-| **Security** | `agents/security.md` | Security vulnerability scanner. | Audits OWASP Top 10, auth logic, input sanitization, dependencies, and secret leaks. |
 | **Architect** | `agents/architect.md` | System design & interrogation. | Uses `grill-me` skill to turn vague ideas into `PROJECT_REQUIREMENTS.md`. |
+| **UI Designer** | `agents/ui-designer.md` | Enforces Mandatory Design Gate before frontend implementation. | Extracts tokens from `ui-ux-pro-max` and authors `docs/DESIGN.md`. |
 | **DBA** | `agents/dba.md` | Database architecture & migrations. | Writes schema migrations and RLS policies. Requires dry-run plan before execution. |
+| **Developer** | `agents/developer.md` | Feature implementation and bug fixing. | Writes code, never auto-commits. Presents work for Staged Review. |
+| **Tester** | `agents/tester.md` | Test creation and execution. | Owns test creation and interactive `docs/TESTING_GUIDE.md` (universal password: `devos123`). |
+| **QA** | `agents/qa.md` | Quality gatekeeper. Reviews code quality, standards, and test results. | Does **NOT** write tests. Approves or requests changes with itemized feedback. |
+| **Security** | `agents/security.md` | Security vulnerability scanner. | Audits OWASP Top 10, auth logic, input sanitization, dependencies, and secret leaks. |
 | **DevOps** | `agents/devops.md` | Infrastructure & CI/CD deployment. | Follows deployment checklists. **NEVER** touches production without explicit human approval. |
 | **Researcher** | `agents/researcher.md` | Facts and documentation lookup. | Confirms package versions, API signatures, CVEs, and deprecations before Dev implements. |
 | **Memory Manager** | `agents/memory-manager.md` | State tracking & context preservation. | Maintains `CURRENT_STATE.md` and `LESSONS.md`. Handles context compaction and handoffs. |
-| **Release Manager** | `agents/release-manager.md` | Release engineering & changelogs. | Manages semver bumps, updates `CHANGELOG.md`, and writes human-readable release notes. |
+| **Release Manager** | `agents/release-manager.md` | Release engineering & changelogs. | Manages semver bumps, updates `CHANGELOG.md`, and scrubs AI writing tells from documentation. |
+| **Executive Proxy** | `agents/executive-proxy.md` | Autonomous SDLC coordinator for startup founders & CEOs. | Coordinates all 10 SDLC stages during autonomous runs (`devos run` / `/auto`). |
+| **Telemetry** | `agents/telemetry.md` | Observability and RCA failure diagnosis. | Analyzes local failure logs in `.agents/telemetry/events.jsonl` with zero secret exposure. |
+| **Eval Engineer** | `agents/eval-engineer.md` | Quality benchmark and regression testing. | Maintains capability evals, measures `pass@k` rates, and verifies cross-harness parity. |
 
 ---
 

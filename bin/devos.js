@@ -278,6 +278,11 @@ async function promptInitOptions(flags) {
   let isFresh = false;
   let stack = flags.stack || 'universal';
   let platform = flags.platform || flags.harness || (flags.allHarnesses ? 'all' : null);
+  let mode = (flags.mode || 'interactive').toLowerCase();
+  let autoGoal = '';
+  let allSkillsSelected = Boolean(flags.allSkills);
+  let telemetry = flags.telemetry !== false;
+  let hooksSelected = flags.hooks !== false;
 
   if (flags.stack && !STACKS.includes(flags.stack.toLowerCase())) {
     throw new Error(`Unknown stack '${flags.stack}'. Valid stacks: ${STACKS.join(', ')}`);
@@ -336,39 +341,32 @@ async function promptInitOptions(flags) {
 
     if (!platform) {
       console.log(`\n${colors.bold}Step 3 · AI Coding Platform / Harness${colors.reset}`);
-      console.log(`  1) Claude Code (Anthropic Claude CLI, .claude/ commands & agents)`);
-      console.log(`  2) Google Antigravity / Gemini (ANTIGRAVITY.md, GEMINI.md)`);
+      console.log(`  1) Google Antigravity / Gemini (ANTIGRAVITY.md, GEMINI.md, Agent Skills Standard) [Recommended]`);
+      console.log(`  2) Claude Code (Anthropic Claude CLI, .claude/ commands, agents, hooks)`);
       console.log(`  3) Cursor (.cursor/rules/devos.mdc, .cursorrules)`);
       console.log(`  4) OpenCode (.opencode/rules/, OPENCODE.md)`);
       console.log(`  5) Codex / Windsurf (.codex/instructions.md, .windsurfrules)`);
       console.log(`  6) All Platforms (Universal Multi-Platform Setup) [Default]`);
 
-      const platAns = await ask(`\n${colors.cyan}Select option [1-6] (default 6): ${colors.reset}`);
-      switch (platAns.trim()) {
-        case '1': platform = 'claude'; break;
-        case '2': platform = 'antigravity'; break;
-        case '3': platform = 'cursor'; break;
-        case '4': platform = 'opencode'; break;
-        case '5': platform = 'codex'; break;
-        default: platform = 'all'; break;
-      }
+      const platAns = await ask(`\n${colors.cyan}Select option [1-6, or comma-separated e.g. 1,2] (default 6): ${colors.reset}`);
+      const choices = platAns.trim() ? platAns.trim().split(',').map((s) => s.trim()) : ['6'];
+      const mapped = [];
+      choices.forEach((c) => {
+        if (c === '1') mapped.push('antigravity');
+        else if (c === '2') mapped.push('claude');
+        else if (c === '3') mapped.push('cursor');
+        else if (c === '4') mapped.push('opencode');
+        else if (c === '5') mapped.push('codex');
+        else if (c === '6') mapped.push('all');
+      });
+      platform = mapped.length ? mapped.join(',') : 'all';
     }
 
-    let telemetry = flags.telemetry;
-    if (flags.telemetry === undefined || flags.telemetry === null) {
-      console.log(`\n${colors.bold}Step 4 · Anonymous Failure Telemetry${colors.reset}`);
-      console.log(`  1) On (Recommended) — Anonymously captures execution errors & RCA reports to improve Dev-OS`);
-      console.log(`  2) Off — Completely disable anonymous failure logging`);
-      const telemAns = await ask(`\n${colors.cyan}Select option [1-2] (default 1): ${colors.reset}`);
-      telemetry = telemAns.trim() !== '2';
-    }
-
-    let mode = flags.mode || 'interactive';
     if (!flags.mode) {
-      console.log(`\n${colors.bold}Step 5 · Default SDLC Execution Mode${colors.reset}`);
-      console.log(`  1) Interactive (Default pair-programming with staged human reviews)`);
+      console.log(`\n${colors.bold}Step 4 · Default SDLC Execution Mode${colors.reset}`);
+      console.log(`  1) Interactive (Default pair-programming with staged human reviews) [Recommended]`);
       console.log(`  2) Guided (Step-by-step confirmation checkpoints at each SDLC stage)`);
-      console.log(`  3) Auto (Hands-off MVP builder for founders/CEOs — idea to full working MVP)`);
+      console.log(`  3) Auto (Autonomous hands-off MVP builder for founders/CEOs — from idea to working software)`);
       console.log(`  4) Audit (Read-only security, architecture, and code health evaluation)`);
       const modeAns = await ask(`\n${colors.cyan}Select option [1-4] (default 1): ${colors.reset}`);
       switch (modeAns.trim()) {
@@ -379,6 +377,37 @@ async function promptInitOptions(flags) {
       }
     }
 
+    if (mode === 'auto') {
+      console.log(`\n${colors.bold}Step 5 · Autonomous Goal / Product Idea${colors.reset}`);
+      console.log(`  Enter the product, MVP, or feature idea you want Dev-OS to build autonomously.`);
+      const goalAns = await ask(`\n${colors.cyan}Product Idea (or press Enter to set later): ${colors.reset}`);
+      autoGoal = goalAns.trim();
+    }
+
+    if (!flags.allSkills) {
+      console.log(`\n${colors.bold}Step 6 · Capability Scope & Specialist Skills${colors.reset}`);
+      console.log(`  1) Lean Stack Pack (Core + target stack skills — token-optimized) [Recommended]`);
+      console.log(`  2) Full Skills Arsenal (Install all 66 specialist skills across design, backend, devops)`);
+      const skillScopeAns = await ask(`\n${colors.cyan}Select option [1-2] (default 1): ${colors.reset}`);
+      allSkillsSelected = skillScopeAns.trim() === '2';
+    }
+
+    if (flags.telemetry === undefined || flags.telemetry === null) {
+      console.log(`\n${colors.bold}Step 7 · Anonymous Failure Telemetry & Local RCA Buffer${colors.reset}`);
+      console.log(`  1) On (Recommended) — Anonymously captures execution errors & RCA reports in .agents/telemetry/`);
+      console.log(`  2) Off — Completely disable anonymous failure logging`);
+      const telemAns = await ask(`\n${colors.cyan}Select option [1-2] (default 1): ${colors.reset}`);
+      telemetry = telemAns.trim() !== '2';
+    }
+
+    if (flags.hooks !== false) {
+      console.log(`\n${colors.bold}Step 8 · Git Pre-Commit Hook & Secret Gate${colors.reset}`);
+      console.log(`  1) Install Now (Mechanically enforce approval gate & gitleaks secret scanning) [Recommended]`);
+      console.log(`  2) Skip (Install later via .agents/scripts/install-hooks.sh)`);
+      const hookAns = await ask(`\n${colors.cyan}Select option [1-2] (default 1): ${colors.reset}`);
+      hooksSelected = hookAns.trim() !== '2';
+    }
+
     rl.close();
   }
 
@@ -386,8 +415,11 @@ async function promptInitOptions(flags) {
     isFresh,
     stack: stack.toLowerCase(),
     platform: (platform || 'all').toLowerCase(),
-    telemetry: flags.telemetry !== false,
-    mode: (flags.mode || 'interactive').toLowerCase()
+    telemetry: telemetry !== false,
+    mode: (mode || 'interactive').toLowerCase(),
+    allSkills: allSkillsSelected || false,
+    hooks: hooksSelected !== false,
+    autoGoal: autoGoal || ''
   };
 }
 
@@ -631,11 +663,15 @@ function generateAntigravityConfig(targetDir) {
     '### Solo Session Protocol',
     ...SOLO_SESSION_PROTOCOL,
     '',
-    '### Core Resources',
+    '### Core Resources & SDLC Governance',
     '- Personas: `.agents/agents/`',
-    '- Specialist Skills: `.agents/skills/`',
+    '- Specialist Skills: `.agents/skills/` (adheres to open Agent Skills Standard)',
+    '- Mandatory Design Gate: `.agents/hooks/pre-tool-use.sh` blocks UI edits until `docs/DESIGN.md` exists',
+    '- Humanizer Quality Gate: Documentation in `docs/` must pass `.agents/scripts/humanize-check.sh`',
+    '- Universal Test Credentials: Seed data and testing accounts must use `devos123`',
     '- Task Board: `docs/TASK_BOARD.md`',
     '- Shared Memory Vault: `.agents/memory/`',
+    '- Telemetry Buffer: `.agents/telemetry/events.jsonl`',
     '',
     '### Mechanical Commit Gate',
     'Never execute raw `git commit`. Always commit through `.agents/scripts/commit.sh`.',
@@ -703,7 +739,7 @@ function wireHooks(destAgents, destClaude) {
 // Capability Packs & Skills Copying Helper
 // ---------------------------------------------------------------------------
 
-function installSkillsAndPacks(srcAgents, destAgents, stack, allSkills, telemetry = true, mode = 'interactive') {
+function installSkillsAndPacks(srcAgents, destAgents, stack, allSkills, telemetry = true, mode = 'interactive', goal = '', platform = 'all') {
   const srcSkills = path.join(srcAgents, 'skills');
   const destSkills = path.join(destAgents, 'skills');
   const packsPath = path.join(srcAgents, 'packs.json');
@@ -717,10 +753,12 @@ function installSkillsAndPacks(srcAgents, destAgents, stack, allSkills, telemetr
     const installed = packsData ? Object.keys(packsData.packs) : ['all'];
     const manifest = {
       version: PKG.version,
+      platform: platform || 'all',
       installedPacks: installed,
       hooksEnabled: true,
       telemetry: telemetry ? 'on' : 'off',
       mode: mode || 'interactive',
+      goal: goal || null,
       updatedAt: new Date().toISOString()
     };
     fs.writeFileSync(manifestPath, JSON.stringify(manifest, null, 2) + '\n', 'utf8');
@@ -750,10 +788,12 @@ function installSkillsAndPacks(srcAgents, destAgents, stack, allSkills, telemetr
 
   const manifest = {
     version: PKG.version,
+    platform: platform || 'all',
     installedPacks,
     hooksEnabled: true,
     telemetry: telemetry ? 'on' : 'off',
     mode: mode || 'interactive',
+    goal: goal || null,
     updatedAt: new Date().toISOString()
   };
   fs.writeFileSync(manifestPath, JSON.stringify(manifest, null, 2) + '\n', 'utf8');
@@ -773,7 +813,7 @@ async function runInit(flags) {
     console.log(`${colors.yellow}[ WARN ] You are running init inside the Dev-OS source repository itself. Template copy steps will be skipped.${colors.reset}\n`);
   }
 
-  const { isFresh, stack, platform, telemetry, mode } = await promptInitOptions(flags);
+  const { isFresh, stack, platform, telemetry, mode, allSkills, hooks, autoGoal } = await promptInitOptions(flags);
 
   // Determine target AI harnesses
   const selectedHarnesses = new Set();
@@ -850,7 +890,8 @@ async function runInit(flags) {
     });
 
     step('Installing specialist skills and capability packs', () => {
-      packSummary = installSkillsAndPacks(srcAgents, destAgents, stack, flags.allSkills, telemetry, mode);
+      const useAllSkills = flags.allSkills !== undefined && flags.allSkills !== null ? flags.allSkills : allSkills;
+      packSummary = installSkillsAndPacks(srcAgents, destAgents, stack, useAllSkills, telemetry, mode, autoGoal, platform);
       return `${packSummary.count} skills (packs: ${packSummary.packs.join(', ')})`;
     });
   }
@@ -875,7 +916,7 @@ async function runInit(flags) {
   });
 
   // Step 2b: Wire runtime lifecycle hooks
-  if (flags.hooks) {
+  if (flags.hooks !== false && hooks !== false) {
     step('Wiring runtime lifecycle hooks (.agents/hooks/)', () => {
       const claudeDest = selectedHarnesses.has('claude') ? path.join(TARGET_DIR, '.claude') : null;
       return wireHooks(destAgents, claudeDest);
@@ -884,7 +925,7 @@ async function runInit(flags) {
 
   // Step 2c: Install git pre-commit hook automatically if inside a git repository
   const gitDir = path.join(TARGET_DIR, '.git');
-  if (fs.existsSync(gitDir)) {
+  if (fs.existsSync(gitDir) && flags.hooks !== false && hooks !== false) {
     step('Installing mechanical pre-commit hook (.git/hooks/pre-commit)', () => {
       const hookInstaller = path.join(destAgents, 'scripts', 'install-hooks.sh');
       if (fs.existsSync(hookInstaller)) {
@@ -912,6 +953,19 @@ async function runInit(flags) {
         fs.mkdirSync(destDocs, { recursive: true });
         fs.copyFileSync(srcBoard, destBoard);
       });
+    }
+  }
+
+  // If autoGoal was specified, record in docs/TASK_BOARD.md
+  if (autoGoal) {
+    const destBoard = path.join(destDocs, 'TASK_BOARD.md');
+    if (fs.existsSync(destBoard)) {
+      let boardContent = fs.readFileSync(destBoard, 'utf8');
+      if (boardContent.includes('[ IN_PROGRESS ]')) {
+        const autoTask = `### [ IN_PROGRESS ]\n- **\`TASK-001\`**: Autonomous MVP Delivery — ${autoGoal}\n  - **Assignee:** Executive Proxy / Orchestrator\n  - **DependsOn:** None\n  - **Triage Level:** STANDARD\n  - **ParallelGate:** [QA: pending, Tester: pending, Security: pending]\n  - **HumanCheckpoint:** pending\n`;
+        boardContent = boardContent.replace(/### \[ IN_PROGRESS \][\s\S]*?(?=### \[ QUEUED \])/, autoTask + '\n');
+        fs.writeFileSync(destBoard, boardContent, 'utf8');
+      }
     }
   }
 

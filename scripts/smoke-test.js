@@ -208,6 +208,23 @@ try {
   } finally {
     fs.rmSync(ocProj, { recursive: true, force: true });
   }
+
+  // -------------------------------------------------------------------------
+  // 3e. auto mode and options verification
+  // -------------------------------------------------------------------------
+  const autoProj = fs.mkdtempSync(path.join(os.tmpdir(), 'devos-auto-'));
+  try {
+    const autoInit = runCli(['init', '--existing', '--stack', 'nextjs', '--mode', 'auto', '--platform', 'antigravity', '--all-skills', '--no-hooks', '--quiet'], autoProj);
+    check('devos init with --mode auto and --all-skills exits 0', autoInit.status === 0, autoInit.stderr);
+    const autoManifest = JSON.parse(fs.readFileSync(path.join(autoProj, '.agents', 'manifest.json'), 'utf8'));
+    check('manifest mode is auto', autoManifest.mode === 'auto');
+    check('manifest platform is antigravity', autoManifest.platform === 'antigravity');
+    const installedCount = fs.readdirSync(path.join(autoProj, '.agents', 'skills')).filter((f) => f !== '_backup' && fs.statSync(path.join(autoProj, '.agents', 'skills', f)).isDirectory()).length;
+    check('all skills installed when --all-skills specified', installedCount >= 60, `installed: ${installedCount}`);
+    check('hooks not wired when --no-hooks specified', !fs.existsSync(path.join(autoProj, '.claude', 'hooks.json')));
+  } finally {
+    fs.rmSync(autoProj, { recursive: true, force: true });
+  }
 } finally {
   fs.rmSync(proj, { recursive: true, force: true });
   fs.rmSync(empty, { recursive: true, force: true });

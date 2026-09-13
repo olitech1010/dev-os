@@ -3,10 +3,10 @@
 > This file is maintained by the Orchestrator agent. It is updated at each phase transition to preserve context across long sessions.
 
 ## Current Task
-- **Task:** Dev-OS v4.0.0 Autonomous Engineering OS (Mechanical Design Gate, Autonomous SDLC Modes, Default Telemetry, Humanizer Gate, Testing Guide Deliverable with `devos123` password, Skills Registry Integration, and Expanded Agent Roster).
+- **Task:** Dev-OS v4.0.1 (8-step interactive installer wizard, Google Antigravity & Gemini platform options, SDLC execution modes, and complete documentation parity).
 - **Branch:** main
 - **Triage Level:** STANDARD
-- **Status:** COMPLETED, MERGED & PUBLISHED (v4.0.0 live on npm as `@olives/devos@4.0.0`, PR #13 merged to `main`, GitHub Release v4.0.0 live)
+- **Status:** COMPLETED & VERIFIED (Smoke tests 54/54 pass, Humanizer checks pass, ready for commit, tag v4.0.1, and npm publish)
 
 ## Active Agents
 | Agent | Status | Current Assignment |
