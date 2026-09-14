@@ -4,7 +4,7 @@
 
 **by Clement Olives · Olives Technologies**
 
-![Version](https://img.shields.io/badge/version-v2.1.0-blue.svg)
+![Version](https://img.shields.io/badge/version-v4.1.0-blue.svg)
 ![npm](https://img.shields.io/badge/npm-%40olives%2Fdevos-red.svg)
 ![License](https://img.shields.io/badge/license-MIT-green.svg)
 ![Status](https://img.shields.io/badge/status-production--ready-brightgreen.svg)
@@ -62,10 +62,10 @@ npx @olives/devos init
 ### Why Dev-OS?
 
 - **Zero Direct Commit Bypass:** AI agents cannot execute raw `git commit` or `git push`. All code changes route through QA verification, human inspection, and mechanical pre-commit gates.
-- **Specialized Agent Roster:** 11 dedicated agent personas (Developer, QA, Tester, Security, DBA, DevOps, Architect, Researcher, Memory Manager, Release Manager, Orchestrator) handle distinct stages of delivery.
-- **Parallel Quality Gates:** QA (standards), Tester (unit/integration tests), and Security (vulnerabilities) evaluate code concurrently.
+- **Specialized Agent Roster:** 15 dedicated agent personas (Developer, QA, Tester, Security, DBA, DevOps, Architect, Researcher, Memory Manager, Release Manager, Orchestrator, UI Designer, Executive Proxy, Telemetry, and Eval Engineer) handle distinct stages of delivery.
+- **Parallel Quality Gates:** QA (standards & anti-AI UI), Tester (unit/integration tests), and Security (vulnerabilities) evaluate code concurrently.
 - **Persistent Memory & State:** Prevents agent "amnesia" through state tracking (`CURRENT_STATE.md`), lessons learned (`LESSONS.md`), and pinned safety rules.
-- **Slash Command Interface:** 10 pre-configured commands (`/review`, `/commit`, `/test`, `/secure`, `/research`, etc.) for zero-friction task execution.
+- **Slash Command Interface:** 15 pre-configured commands (`/review`, `/commit`, `/test`, `/secure`, `/research`, `/design`, `/auto`, `/telemetry`, etc.) for zero-friction task execution.
 
 ---
 
@@ -218,7 +218,8 @@ Dev-OS is designed as an operating system where safety gates, multi-agent delega
 ### What Dev-OS Handles Automatically
 
 - **Multi-Agent Routing:** The Orchestrator and Executive Proxy automatically delegate tasks across the 15 specialist agents (Architect, UI Designer, DBA, Developer, Tester, QA, Security, Release Manager).
-- **Mandatory Design Gate:** Frontend files are blocked by pre-tool hooks until `DESIGN.md` is authored at the project root with typography, color, and spacing tokens.
+- **Mandatory Design Gate:** Frontend files are blocked by pre-tool hooks until `DESIGN.md` is authored at the project root with typography, color, and spacing tokens extracted from `ui-ux-pro-max`.
+- **Distinctive Craft & Anti-AI UI Gate:** Eliminates low-effort AI UI clichés (emojis as icons, sparkle embellishments, cookie-cutter profile pills, lazy indigo-purple gradients, generic "Holy Trinity" card grids, and placeholder data like "John Doe"). Enforces tactile button depression, high-contrast focus rings, and authentic domain entities via `.agents/scripts/ui-taste-check.sh`.
 - **Zero Hardcoded Secrets:** Credentials and keys are blocked by git pre-commit hooks and runtime scripts. Agents pause and prompt for `.env` variables before executing migrations.
 - **Automated Verification:** The Tester agent writes unit and integration suites, plus the step-by-step interactive walkthrough guide in `docs/TESTING_GUIDE.md` (universal password: `devos123`).
 

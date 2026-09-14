@@ -128,6 +128,23 @@ try {
   const humanizeScript = path.join(proj, '.agents', 'scripts', 'humanize-check.sh');
   check('humanize-check.sh script installed and executable', fs.existsSync(humanizeScript) && (fs.statSync(humanizeScript).mode & 0o111) !== 0);
 
+  // Anti-AI UI taste scanner script verification
+  const uiTasteScript = path.join(proj, '.agents', 'scripts', 'ui-taste-check.sh');
+  check('ui-taste-check.sh script installed and executable', fs.existsSync(uiTasteScript) && (fs.statSync(uiTasteScript).mode & 0o111) !== 0);
+
+  // Verify ui-taste-check.sh catches AI slop and passes clean templates
+  const testBadFile = path.join(proj, 'Bad.tsx');
+  fs.writeFileSync(testBadFile, 'export const Bad = () => <button>🚀 Supercharge</button>;', 'utf8');
+  const tasteFail = spawnSync('bash', [uiTasteScript, testBadFile], { cwd: proj, encoding: 'utf8' });
+  check('ui-taste-check.sh catches raw emojis and AI slop', tasteFail.status === 1);
+  fs.unlinkSync(testBadFile);
+
+  const testGoodFile = path.join(proj, 'Good.tsx');
+  fs.writeFileSync(testGoodFile, 'export const Good = () => <button className="active:scale-[0.98]">Deploy</button>;', 'utf8');
+  const tastePass = spawnSync('bash', [uiTasteScript, testGoodFile], { cwd: proj, encoding: 'utf8' });
+  check('ui-taste-check.sh passes clean distinctive UI code', tastePass.status === 0);
+  fs.unlinkSync(testGoodFile);
+
   // Mandatory Design Gate hook enforcement verification
   const uiCheckFail = spawnSync('bash', [path.join(proj, '.agents', 'hooks', 'pre-tool-use.sh'), 'touch src/components/App.tsx'], { cwd: proj, encoding: 'utf8' });
   check('pre-tool-use.sh blocks UI file creation when DESIGN.md is absent', uiCheckFail.status === 1 && uiCheckFail.stdout.includes('Mandatory Design Gate'));

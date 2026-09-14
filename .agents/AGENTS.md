@@ -349,6 +349,7 @@ All agents can reference these skills from `skills/`. Each skill is a directory 
 | `testing-guide/` | Interactive testing guide with devos123 passwords | Tester, QA |
 | `autonomous-sdlc/` | Autonomous SDLC modes (interactive, guided, auto, audit) | Executive Proxy, Orchestrator |
 | `telemetry/` | Local failure logging and RCA feedback | Telemetry Agent |
+| `anti-ai-ui/` | Eliminates AI UI clichés and enforces authentic craft | UI Designer, Developer, QA |
 
 ---
 
@@ -372,4 +373,5 @@ All agents can reference these skills from `skills/`. Each skill is a directory 
 16. **Mechanical Humanizer Gate.** All documentation, PR summaries, PRDs, and marketing copy in `/docs/` must pass the Humanizer scan (`.agents/scripts/humanize-check.sh`) before acceptance. Robotic AI writing tells (not-X-but-Y, forced triads, inflated fluff) are forbidden.
 17. **Universal Test Credentials.** All development seed fixtures, test accounts, and interactive walkthroughs (`docs/TESTING_GUIDE.md`) must use `devos123` as the universal password to eliminate authentication friction.
 18. **Anti-Amnesia Delegation Mandate.** The Orchestrator and active agents must never act as a monolithic solo worker bypassing specialist agents and skills. Every task must be properly triaged and routed.
+19. **Distinctive Craft & Anti-AI UI Gate.** All frontend UI code (`*.tsx`, `*.jsx`, `*.vue`, `*.svelte`, `*.html`) must adhere to `.agents/skills/anti-ai-ui/SKILL.md` and pass `.agents/scripts/ui-taste-check.sh` before acceptance. Raw emojis as icons, sparkle icon clichés, cookie-cutter profile pills, lazy indigo-purple gradients, generic "Holy Trinity" card grids, and placeholder slop ("John Doe") are strictly forbidden.
 

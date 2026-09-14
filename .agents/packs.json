@@ -11,6 +11,7 @@
         "autonomous-sdlc",
         "testing-guide",
         "humanizer",
+        "anti-ai-ui",
         "telemetry",
         "task-contract",
         "task-board",
@@ -43,6 +44,7 @@
         "deploy-to-vercel",
         "shadcn-ui",
         "frontend-ui-engineering",
+        "anti-ai-ui",
         "ui-ux-pro-max",
         "ui-designer",
         "web-design-guidelines",
@@ -106,6 +108,7 @@
       "description": "UI/UX styling, image generation prompts, content strategy, and writing guidelines.",
       "skills": [
         "design",
+        "anti-ai-ui",
         "image",
         "image-generation",
         "imagegen",

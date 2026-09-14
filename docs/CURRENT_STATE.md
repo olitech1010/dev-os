@@ -3,10 +3,10 @@
 > This file is maintained by the Orchestrator agent. It is updated at each phase transition to preserve context across long sessions.
 
 ## Current Task
-- **Task:** Dev-OS v4.0.1 (8-step interactive installer wizard, Google Antigravity & Gemini platform options, SDLC execution modes, automated hook and built-in secret scanner installation, and complete documentation parity).
+- **Task:** Dev-OS v4.1.0 (Distinctive Craft & Anti-AI UI Gate, mechanical UI taste scanner, UI/UX Pro Max design system generation fix, Hard Rule #19).
 - **Branch:** main
 - **Triage Level:** STANDARD
-- **Status:** COMPLETED & VERIFIED (Smoke tests 81/81 pass, Humanizer checks pass, ready for commit, tag v4.0.1, and npm publish)
+- **Status:** COMPLETED & VERIFIED (Smoke tests 84/84 pass, Humanizer clean, UI Taste clean, ready for staged review and commit)
 
 ## Active Agents
 | Agent | Status | Current Assignment |
@@ -23,6 +23,8 @@
 | Release Manager | IDLE | Humanizer documentation scrubbing and version bump to 4.0.0 |
 
 ## Recent Decisions
+- **Anti-AI UI & Distinctive Craft Gate (Hard Rule #19)**: Authored `.agents/skills/anti-ai-ui/SKILL.md` (cataloging 20 AI UI anti-patterns) and created `.agents/scripts/ui-taste-check.sh` to mechanically detect raw emojis, sparkle icons, cliché gradients, generic marketing text, and placeholder slop. Wired into `ui-designer.md`, `developer.md`, and `qa.md`.
+- **UI/UX Pro Max Engine Hardening**: Corrected `ui-designer.md` and `/design` command to invoke `python3 .../search.py "<product>" --design-system -p "<Project>" --format markdown`, ensuring tokens and archetypes are pulled directly from the 161-product database into root `DESIGN.md`.
 - **Relocated `DESIGN.md` to Project Root**: Moved `DESIGN.md` from `docs/DESIGN.md` to project root alongside `CODING_STANDARDS.md`. Coordinated all 15 agents, commands, hooks (`.agents/hooks/pre-tool-use.sh`), CLI doctor/status, and test suites with backward-compatible fallback.
 - **Ratified v4.0 Architecture Roadmap**: Updated `docs/2026-09-12-devos-v4-roadmap-research.md` with user-approved architectural decisions.
 - **Mandatory Design Gate**: Added mechanical enforcement in `.agents/hooks/pre-tool-use.sh` blocking frontend UI creation/modification (`*.tsx`, `*.jsx`, `*.vue`, `*.svelte`, `*.html`, `*.css`) when `DESIGN.md` is absent. Added UI Designer agent (`.agents/agents/ui-designer.md`).

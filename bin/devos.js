@@ -54,7 +54,8 @@ const DEVOS_RULES_DIGEST = [
   '12. Task Board Governance: Keep task states in `docs/TASK_BOARD.md` aligned with current execution.',
   '13. Mandatory Design Gate: Modifying frontend UI files without an approved `DESIGN.md` at project root is strictly blocked.',
   '14. Mechanical Humanizer Gate: Documentation in `docs/` must pass `.agents/scripts/humanize-check.sh`.',
-  '15. Universal Test Credentials: Seed data and testing accounts must use `devos123`.'
+  '15. Universal Test Credentials: Seed data and testing accounts must use `devos123`.',
+  '16. Distinctive Craft & Anti-AI UI Gate: All frontend UI code must pass `.agents/scripts/ui-taste-check.sh` (zero raw emojis, zero sparkles, contextual navigation, tactile affordances, authentic entities).'
 ];
 
 const SOLO_SESSION_PROTOCOL = [
@@ -671,6 +672,7 @@ function generateAntigravityConfig(targetDir) {
     '- Specialist Skills: `.agents/skills/` (adheres to open Agent Skills Standard)',
     '- Mandatory Design Gate: `.agents/hooks/pre-tool-use.sh` blocks UI edits until `DESIGN.md` exists',
     '- Humanizer Quality Gate: Documentation in `docs/` must pass `.agents/scripts/humanize-check.sh`',
+    '- Distinctive Craft & Anti-AI UI Gate: Frontend code must pass `.agents/scripts/ui-taste-check.sh`',
     '- Universal Test Credentials: Seed data and testing accounts must use `devos123`',
     '- Task Board: `docs/TASK_BOARD.md`',
     '- Shared Memory Vault: `.agents/memory/`',
@@ -997,9 +999,9 @@ async function runInit(flags) {
   // Ensure telemetry buffer directory exists
   fs.mkdirSync(path.join(destAgents, 'telemetry'), { recursive: true });
 
-  // Step 2: Ensure script permissions (commit gate, hook installer, humanizer check)
+  // Step 2: Ensure script permissions (commit gate, hook installer, humanizer check, UI taste check)
   step('Configuring commit gate and verification scripts', () => {
-    const scripts = ['commit.sh', 'install-hooks.sh', 'humanize-check.sh'];
+    const scripts = ['commit.sh', 'install-hooks.sh', 'humanize-check.sh', 'ui-taste-check.sh'];
     const missing = [];
     scripts.forEach((name) => {
       const scriptPath = path.join(destAgents, 'scripts', name);
@@ -1277,8 +1279,8 @@ async function runUpdate(flags) {
   }
 
   // 3. Ensure executable script permissions
-  step('Verifying script permissions (commit.sh, install-hooks.sh, humanize-check.sh, hooks/*.sh)', () => {
-    const scripts = ['commit.sh', 'install-hooks.sh', 'humanize-check.sh'];
+  step('Verifying script permissions (commit.sh, install-hooks.sh, humanize-check.sh, ui-taste-check.sh, hooks/*.sh)', () => {
+    const scripts = ['commit.sh', 'install-hooks.sh', 'humanize-check.sh', 'ui-taste-check.sh'];
     scripts.forEach((name) => {
       const p = path.join(destAgents, 'scripts', name);
       if (fs.existsSync(p)) fs.chmodSync(p, '755');
@@ -1825,6 +1827,7 @@ function runDoctor(flags) {
     { name: 'Human commit script (.agents/scripts/commit.sh)', path: path.join(TARGET_DIR, '.agents', 'scripts', 'commit.sh'), type: 'file', exec: true },
     { name: 'Hook installer (.agents/scripts/install-hooks.sh)', path: path.join(TARGET_DIR, '.agents', 'scripts', 'install-hooks.sh'), type: 'file', exec: true },
     { name: 'Humanizer scanner (.agents/scripts/humanize-check.sh)', path: path.join(TARGET_DIR, '.agents', 'scripts', 'humanize-check.sh'), type: 'file', exec: true },
+    { name: 'Anti-AI UI taste scanner (.agents/scripts/ui-taste-check.sh)', path: path.join(TARGET_DIR, '.agents', 'scripts', 'ui-taste-check.sh'), type: 'file', exec: true },
     { name: 'Runtime lifecycle hooks (.agents/hooks/)', path: path.join(TARGET_DIR, '.agents', 'hooks'), type: 'dir', optional: true },
     { name: 'Shared memory vault (.agents/memory/)', path: path.join(TARGET_DIR, '.agents', 'memory'), type: 'dir', optional: true },
     { name: 'Task board (docs/TASK_BOARD.md)', path: path.join(TARGET_DIR, 'docs', 'TASK_BOARD.md'), type: 'file', optional: true },

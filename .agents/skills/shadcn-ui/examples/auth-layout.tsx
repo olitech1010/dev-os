@@ -100,7 +100,7 @@ export function AuthLayout() {
                   <Label htmlFor="name">Name</Label>
                   <Input
                     id="name"
-                    placeholder="John Doe"
+                    placeholder="Alex Chen"
                     required
                   />
                 </div>
@@ -109,7 +109,7 @@ export function AuthLayout() {
                   <Input
                     id="register-email"
                     type="email"
-                    placeholder="m@example.com"
+                    placeholder="alex.chen@workspace.io"
                     required
                   />
                 </div>

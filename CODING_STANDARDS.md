@@ -36,6 +36,8 @@
 ## Frontend & Design Gate
 - Mandatory Design Gate: All frontend UI components (`*.tsx`, `*.jsx`, `*.vue`, `*.svelte`, `*.html`, `*.css`) must strictly adhere to the design system and tokens established in `DESIGN.md` at the project root.
 - Design token fidelity: Colors, typography scale, spacing units, and radius values must come from `DESIGN.md`. Frontend code created without `DESIGN.md` is blocked by pre-tool hooks.
+- Distinctive Craft & Anti-AI UI Gate: All frontend components must adhere to `.agents/skills/anti-ai-ui/SKILL.md` and pass `.agents/scripts/ui-taste-check.sh`. Emojis as icons, sparkle embellishments, cookie-cutter profile pills, lazy indigo-purple gradients, generic "Holy Trinity" card grids, and placeholder slop ("John Doe") are strictly forbidden.
+- Tactile affordances: Interactive elements must have visible active press depression (`active:scale-[0.98]`), high-contrast `focus-visible` rings, and explicit hover transitions.
 
 ## Naming Conventions
 - camelCase variables: variables, functions, and methods.
