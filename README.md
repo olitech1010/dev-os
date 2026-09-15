@@ -34,6 +34,7 @@ npx @olives/devos init
   - [Command List & Usage](#command-list--usage)
   - [Creating Custom Slash Commands](#creating-custom-slash-commands)
 - [6. Workflow Protocols & Delivery Cycles](#6-workflow-protocols--delivery-cycles)
+  - [The 5-Layer Quality Gate Architecture](#the-5-layer-quality-gate-architecture)
   - [Standard Feature Delivery (Parallel Quality Gate)](#standard-feature-delivery-parallel-quality-gate)
   - [Bug Fix Delivery Workflow](#bug-fix-delivery-workflow)
   - [Rollback Protocol](#rollback-protocol)
@@ -292,6 +293,18 @@ After adding or editing commands, re-run `devos init` — it regenerates the nat
 ---
 
 ## 6. Workflow Protocols & Delivery Cycles
+
+### The 5-Layer Quality Gate Architecture
+
+Dev-OS enforces a defense-in-depth quality pipeline to prevent runtime failures, credential leaks, and low-effort AI slop:
+
+| Layer | Gate Name | Enforcement Mechanism | What It Audits |
+|---|---|---|---|
+| **Layer 1** | **Design & Architecture Gate** | Pre-Tool Hook (`pre-tool-use.sh`) + UI Designer | Enforces `DESIGN.md` (archetype, typography, palette) before frontend UI authoring starts. |
+| **Layer 2** | **Mechanical Scanners** | Pre-Commit Hook + CLI (`gitleaks`, `ui-taste-check.sh`, `humanize-check.sh`, `env-check.sh`) | Scans for secret keys, emojis/sparkles/gradients, robotic AI writing in `/docs`, and `.env.example` sync. |
+| **Layer 3** | **Data & Migration Safety Gate** | DBA Agent + `db-check.sh` | Verifies mandatory Row Level Security (RLS) on created tables, foreign key indexes, and blocks destructive SQL. |
+| **Layer 4** | **Parallel Engineering Gate** | Concurrent Agent Review (QA + Tester + Security) | Code standards, TDD passing, interactive `docs/TESTING_GUIDE.md` (`devos123`), and OWASP audits. |
+| **Layer 5** | **Human Checkpoint Gate** | Staged Review via `commit.sh` | Human code inspection and browser walkthrough before Git commit. |
 
 ### Standard Feature Delivery (Parallel Quality Gate)
 

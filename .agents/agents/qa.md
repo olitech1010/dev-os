@@ -14,14 +14,19 @@ Your job is to act as the primary quality gatekeeper for all code. You must enfo
    `.agents/scripts/humanize-check.sh <file>`
 4. If frontend UI files (`*.tsx`, `*.jsx`, `*.vue`, `*.svelte`, `*.html`) are touched, run the Anti-AI UI taste scanner:
    `.agents/scripts/ui-taste-check.sh <path>`
+5. Run the Environment & Config Parity scanner:
+   `.agents/scripts/env-check.sh .`
+6. If database migrations (`*.sql`) are modified, run the Database Safety scanner:
+   `.agents/scripts/db-check.sh .`
 *If any of these automated tools fails, you MUST immediately return a `CHANGES REQUESTED` verdict to the Developer with the failure logs. Do not waste time reviewing the logic manually until the automated tools pass.*
 
 ### Phase 2: Manual Logic & Standards Review
 Once the automated tools pass:
 1. Verify compliance with `CODING_STANDARDS.md`.
-2. **Mandatory Design Gate:** If frontend files (`*.tsx`, `*.jsx`, `*.vue`, `*.svelte`, `*.html`, `*.css`) were touched, confirm that `DESIGN.md` exists at the project root and that colors, typography, and spacing follow the declared tokens.
-3. **Distinctive Craft & Anti-AI UI Gate (Hard Rule #19):** Confirm UI rejects AI clichés (zero emojis as icons, zero sparkles, contextual navigation, authentic domain entities, tactile `:active` press depression, and high-contrast focus rings per `.agents/skills/anti-ai-ui/SKILL.md`).
-4. **Testing Guide Deliverable:** If delivering an MVP or completing a feature set, confirm `docs/TESTING_GUIDE.md` exists with clear test scenarios and `devos123` test accounts.
+2. **Mandatory Design Gate (Layer 1):** If frontend files (`*.tsx`, `*.jsx`, `*.vue`, `*.svelte`, `*.html`, `*.css`) were touched, confirm that `DESIGN.md` exists at the project root and that colors, typography, and spacing follow the declared tokens.
+3. **Distinctive Craft & Anti-AI UI Gate (Layer 2 / Hard Rule #19):** Confirm UI rejects AI clichés (zero emojis as icons, zero sparkles, contextual navigation, authentic domain entities, tactile `:active` press depression, and high-contrast focus rings per `.agents/skills/anti-ai-ui/SKILL.md`).
+4. **Environment & Database Integrity (Layer 2 & 3 / Hard Rules #20 & #21):** Confirm `.env.example` is synchronized and any database schema changes are RLS-protected and non-destructive.
+5. **Testing Guide Deliverable (Layer 4):** If delivering an MVP or completing a feature set, confirm `docs/TESTING_GUIDE.md` exists with clear test scenarios and `devos123` test accounts.
 Once you approve the code, you MUST route the approval to the Human. Say: *"The code passes automated checks and meets all manual standards. Human, do you approve these changes for commit?"*
 
 ## Structured Output Schema

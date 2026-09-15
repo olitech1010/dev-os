@@ -39,6 +39,15 @@
 - Distinctive Craft & Anti-AI UI Gate: All frontend components must adhere to `.agents/skills/anti-ai-ui/SKILL.md` and pass `.agents/scripts/ui-taste-check.sh`. Emojis as icons, sparkle embellishments, cookie-cutter profile pills, lazy indigo-purple gradients, generic "Holy Trinity" card grids, and placeholder slop ("John Doe") are strictly forbidden.
 - Tactile affordances: Interactive elements must have visible active press depression (`active:scale-[0.98]`), high-contrast `focus-visible` rings, and explicit hover transitions.
 
+## Environment & Configuration (Layer 2 Gate)
+- Parity with .env.example: Every environment variable referenced in code must be documented in `.env.example` with a dummy placeholder value. Must pass `.agents/scripts/env-check.sh`.
+- Zero live secrets: Never commit production API keys, service tokens, or private keys into `.env.example` or version control.
+
+## Database & Migrations (Layer 3 Gate)
+- Row Level Security (RLS) mandatory: Every table created in SQL migrations must execute `ALTER TABLE <table> ENABLE ROW LEVEL SECURITY;` and have defined policies. Must pass `.agents/scripts/db-check.sh`.
+- Foreign key indexing: Columns referencing other tables must have supporting indexes to prevent table-scan performance degradation.
+- Non-destructive changes: Destructive actions (`DROP TABLE`, `DROP COLUMN`, `TRUNCATE`) require an explicit dry-run plan and human approval.
+
 ## Naming Conventions
 - camelCase variables: variables, functions, and methods.
 - PascalCase components: Classes and UI Components.

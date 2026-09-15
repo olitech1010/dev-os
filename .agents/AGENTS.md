@@ -244,6 +244,27 @@ Quality benchmark and regression prevention engineer inspired by ECC and DeepSee
 4. Orchestrator proceeds to standard delivery based on the approved spec
 ```
 
+### The 5-Layer Quality Gate Architecture
+
+Dev-OS enforces a defense-in-depth quality pipeline to eliminate runtime failures, security leaks, and AI slop:
+
+1. **Layer 1: Design & Architecture Gate** (Pre-Authoring)
+   - UI Designer extracts tokens from `ui-ux-pro-max` and authors `DESIGN.md` at project root.
+   - Enforced mechanically by `.agents/hooks/pre-tool-use.sh` before any UI component is authored.
+2. **Layer 2: Mechanical Scanners** (Zero-Dependency Automated Tools)
+   - Secret Scanning: `gitleaks` (API keys, private keys, access tokens).
+   - UI Taste Scanner: `.agents/scripts/ui-taste-check.sh` (zero raw emojis, zero sparkles, tactile affordances, authentic entities).
+   - Humanizer Scanner: `.agents/scripts/humanize-check.sh` (25 robotic AI writing tells).
+   - Environment Parity: `.agents/scripts/env-check.sh` (`.env.example` sync with zero committed secrets).
+3. **Layer 3: Data & Migration Safety Gate** (DBA Engine)
+   - Migration Safety: `.agents/scripts/db-check.sh` (mandatory RLS on created tables, foreign key indexing, dry-run approval for destructive SQL).
+4. **Layer 4: Parallel Engineering Gate** (Multi-Agent Concurrent Evaluation)
+   - QA Agent: Standards, linting, and verifying Layers 2 & 3 pass.
+   - Tester Agent: Unit/integration tests, coverage, and interactive `docs/TESTING_GUIDE.md` (`devos123`).
+   - Security Agent: OWASP Top 10, auth/permission logic, and dependency vulnerability audits.
+5. **Layer 5: Human Checkpoint Gate** (Human-in-the-Loop)
+   - Staged review and browser walkthrough before triggering `.agents/scripts/commit.sh`.
+
 ### Commit Model: Staged Review
 
 Dev-OS uses a **Staged Review** commit model:
@@ -374,4 +395,6 @@ All agents can reference these skills from `skills/`. Each skill is a directory 
 17. **Universal Test Credentials.** All development seed fixtures, test accounts, and interactive walkthroughs (`docs/TESTING_GUIDE.md`) must use `devos123` as the universal password to eliminate authentication friction.
 18. **Anti-Amnesia Delegation Mandate.** The Orchestrator and active agents must never act as a monolithic solo worker bypassing specialist agents and skills. Every task must be properly triaged and routed.
 19. **Distinctive Craft & Anti-AI UI Gate.** All frontend UI code (`*.tsx`, `*.jsx`, `*.vue`, `*.svelte`, `*.html`) must adhere to `.agents/skills/anti-ai-ui/SKILL.md` and pass `.agents/scripts/ui-taste-check.sh` before acceptance. Raw emojis as icons, sparkle icon clichés, cookie-cutter profile pills, lazy indigo-purple gradients, generic "Holy Trinity" card grids, and placeholder slop ("John Doe") are strictly forbidden.
+20. **Environment & Config Parity Gate.** All environment variables referenced in code (`process.env.*`, `os.environ[...]`, `env(...)`) must be documented in `.env.example` with dummy placeholder values and pass `.agents/scripts/env-check.sh`. Committing live credentials or private keys to `.env.example` or code is strictly forbidden.
+21. **Database & Migration Safety Gate.** All database migrations (`*.sql`) must execute `ALTER TABLE <table> ENABLE ROW LEVEL SECURITY;` on created tables, maintain foreign key indexes, and avoid destructive actions (`DROP TABLE`, `DROP COLUMN`, `TRUNCATE`) without explicit dry-run approval and annotation (`-- devos:approved-destructive`). Migrations must pass `.agents/scripts/db-check.sh`.
 

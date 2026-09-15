@@ -55,7 +55,9 @@ const DEVOS_RULES_DIGEST = [
   '13. Mandatory Design Gate: Modifying frontend UI files without an approved `DESIGN.md` at project root is strictly blocked.',
   '14. Mechanical Humanizer Gate: Documentation in `docs/` must pass `.agents/scripts/humanize-check.sh`.',
   '15. Universal Test Credentials: Seed data and testing accounts must use `devos123`.',
-  '16. Distinctive Craft & Anti-AI UI Gate: All frontend UI code must pass `.agents/scripts/ui-taste-check.sh` (zero raw emojis, zero sparkles, contextual navigation, tactile affordances, authentic entities).'
+  '16. Distinctive Craft & Anti-AI UI Gate: All frontend UI code must pass `.agents/scripts/ui-taste-check.sh` (zero raw emojis, zero sparkles, contextual navigation, tactile affordances, authentic entities).',
+  '17. Environment & Config Parity Gate: All environment variables in code must be documented in `.env.example` with zero committed secrets (`.agents/scripts/env-check.sh`).',
+  '18. Database & Migration Safety Gate: SQL migrations must enable RLS on all tables and avoid unapproved destructive operations (`.agents/scripts/db-check.sh`).'
 ];
 
 const SOLO_SESSION_PROTOCOL = [
@@ -673,6 +675,8 @@ function generateAntigravityConfig(targetDir) {
     '- Mandatory Design Gate: `.agents/hooks/pre-tool-use.sh` blocks UI edits until `DESIGN.md` exists',
     '- Humanizer Quality Gate: Documentation in `docs/` must pass `.agents/scripts/humanize-check.sh`',
     '- Distinctive Craft & Anti-AI UI Gate: Frontend code must pass `.agents/scripts/ui-taste-check.sh`',
+    '- Environment Parity Gate: `.env.example` sync enforced via `.agents/scripts/env-check.sh`',
+    '- Database Safety Gate: SQL migrations & RLS enforced via `.agents/scripts/db-check.sh`',
     '- Universal Test Credentials: Seed data and testing accounts must use `devos123`',
     '- Task Board: `docs/TASK_BOARD.md`',
     '- Shared Memory Vault: `.agents/memory/`',
@@ -999,9 +1003,9 @@ async function runInit(flags) {
   // Ensure telemetry buffer directory exists
   fs.mkdirSync(path.join(destAgents, 'telemetry'), { recursive: true });
 
-  // Step 2: Ensure script permissions (commit gate, hook installer, humanizer check, UI taste check)
+  // Step 2: Ensure script permissions (commit gate, hook installer, humanizer check, UI taste check, env check, db check)
   step('Configuring commit gate and verification scripts', () => {
-    const scripts = ['commit.sh', 'install-hooks.sh', 'humanize-check.sh', 'ui-taste-check.sh'];
+    const scripts = ['commit.sh', 'install-hooks.sh', 'humanize-check.sh', 'ui-taste-check.sh', 'env-check.sh', 'db-check.sh'];
     const missing = [];
     scripts.forEach((name) => {
       const scriptPath = path.join(destAgents, 'scripts', name);
@@ -1279,8 +1283,8 @@ async function runUpdate(flags) {
   }
 
   // 3. Ensure executable script permissions
-  step('Verifying script permissions (commit.sh, install-hooks.sh, humanize-check.sh, ui-taste-check.sh, hooks/*.sh)', () => {
-    const scripts = ['commit.sh', 'install-hooks.sh', 'humanize-check.sh', 'ui-taste-check.sh'];
+  step('Verifying script permissions (commit.sh, install-hooks.sh, humanize-check.sh, ui-taste-check.sh, env-check.sh, db-check.sh, hooks/*.sh)', () => {
+    const scripts = ['commit.sh', 'install-hooks.sh', 'humanize-check.sh', 'ui-taste-check.sh', 'env-check.sh', 'db-check.sh'];
     scripts.forEach((name) => {
       const p = path.join(destAgents, 'scripts', name);
       if (fs.existsSync(p)) fs.chmodSync(p, '755');
@@ -1828,6 +1832,8 @@ function runDoctor(flags) {
     { name: 'Hook installer (.agents/scripts/install-hooks.sh)', path: path.join(TARGET_DIR, '.agents', 'scripts', 'install-hooks.sh'), type: 'file', exec: true },
     { name: 'Humanizer scanner (.agents/scripts/humanize-check.sh)', path: path.join(TARGET_DIR, '.agents', 'scripts', 'humanize-check.sh'), type: 'file', exec: true },
     { name: 'Anti-AI UI taste scanner (.agents/scripts/ui-taste-check.sh)', path: path.join(TARGET_DIR, '.agents', 'scripts', 'ui-taste-check.sh'), type: 'file', exec: true },
+    { name: 'Environment parity scanner (.agents/scripts/env-check.sh)', path: path.join(TARGET_DIR, '.agents', 'scripts', 'env-check.sh'), type: 'file', exec: true },
+    { name: 'Database migration scanner (.agents/scripts/db-check.sh)', path: path.join(TARGET_DIR, '.agents', 'scripts', 'db-check.sh'), type: 'file', exec: true },
     { name: 'Runtime lifecycle hooks (.agents/hooks/)', path: path.join(TARGET_DIR, '.agents', 'hooks'), type: 'dir', optional: true },
     { name: 'Shared memory vault (.agents/memory/)', path: path.join(TARGET_DIR, '.agents', 'memory'), type: 'dir', optional: true },
     { name: 'Task board (docs/TASK_BOARD.md)', path: path.join(TARGET_DIR, 'docs', 'TASK_BOARD.md'), type: 'file', optional: true },

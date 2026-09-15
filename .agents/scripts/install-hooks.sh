@@ -147,6 +147,53 @@ else
     echo "[ OK ] Built-in secret scan clean."
 fi
 
+# 3. Environment & Config Parity Scan (Layer 2 Gate)
+if [ -x ".agents/scripts/env-check.sh" ]; then
+    if ! bash ".agents/scripts/env-check.sh" "."; then
+        echo ""
+        echo "[ FAIL ] Dev-OS Layer 2 Gate Violation: Environment variable parity check failed."
+        exit 1
+    fi
+fi
+
+# 4. Database & Migration Safety Scan (Layer 3 Gate)
+if [ -x ".agents/scripts/db-check.sh" ]; then
+    if git diff --cached --name-only | grep -q '\.sql$'; then
+        if ! bash ".agents/scripts/db-check.sh" "."; then
+            echo ""
+            echo "[ FAIL ] Dev-OS Layer 3 Gate Violation: Database migration safety check failed."
+            exit 1
+        fi
+    fi
+fi
+
+# 5. Anti-AI UI Taste Scan (Layer 2 Gate)
+if [ -x ".agents/scripts/ui-taste-check.sh" ]; then
+    if git diff --cached --name-only | grep -Eq '\.(tsx|jsx|vue|svelte|html)$'; then
+        if ! bash ".agents/scripts/ui-taste-check.sh" "."; then
+            echo ""
+            echo "[ FAIL ] Dev-OS UI Taste Gate Violation: AI UI anti-pattern detected."
+            exit 1
+        fi
+    fi
+fi
+
+# 6. Humanizer Documentation Scan (Layer 2 Gate)
+if [ -x ".agents/scripts/humanize-check.sh" ]; then
+    STAGED_DOCS=$(git diff --cached --name-only | grep -E '^docs/.*\.md$' || true)
+    if [ -n "$STAGED_DOCS" ]; then
+        for doc in $STAGED_DOCS; do
+            if [ -f "$doc" ]; then
+                if ! bash ".agents/scripts/humanize-check.sh" "$doc"; then
+                    echo ""
+                    echo "[ FAIL ] Dev-OS Humanizer Gate Violation: Robotic AI writing detected in $doc."
+                    exit 1
+                fi
+            fi
+        done
+    fi
+fi
+
 echo "[ OK ] Dev-OS pre-commit checks passed."
 exit 0
 EOF

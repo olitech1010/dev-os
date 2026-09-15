@@ -3,10 +3,10 @@
 > This file is maintained by the Orchestrator agent. It is updated at each phase transition to preserve context across long sessions.
 
 ## Current Task
-- **Task:** Dev-OS v4.1.0 (Distinctive Craft & Anti-AI UI Gate, mechanical UI taste scanner, UI/UX Pro Max design system generation fix, Hard Rule #19).
+- **Task:** Dev-OS v4.1.0 (5-Layer Quality Gate Architecture: Layer 1 Design Gate, Layer 2 Mechanical Scanners [`gitleaks`, `ui-taste-check.sh`, `humanize-check.sh`, `env-check.sh`], Layer 3 Database Safety Gate [`db-check.sh`], Layer 4 Parallel Engineering Gate, Layer 5 Human Checkpoint Gate, Hard Rules #19–21).
 - **Branch:** main
 - **Triage Level:** STANDARD
-- **Status:** COMPLETED & VERIFIED (Smoke tests 84/84 pass, Humanizer clean, UI Taste clean, ready for staged review and commit)
+- **Status:** COMPLETED & VERIFIED (Smoke tests 89/89 pass, all 4 mechanical scanners 100% clean, ready for staged review and commit)
 
 ## Active Agents
 | Agent | Status | Current Assignment |
@@ -23,6 +23,9 @@
 | Release Manager | IDLE | Humanizer documentation scrubbing and version bump to 4.0.0 |
 
 ## Recent Decisions
+- **Established The 5-Layer Quality Gate Architecture**: Codified a comprehensive defense-in-depth pipeline: Layer 1 (Design & Architecture Gate via `pre-tool-use.sh`), Layer 2 (Mechanical Scanners: `gitleaks`, `ui-taste-check.sh`, `humanize-check.sh`, `env-check.sh`), Layer 3 (Data & Migration Safety Gate via `db-check.sh`), Layer 4 (Parallel Engineering Gate via QA + Tester + Security), and Layer 5 (Human Checkpoint Gate via `commit.sh`).
+- **Environment & Config Parity Gate (Hard Rule #20)**: Built `.agents/scripts/env-check.sh` to mechanically audit application code against `.env.example`, ensuring 100% variable documentation and zero committed credentials.
+- **Database & Migration Safety Gate (Hard Rule #21)**: Built `.agents/scripts/db-check.sh` to audit SQL migrations for mandatory Row Level Security (`ENABLE ROW LEVEL SECURITY`), foreign key indexing, and non-destructive constraint verification.
 - **Anti-AI UI & Distinctive Craft Gate (Hard Rule #19)**: Authored `.agents/skills/anti-ai-ui/SKILL.md` (cataloging 20 AI UI anti-patterns) and created `.agents/scripts/ui-taste-check.sh` to mechanically detect raw emojis, sparkle icons, cliché gradients, generic marketing text, and placeholder slop. Wired into `ui-designer.md`, `developer.md`, and `qa.md`.
 - **UI/UX Pro Max Engine Hardening**: Corrected `ui-designer.md` and `/design` command to invoke `python3 .../search.py "<product>" --design-system -p "<Project>" --format markdown`, ensuring tokens and archetypes are pulled directly from the 161-product database into root `DESIGN.md`.
 - **Relocated `DESIGN.md` to Project Root**: Moved `DESIGN.md` from `docs/DESIGN.md` to project root alongside `CODING_STANDARDS.md`. Coordinated all 15 agents, commands, hooks (`.agents/hooks/pre-tool-use.sh`), CLI doctor/status, and test suites with backward-compatible fallback.

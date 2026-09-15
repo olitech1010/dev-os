@@ -5,12 +5,14 @@ This project follows [Semantic Versioning](https://semver.org/).
 
 ## [4.1.0] — 2026-09-15
 
-### Distinctive Craft, Anti-AI UI Gate & UI/UX Pro Max Engine Hardening
-- **Anti-AI UI & Distinctive Craft Standard (Hard Rule #19)**: Authored `.agents/skills/anti-ai-ui/SKILL.md` cataloging 20 common low-effort AI UI clichés ("AI slop") and enforcing concrete human-crafted counter-patterns (vector-only SVGs, contextual workspace navigation, domain-grounded color palettes, asymmetric Bento grids, authentic domain entities, tactile button press affordances, and accessible focus rings).
-- **Mechanical UI Taste Scanner (`ui-taste-check.sh`)**: Built executable zero-dependency scanner `.agents/scripts/ui-taste-check.sh` that automatically audits JSX, TSX, Vue, Svelte, and HTML templates for raw emojis, sparkle icon clichés (`<Sparkles`, `Wand2`), lazy indigo-purple gradients, generic marketing copy, placeholder data ("John Doe"), and suppressed focus rings.
+### The 5-Layer Quality Gate Architecture, Anti-AI UI Standard & Mechanical Scanners
+- **Formalized 5-Layer Quality Gate Architecture**: Established a defense-in-depth pipeline consisting of Layer 1 (Design & Architecture Gate via `pre-tool-use.sh`), Layer 2 (Mechanical Scanners: `gitleaks`, `ui-taste-check.sh`, `humanize-check.sh`, `env-check.sh`), Layer 3 (Data & Migration Safety Gate via `db-check.sh`), Layer 4 (Parallel Engineering Gate via QA + Tester + Security), and Layer 5 (Human Checkpoint Gate via `commit.sh`).
+- **Environment & Config Parity Gate (`.agents/scripts/env-check.sh` / Hard Rule #20)**: Built zero-dependency scanner auditing source code against `.env.example` to guarantee all environment variables are documented with dummy placeholders and no live credentials or private keys are committed to Git.
+- **Database & Migration Safety Gate (`.agents/scripts/db-check.sh` / Hard Rule #21)**: Built automated migration auditor enforcing mandatory Row Level Security (`ENABLE ROW LEVEL SECURITY`) on all created tables, foreign key indexing, and non-destructive operations (flags unapproved `DROP TABLE`, `DROP COLUMN`, `TRUNCATE`).
+- **Anti-AI UI & Distinctive Craft Standard (`.agents/scripts/ui-taste-check.sh` / Hard Rule #19)**: Authored `.agents/skills/anti-ai-ui/SKILL.md` cataloging 20 common low-effort AI UI clichés ("AI slop") and enforcing concrete human-crafted counter-patterns. Scans for raw emojis, sparkle icon clichés (`<Sparkles`, `Wand2`), lazy indigo-purple gradients, generic marketing copy, placeholder data ("John Doe"), and suppressed focus rings.
 - **UI/UX Pro Max Recommendation Engine Fix**: Corrected CLI integration in `ui-designer.md` and `/design` command to invoke `python3 .../search.py "<domain>" --design-system -p "<ProjectName>" --format markdown`, ensuring complete color, typography, and layout tokens are extracted directly from the 161-product database into root `DESIGN.md`.
-- **Quality Gate Integration**: Updated `developer.md` and `qa.md` to require `.agents/scripts/ui-taste-check.sh` verification before presenting code for review. Wired scanner into `bin/devos.js` installer, updater, and `runDoctor`.
-- **Expanded Test Suite (84/84 Passing)**: Added smoke test assertions verifying `ui-taste-check.sh` catches AI UI slop, passes clean distinctive code, and runs across all 67 skills.
+- **Quality Gate Integration**: Updated `developer.md`, `qa.md`, and `dba.md` to require `.agents/scripts/` verification before presenting code for review. Wired all scanners into `bin/devos.js` installer, updater, and `runDoctor`.
+- **Expanded Test Suite (89/89 Passing)**: Added smoke test assertions verifying `ui-taste-check.sh`, `env-check.sh`, and `db-check.sh` catch violations and pass clean code.
 
 ## [4.0.1] — 2026-09-13
 

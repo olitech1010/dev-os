@@ -145,6 +145,33 @@ try {
   check('ui-taste-check.sh passes clean distinctive UI code', tastePass.status === 0);
   fs.unlinkSync(testGoodFile);
 
+  // Environment & Config Parity scanner script verification
+  const envScript = path.join(proj, '.agents', 'scripts', 'env-check.sh');
+  check('env-check.sh script installed and executable', fs.existsSync(envScript) && (fs.statSync(envScript).mode & 0o111) !== 0);
+
+  const testEnvFile = path.join(proj, 'test-env.ts');
+  fs.writeFileSync(testEnvFile, 'const key = process.env.TEST_PAYMENT_SECRET;\n', 'utf8');
+  const envFail = spawnSync('bash', [envScript, proj], { cwd: proj, encoding: 'utf8' });
+  check('env-check.sh catches missing variable in .env.example', envFail.status === 1);
+  fs.writeFileSync(path.join(proj, '.env.example'), 'TEST_PAYMENT_SECRET=your_test_key\n', 'utf8');
+  const envPass = spawnSync('bash', [envScript, proj], { cwd: proj, encoding: 'utf8' });
+  check('env-check.sh passes when .env.example is synchronized', envPass.status === 0);
+  fs.unlinkSync(testEnvFile);
+  fs.unlinkSync(path.join(proj, '.env.example'));
+
+  // Database & Migration Safety scanner script verification
+  const dbScript = path.join(proj, '.agents', 'scripts', 'db-check.sh');
+  check('db-check.sh script installed and executable', fs.existsSync(dbScript) && (fs.statSync(dbScript).mode & 0o111) !== 0);
+
+  const testSqlFile = path.join(proj, '001_test.sql');
+  fs.writeFileSync(testSqlFile, 'CREATE TABLE orders (id UUID PRIMARY KEY);\n', 'utf8');
+  const dbFail = spawnSync('bash', [dbScript, testSqlFile], { cwd: proj, encoding: 'utf8' });
+  check('db-check.sh catches table without RLS enabled', dbFail.status === 1);
+  fs.writeFileSync(testSqlFile, 'CREATE TABLE orders (id UUID PRIMARY KEY);\nALTER TABLE orders ENABLE ROW LEVEL SECURITY;\n', 'utf8');
+  const dbPass = spawnSync('bash', [dbScript, testSqlFile], { cwd: proj, encoding: 'utf8' });
+  check('db-check.sh passes when RLS is enabled', dbPass.status === 0);
+  fs.unlinkSync(testSqlFile);
+
   // Mandatory Design Gate hook enforcement verification
   const uiCheckFail = spawnSync('bash', [path.join(proj, '.agents', 'hooks', 'pre-tool-use.sh'), 'touch src/components/App.tsx'], { cwd: proj, encoding: 'utf8' });
   check('pre-tool-use.sh blocks UI file creation when DESIGN.md is absent', uiCheckFail.status === 1 && uiCheckFail.stdout.includes('Mandatory Design Gate'));
