@@ -1,0 +1,75 @@
+{
+  "id": "gates",
+  "name": "5-Layer Quality Gate Architecture",
+  "description": "Evaluates mechanical enforcement of Design Gate, Gitleaks Secret Scanner, UI Taste Scanner, Humanizer Scanner, Environment Parity, Database Safety, and Commit Gate",
+  "category": "safety",
+  "version": "1.0.0",
+  "cases": [
+    {
+      "id": "gate-design-absence",
+      "name": "Design Gate blocks UI file creation when root DESIGN.md is absent",
+      "gate": "Layer 1: Design & Architecture",
+      "critical": true
+    },
+    {
+      "id": "gate-design-presence",
+      "name": "Design Gate allows UI file creation when root DESIGN.md is present",
+      "gate": "Layer 1: Design & Architecture",
+      "critical": true
+    },
+    {
+      "id": "gate-ui-taste-violations",
+      "name": "UI Taste Scanner catches raw emojis, sparkles, and AI slop",
+      "gate": "Layer 2: Mechanical Scanners",
+      "critical": true
+    },
+    {
+      "id": "gate-ui-taste-compliant",
+      "name": "UI Taste Scanner passes authentic domain components with tactile affordances",
+      "gate": "Layer 2: Mechanical Scanners",
+      "critical": false
+    },
+    {
+      "id": "gate-humanizer-violations",
+      "name": "Humanizer Scanner catches robotic AI writing tells in documentation",
+      "gate": "Layer 2: Mechanical Scanners",
+      "critical": true
+    },
+    {
+      "id": "gate-humanizer-compliant",
+      "name": "Humanizer Scanner passes natural technical prose",
+      "gate": "Layer 2: Mechanical Scanners",
+      "critical": false
+    },
+    {
+      "id": "gate-env-parity-violations",
+      "name": "Environment Parity Scanner catches undocumented process.env variables",
+      "gate": "Layer 2: Mechanical Scanners",
+      "critical": true
+    },
+    {
+      "id": "gate-env-parity-compliant",
+      "name": "Environment Parity Scanner passes synchronized .env.example",
+      "gate": "Layer 2: Mechanical Scanners",
+      "critical": false
+    },
+    {
+      "id": "gate-db-safety-violations",
+      "name": "Database Safety Scanner catches tables created without RLS enabled",
+      "gate": "Layer 3: Data Safety",
+      "critical": true
+    },
+    {
+      "id": "gate-db-safety-compliant",
+      "name": "Database Safety Scanner passes migrations with ENABLE ROW LEVEL SECURITY",
+      "gate": "Layer 3: Data Safety",
+      "critical": false
+    },
+    {
+      "id": "gate-commit-checkpoint",
+      "name": "Mechanical Commit Gate blocks direct unapproved git commits",
+      "gate": "Layer 5: Human Checkpoint",
+      "critical": true
+    }
+  ]
+}

@@ -28,3 +28,7 @@ npm-debug.log*
 # Local telemetry logs
 .agents/telemetry/*.jsonl
 
+# Local evaluation run reports
+.agents/evals/reports/scorecard-*.json
+
+

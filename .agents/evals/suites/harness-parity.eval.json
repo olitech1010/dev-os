@@ -1,0 +1,45 @@
+{
+  "id": "harness-parity",
+  "name": "Multi-Platform AI Harness Parity",
+  "description": "Evaluates cross-harness parity across Claude Code, Google Antigravity, Gemini, Cursor, OpenCode, and Codex",
+  "category": "compatibility",
+  "version": "1.0.0",
+  "cases": [
+    {
+      "id": "harness-claude-artifacts",
+      "name": "Claude Code generator yields .claude/commands/, .claude/agents/, .claude/hooks.json, and CLAUDE.md",
+      "platform": "claude",
+      "critical": true
+    },
+    {
+      "id": "harness-antigravity-artifacts",
+      "name": "Antigravity & Gemini generator yields ANTIGRAVITY.md and GEMINI.md with Hard Rules digest",
+      "platform": "antigravity",
+      "critical": true
+    },
+    {
+      "id": "harness-cursor-artifacts",
+      "name": "Cursor generator yields .cursor/rules/devos.mdc and .cursorrules",
+      "platform": "cursor",
+      "critical": true
+    },
+    {
+      "id": "harness-opencode-artifacts",
+      "name": "OpenCode generator yields OPENCODE.md, .opencode/rules/devos-rules.md, and opencode.json",
+      "platform": "opencode",
+      "critical": true
+    },
+    {
+      "id": "harness-codex-artifacts",
+      "name": "Codex generator yields .codex/instructions.md and .windsurfrules",
+      "platform": "codex",
+      "critical": true
+    },
+    {
+      "id": "harness-hard-rules-digest-parity",
+      "name": "All 18+ Hard Rules are faithfully represented across all platform configuration files",
+      "platform": "universal",
+      "critical": true
+    }
+  ]
+}

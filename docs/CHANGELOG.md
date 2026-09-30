@@ -3,6 +3,22 @@
 All notable changes to Dev-OS are documented in this file.
 This project follows [Semantic Versioning](https://semver.org/).
 
+## [4.2.0] — 2026-09-23
+
+### Reliability & Evaluation Layer, pass@k Benchmark Engine, Eval CLI & Awesome Design Catalog
+- **First-Class Evaluation Engine (`scripts/eval-runner.js` / `devos eval`)**: Built a zero-dependency capability and regression evaluation engine executing benchmark suites, measuring mathematical $pass@k$ curves ($k \in [1, 3, 5]$), and issuing formal `EVAL_PASSED` or `EVAL_REGRESSED` verdicts with actionable trace breakdowns.
+- **Standardized Benchmark Suites (`.agents/evals/suites/`)**:
+  - `gates.eval.json`: 11 automated test cases verifying mechanical enforcement of all 5 quality layers (Design Gate, UI Taste Scanner, Humanizer Scanner, Environment Parity, Database RLS Safety, and Commit Gate).
+  - `harness-parity.eval.json`: 6 test cases verifying multi-platform parity across Claude Code, Google Antigravity, Gemini, Cursor, OpenCode, and Codex.
+  - `memory-preservation.eval.json`: 5 test cases validating `context.json`, DAG task board transitions, `docs/CURRENT_STATE.md` alignment, and ADR/handoff templates.
+  - `agent-authority.eval.json`: 6 test cases auditing specialization boundaries across Orchestrator, Developer, QA, Tester, DBA, and Security personas.
+  - `workflow-integrity.eval.json`: 5 test cases testing 8-step feature delivery, circuit breaker loop halts, solo session protocol, and `devos123` password compliance.
+- **Awesome Design Catalog Integration (`docs/DESIGN_CATALOG.md` / `devos design match/apply`)**: Bundled 74 real-world production design systems from `voltagent/awesome-design-md` in `.agents/catalog/designs/` with local metadata indexing. Allows deterministic matching and applying of company design systems (Linear, Stripe, Airbnb, GitHub, etc.) to root `DESIGN.md` without LLM hallucination. Added `/redesign` slash command.
+- **Evaluation Scorecard System (`.agents/evals/reports/`)**: Automated generation of timestamped JSON scorecards and `latest-scorecard.json` tracking historical reliability indices, sampling trials, duration, and suite breakdowns. Accessible via `devos eval scorecard`.
+- **New `/eval` and `/redesign` Slash Commands & Skills**: Added `.agents/commands/eval.md`, `.agents/commands/redesign.md`, and authored `.agents/skills/eval-harness/SKILL.md` (integrated into the `core` capability pack).
+- **CLI & Diagnostic Integration**: Added `devos eval` (subcommands: `run`, `list`, `scorecard`, `--k <samples>`, `--json`), added eval benchmarks to `devos doctor` and `devos status`, and wired `npm run eval`.
+- **Smoke Test Expansion (94/94 Passing)**: Added smoke test assertions verifying eval suites, `devos eval list`, `devos eval run`, and `devos eval scorecard`.
+
 ## [4.1.0] — 2026-09-15
 
 ### The 5-Layer Quality Gate Architecture, Anti-AI UI Standard & Mechanical Scanners

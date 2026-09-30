@@ -195,6 +195,15 @@ try {
   const telemReport = runCli(['telemetry', 'report', '--quiet'], proj);
   check('devos telemetry report exits 0', telemReport.status === 0);
 
+  // Evaluation Runner & Benchmarks verification
+  check('eval suites installed (.agents/evals/suites/)', fs.existsSync(path.join(proj, '.agents', 'evals', 'suites', 'gates.eval.json')));
+  const evalList = runCli(['eval', 'list', '--quiet'], proj);
+  check('devos eval list exits 0', evalList.status === 0 && evalList.stdout.includes('gates'));
+  const evalRun = runCli(['eval', 'run', '--suite', 'memory-preservation', '--quiet'], proj);
+  check('devos eval run exits 0', evalRun.status === 0 && evalRun.stdout.includes('EVAL_PASSED'));
+  const evalScorecard = runCli(['eval', 'scorecard', '--quiet'], proj);
+  check('devos eval scorecard exits 0', evalScorecard.status === 0 && evalScorecard.stdout.includes('DEV-OS EVALUATION SCORECARD'));
+
   // -------------------------------------------------------------------------
   // 2. doctor: passes in the project, fails in an empty directory
   // -------------------------------------------------------------------------

@@ -1,6 +1,6 @@
 ---
 name: design
-description: Extract design tokens and archetype from ui-ux-pro-max and author DESIGN.md at project root
+description: Match authentic brand design systems from catalog (VoltAgent/awesome-design-md) and apply DESIGN.md at project root
 agent: ui-designer
 triage_level: STANDARD
 workflow: standard
@@ -8,10 +8,10 @@ workflow: standard
 
 Execute the Mandatory Design Gate workflow:
 
-1. Analyze project domain (SaaS, dev tool, mobile, dashboard, restaurant POS, landing page, consumer).
-2. Run `ui-ux-pro-max` design system generator:
-   `python3 .agents/skills/ui-ux-pro-max/scripts/search.py "<domain>" --design-system -p "<ProjectName>" --format markdown`
+1. Analyze project domain (SaaS, developer tool, mobile, dashboard, fintech, e-commerce, consumer).
+2. Match and apply design system from the 74-brand catalog:
+   - Interactive matching: `devos design match "<domain keywords>"`
+   - Direct application: `devos design apply <id>` (e.g. `linear`, `stripe`, `supabase`, `vercel`, `airbnb`)
 3. Enforce `.agents/skills/anti-ai-ui/SKILL.md` craft standards (zero emojis, zero sparkles, contextual navigation, tactile affordances, authentic domain data).
-4. Author or update `DESIGN.md` at the project root following the Dev-OS design specification schema.
-5. Audit with `.agents/scripts/ui-taste-check.sh` and request QA verification.
-6. Once approved, unblock frontend UI component development.
+4. Verify `./DESIGN.md` at project root with `.agents/scripts/ui-taste-check.sh` and request QA audit.
+5. Once approved, unblock frontend UI component development.

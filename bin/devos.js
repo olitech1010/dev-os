@@ -9,6 +9,7 @@
 const fs = require('fs');
 const path = require('path');
 const readline = require('readline');
+const { spawnSync } = require('child_process');
 
 // Package metadata
 const TEMPLATE_DIR = path.resolve(__dirname, '..');
@@ -88,7 +89,14 @@ function parseArgs(args) {
     hooks: true,
     telemetry: true,
     mode: null,
-    skills: false
+    skills: false,
+    suite: null,
+    k: null,
+    scorecard: false,
+    list: false,
+    pick: null,
+    top: null,
+    category: null
   };
 
   const positional = [];
@@ -121,6 +129,16 @@ function parseArgs(args) {
       flags.telemetry = true;
     } else if (arg === '--skills') {
       flags.skills = true;
+    } else if (arg === '--scorecard') {
+      flags.scorecard = true;
+    } else if (arg === '--list' || arg === '-l') {
+      flags.list = true;
+    } else if (arg === '--suite' || arg === '-S') {
+      flags.suite = args[i + 1] || null;
+      i++;
+    } else if (arg === '--k' || arg === '-k') {
+      flags.k = parseInt(args[i + 1] || '1', 10);
+      i++;
     } else if (arg === '--mode' || arg === '-m') {
       flags.mode = args[i + 1] || null;
       i++;
@@ -132,6 +150,15 @@ function parseArgs(args) {
       i++;
     } else if (arg === '--stack' || arg === '-s') {
       flags.stack = args[i + 1] || null;
+      i++;
+    } else if (arg === '--pick') {
+      flags.pick = args[i + 1] || null;
+      i++;
+    } else if (arg === '--top') {
+      flags.top = args[i + 1] || null;
+      i++;
+    } else if (arg === '--category') {
+      flags.category = args[i + 1] || null;
       i++;
     } else if (!arg.startsWith('-')) {
       positional.push(arg);
@@ -184,6 +211,8 @@ function printHelp() {
   console.log(`  ${colors.green}pack${colors.reset}, ${colors.green}packs${colors.reset}        Manage composable capability packs (pack list, pack add <name>)`);
   console.log(`  ${colors.green}skill${colors.reset}, ${colors.green}skills${colors.reset}       Manage agent skills from skills.sh (skill list, add <repo>, update, find)`);
   console.log(`  ${colors.green}memory${colors.reset}             Shared memory vault operations (memory list, memory handoff, memory doctor)`);
+  console.log(`  ${colors.green}eval${colors.reset}, ${colors.green}benchmark${colors.reset}       Run capability benchmarks, pass@k evals, and agent scorecards`);
+  console.log(`  ${colors.green}design${colors.reset}                   Browse, match, and apply authentic brand design systems (list, match, apply, sync)`);
   console.log(`  ${colors.green}list${colors.reset}, ${colors.green}agents${colors.reset}       Display active agent personas and installed specialist skills`);
   console.log(`  ${colors.green}status${colors.reset}             Show active project configuration, detected stack, and health summary`);
   console.log(`  ${colors.green}version${colors.reset}            Print Dev-OS CLI version, Node runtime, and environment information`);
@@ -212,6 +241,8 @@ function printHelp() {
   console.log(`  $ ${colors.cyan}npx @olives/devos init --stack nextjs --existing${colors.reset}`);
   console.log(`  $ ${colors.cyan}npx @olives/devos pack list${colors.reset}`);
   console.log(`  $ ${colors.cyan}npx @olives/devos memory handoff${colors.reset}`);
+  console.log(`  $ ${colors.cyan}npx @olives/devos design match "issue tracker dark mode"${colors.reset}`);
+  console.log(`  $ ${colors.cyan}npx @olives/devos design apply linear${colors.reset}`);
   console.log(`  $ ${colors.cyan}npx @olives/devos doctor${colors.reset}\n`);
 
   console.log(`${colors.gray}Documentation & Guides: https://github.com/olitech1010/dev-os${colors.reset}\n`);
@@ -978,9 +1009,9 @@ async function runInit(flags) {
       });
     }
 
-    step('Installing agent roster, hooks, and memory templates', () => {
+    step('Installing agent roster, hooks, memory, catalog, and evaluation suites', () => {
       // Copy core structure excluding skills
-      const subdirs = ['agents', 'commands', 'hooks', 'memory', 'scripts', 'templates'];
+      const subdirs = ['agents', 'commands', 'hooks', 'memory', 'scripts', 'templates', 'evals', 'catalog'];
       subdirs.forEach((dir) => {
         const src = path.join(srcAgents, dir);
         const dest = path.join(destAgents, dir);
@@ -1257,8 +1288,8 @@ async function runUpdate(flags) {
     });
 
     // 2. Refresh .agents/ subdirectories
-    step('Refreshing agent personas, hooks, memory, and scripts', () => {
-      ['agents', 'commands', 'hooks', 'scripts', 'templates'].forEach((dir) => {
+    step('Refreshing agent personas, hooks, memory, catalog, scripts, and evaluation suites', () => {
+      ['agents', 'commands', 'hooks', 'scripts', 'templates', 'evals', 'catalog'].forEach((dir) => {
         const src = path.join(srcAgents, dir);
         const dest = path.join(destAgents, dir);
         if (fs.existsSync(src)) copyRecursiveSync(src, dest);
@@ -1818,6 +1849,340 @@ function runTelemetry(flags, positional) {
 }
 
 // ---------------------------------------------------------------------------
+// design (catalog, matcher & redesign engine)
+// ---------------------------------------------------------------------------
+
+function getDesignCatalogDir() {
+  const candidates = [
+    path.join(TARGET_DIR, '.agents', 'catalog', 'design-systems'),
+    path.join(TEMPLATE_DIR, '.agents', 'catalog', 'design-systems')
+  ];
+  for (const c of candidates) {
+    if (fs.existsSync(path.join(c, 'index.json'))) {
+      return c;
+    }
+  }
+  return null;
+}
+
+function loadDesignCatalog(catalogDir) {
+  if (!catalogDir) return [];
+  const indexPath = path.join(catalogDir, 'index.json');
+  if (!fs.existsSync(indexPath)) return [];
+  try {
+    return JSON.parse(fs.readFileSync(indexPath, 'utf8'));
+  } catch {
+    return [];
+  }
+}
+
+async function runDesign(flags, positional) {
+  const subCmd = positional[0] || (flags.list ? 'list' : (flags.match ? 'match' : (flags.apply ? 'apply' : null)));
+  const catalogDir = getDesignCatalogDir();
+
+  if (subCmd === 'sync') {
+    const syncScript = path.join(TEMPLATE_DIR, 'scripts', 'sync-design-catalog.js');
+    if (!fs.existsSync(syncScript)) {
+      console.error(`${colors.red}[ FAIL ] Catalog sync script not found at ${syncScript}${colors.reset}`);
+      process.exit(1);
+    }
+    const { spawnSync } = require('child_process');
+    const res = spawnSync(process.execPath, [syncScript], { stdio: 'inherit', cwd: TARGET_DIR });
+    process.exit(res.status !== null ? res.status : 1);
+  }
+
+  if (!catalogDir) {
+    console.error(`${colors.red}[ FAIL ] Design catalog not found. Run 'devos design sync' to populate.${colors.reset}`);
+    process.exit(1);
+  }
+
+  const catalog = loadDesignCatalog(catalogDir);
+  if (catalog.length === 0) {
+    console.error(`${colors.red}[ FAIL ] Design catalog index is empty. Run 'devos design sync'.${colors.reset}`);
+    process.exit(1);
+  }
+
+  if (subCmd === 'list') {
+    const categoryFilter = positional.slice(1).join(' ').toLowerCase().trim() || (flags.category ? flags.category.toLowerCase().trim() : '');
+    let filtered = catalog;
+    if (categoryFilter) {
+      filtered = catalog.filter((sys) =>
+        sys.category.toLowerCase().includes(categoryFilter) ||
+        (categoryFilter === 'ai' && sys.category.toLowerCase().startsWith('ai')) ||
+        (categoryFilter === 'devtools' && sys.category.toLowerCase().startsWith('developer')) ||
+        (categoryFilter === 'dev' && sys.category.toLowerCase().startsWith('developer')) ||
+        (categoryFilter === 'fintech' && sys.category.toLowerCase().startsWith('fintech')) ||
+        (categoryFilter === 'ecommerce' && sys.category.toLowerCase().startsWith('e-commerce')) ||
+        (categoryFilter === 'auto' && sys.category.toLowerCase().startsWith('automotive')) ||
+        (categoryFilter === 'retro' && sys.category.toLowerCase().startsWith('retro'))
+      );
+    }
+
+    if (flags.json) {
+      console.log(JSON.stringify(filtered, null, 2));
+      return;
+    }
+
+    if (!flags.quiet) printBanner();
+    console.log(`${colors.bold}DEV-OS DESIGN SYSTEM CATALOG (VoltAgent/awesome-design-md)${colors.reset}`);
+    console.log(`${colors.gray}${RULE}${colors.reset}`);
+    console.log(`  Total Systems: ${colors.green}${catalog.length}${colors.reset} across 8 industry verticals`);
+    if (categoryFilter) {
+      console.log(`  Filter:        ${colors.cyan}"${categoryFilter}"${colors.reset} (${filtered.length} matching)\n`);
+    } else {
+      console.log(`  Quick Apply:   ${colors.cyan}devos design apply <id>${colors.reset} (e.g. devos design apply stripe)\n`);
+    }
+
+    if (filtered.length === 0) {
+      console.log(`  ${colors.yellow}No design systems matched category filter "${categoryFilter}".${colors.reset}\n`);
+      return;
+    }
+
+    // Group by category
+    const groups = {};
+    for (const sys of filtered) {
+      if (!groups[sys.category]) groups[sys.category] = [];
+      groups[sys.category].push(sys);
+    }
+
+    for (const [cat, systems] of Object.entries(groups)) {
+      console.log(`${colors.bold}${colors.cyan}📂 ${cat}${colors.reset} (${systems.length} systems)`);
+      for (const sys of systems) {
+        const idCol = sys.id.padEnd(16);
+        const nameCol = sys.name.padEnd(18);
+        const colorTag = sys.primaryColor ? ` ${colors.gray}[${sys.primaryColor}]${colors.reset}` : '';
+        console.log(`  • ${colors.green}${idCol}${colors.reset} ${colors.bold}${nameCol}${colors.reset}${colorTag}`);
+        if (sys.summary) {
+          console.log(`    ${colors.gray}${sys.summary.slice(0, 100)}...${colors.reset}`);
+        }
+      }
+      console.log('');
+    }
+
+    console.log(`${colors.gray}Run 'devos design match "<keywords>"' to find the best match for your project.${colors.reset}\n`);
+    return;
+  }
+
+  if (subCmd === 'match') {
+    const query = positional.slice(1).join(' ').trim();
+    if (!query) {
+      console.log(`${colors.yellow}Usage: devos design match "<query>" [--pick <id_or_number>]${colors.reset}`);
+      console.log(`Example: devos design match "issue tracker dark mode"\n`);
+      process.exit(1);
+    }
+
+    // Token scoring algorithm
+    const tokens = query.toLowerCase().split(/[^a-z0-9_-]+/).filter((t) => t.length > 1);
+    const scored = [];
+
+    for (const sys of catalog) {
+      let score = 0;
+      const idLower = sys.id.toLowerCase();
+      const nameLower = sys.name.toLowerCase();
+      const catLower = sys.category.toLowerCase();
+      const kwString = (sys.keywords || []).join(' ').toLowerCase();
+      const sumString = (sys.summary || '').toLowerCase();
+
+      // Exact matches
+      if (idLower === query.toLowerCase() || nameLower === query.toLowerCase()) score += 100;
+      if (idLower.includes(query.toLowerCase())) score += 50;
+
+      for (const token of tokens) {
+        if (idLower === token) score += 40;
+        else if (idLower.includes(token)) score += 20;
+
+        if (nameLower.includes(token)) score += 25;
+        if (kwString.includes(token)) score += 15;
+        if (catLower.includes(token)) score += 12;
+        if (sumString.includes(token)) score += 6;
+      }
+
+      if (score > 0) {
+        scored.push({ sys, score });
+      }
+    }
+
+    scored.sort((a, b) => b.score - a.score);
+    const topCount = flags.top ? parseInt(flags.top, 10) : 5;
+    const topMatches = scored.slice(0, topCount).map((s) => s.sys);
+
+    if (flags.json) {
+      console.log(JSON.stringify({ query, count: topMatches.length, matches: topMatches }, null, 2));
+      return;
+    }
+
+    if (!flags.quiet) printBanner();
+    console.log(`${colors.bold}DEV-OS DESIGN SYSTEM MATCHER${colors.reset}`);
+    console.log(`${colors.gray}${RULE}${colors.reset}`);
+    console.log(`  Query: ${colors.cyan}"${query}"${colors.reset}\n`);
+
+    if (topMatches.length === 0) {
+      console.log(`  ${colors.yellow}No direct matches found in catalog for "${query}".${colors.reset}`);
+      console.log(`  Browse available systems with: ${colors.cyan}devos design list${colors.reset}\n`);
+      return;
+    }
+
+    console.log(`Found ${colors.green}${topMatches.length}${colors.reset} matching design systems in catalog:\n`);
+    topMatches.forEach((sys, idx) => {
+      console.log(`  ${colors.bold}[${idx + 1}] ${sys.name}${colors.reset} ${colors.cyan}(${sys.category})${colors.reset}`);
+      console.log(`      ID:      ${colors.green}${sys.id}${colors.reset}`);
+      console.log(`      Colors:  Primary ${sys.primaryColor} | Canvas ${sys.backgroundColor}`);
+      console.log(`      Summary: ${colors.gray}${sys.summary}${colors.reset}\n`);
+    });
+
+    // Check if --pick flag provided
+    const pickArg = flags.pick !== undefined && flags.pick !== null ? String(flags.pick).trim() : null;
+    let selected = null;
+
+    if (pickArg) {
+      const pickNum = parseInt(pickArg, 10);
+      if (!isNaN(pickNum) && pickNum >= 1 && pickNum <= topMatches.length) {
+        selected = topMatches[pickNum - 1];
+      } else {
+        selected = catalog.find((s) => s.id.toLowerCase() === pickArg.toLowerCase() || s.name.toLowerCase() === pickArg.toLowerCase());
+      }
+      if (!selected) {
+        console.error(`${colors.red}Invalid pick: '${pickArg}'. Choose 1-${topMatches.length} or a valid system ID.${colors.reset}`);
+        process.exit(1);
+      }
+    } else if (process.stdin.isTTY) {
+      // Interactive selection
+      const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
+      const ask = (q) => new Promise((resolve) => rl.question(q, resolve));
+      const answer = (await ask(`${colors.cyan}Select a design system to apply [1-${topMatches.length}] (or 'q' to cancel): ${colors.reset}`)).trim();
+      rl.close();
+
+      if (answer.toLowerCase() === 'q' || !answer) {
+        console.log(`${colors.yellow}Selection cancelled.${colors.reset}\n`);
+        return;
+      }
+      const ansNum = parseInt(answer, 10);
+      if (!isNaN(ansNum) && ansNum >= 1 && ansNum <= topMatches.length) {
+        selected = topMatches[ansNum - 1];
+      } else {
+        selected = catalog.find((s) => s.id.toLowerCase() === answer.toLowerCase());
+      }
+      if (!selected) {
+        console.error(`${colors.red}Invalid choice: '${answer}'.${colors.reset}`);
+        process.exit(1);
+      }
+    } else {
+      // Non-interactive fallback: auto-select top match if not specified
+      console.log(`${colors.gray}Non-interactive terminal: auto-selecting top candidate [1] (${topMatches[0].name}). Use --pick <id> to specify.${colors.reset}\n`);
+      selected = topMatches[0];
+    }
+
+    if (selected) {
+      applyDesignSystem(catalogDir, selected);
+    }
+    return;
+  }
+
+  if (subCmd === 'apply') {
+    const id = positional[1] ? positional[1].toLowerCase().trim() : null;
+    if (!id) {
+      console.log(`${colors.yellow}Usage: devos design apply <id>${colors.reset}`);
+      console.log(`Example: devos design apply stripe`);
+      console.log(`         devos design apply linear`);
+      console.log(`         devos design apply supabase\n`);
+      process.exit(1);
+    }
+
+    const matched = catalog.find((s) => s.id === id || s.id.replace(/\.app$/, '') === id || s.name.toLowerCase() === id);
+    if (!matched) {
+      console.error(`${colors.red}Design system '${id}' not found in catalog.${colors.reset}`);
+      console.log(`Run ${colors.cyan}devos design list${colors.reset} to see all available systems.\n`);
+      process.exit(1);
+    }
+
+    applyDesignSystem(catalogDir, matched);
+    return;
+  }
+
+  // Help / default
+  if (!flags.quiet) printBanner();
+  console.log(`${colors.bold}DEV-OS DESIGN SYSTEM CATALOG (devos design)${colors.reset}`);
+  console.log(`${colors.gray}${RULE}${colors.reset}`);
+  console.log(`Browse, match, and apply authentic brand design systems directly into root DESIGN.md.\n`);
+  console.log(`${colors.bold}SUBCOMMANDS${colors.reset}`);
+  console.log(`  ${colors.green}list [category]${colors.reset}             List all 74 systems or filter by vertical (ai, devtools, fintech, etc.)`);
+  console.log(`  ${colors.green}match "<query>" [--pick N]${colors.reset}  Match project keywords against catalog and apply`);
+  console.log(`  ${colors.green}apply <id>${colors.reset}                  Directly apply a known brand system (e.g. stripe, linear, supabase)`);
+  console.log(`  ${colors.green}sync${colors.reset}                        Refresh catalog from VoltAgent/awesome-design-md upstream\n`);
+  console.log(`${colors.bold}EXAMPLES${colors.reset}`);
+  console.log(`  $ ${colors.cyan}devos design list devtools${colors.reset}`);
+  console.log(`  $ ${colors.cyan}devos design match "b2b real-time dashboard"${colors.reset}`);
+  console.log(`  $ ${colors.cyan}devos design match "saas payments" --pick stripe${colors.reset}`);
+  console.log(`  $ ${colors.cyan}devos design apply linear${colors.reset}\n`);
+}
+
+function applyDesignSystem(catalogDir, system) {
+  const srcFile = path.join(catalogDir, system.path);
+  if (!fs.existsSync(srcFile)) {
+    console.error(`${colors.red}[ FAIL ] Specification file not found at ${srcFile}${colors.reset}`);
+    process.exit(1);
+  }
+
+  const destFile = path.join(TARGET_DIR, 'DESIGN.md');
+  const content = fs.readFileSync(srcFile, 'utf8');
+  fs.writeFileSync(destFile, content, 'utf8');
+
+  console.log(`${colors.green}✓ Successfully applied [${system.name}] design system to ./DESIGN.md${colors.reset}`);
+  console.log(`  Category: ${colors.cyan}${system.category}${colors.reset}`);
+  console.log(`  Colors:   Primary ${system.primaryColor} | Canvas ${system.backgroundColor}`);
+  console.log(`  Gate:     ${colors.green}Mandatory Design Gate Satisfied (.agents/hooks/pre-tool-use.sh unblocked)${colors.reset}\n`);
+
+  console.log(`${colors.bold}Next Action (Multi-Agent UI Redesign):${colors.reset}`);
+  console.log(`  To refactor existing frontend components to match this new design system:`);
+  console.log(`    $ ${colors.green}/redesign${colors.reset}`);
+  console.log(`  Or instruct the Orchestrator:`);
+  console.log(`    "Please redesign the frontend components to match the updated DESIGN.md"\n`);
+}
+
+// ---------------------------------------------------------------------------
+// eval
+// ---------------------------------------------------------------------------
+
+function runEval(flags, positional) {
+  const runnerPath = path.join(TEMPLATE_DIR, 'scripts', 'eval-runner.js');
+  if (!fs.existsSync(runnerPath)) {
+    console.error(`${colors.red}[ FAIL ] Evaluation runner (scripts/eval-runner.js) not found.${colors.reset}`);
+    process.exit(1);
+  }
+
+  const subCmd = positional[0] || null;
+  const runnerArgs = [];
+
+  if (subCmd === 'list') {
+    runnerArgs.push('--list');
+  } else if (subCmd === 'scorecard') {
+    runnerArgs.push('--scorecard');
+  } else if (subCmd === 'run' || subCmd === 'check' || !subCmd) {
+    if (positional[1] && !positional[1].startsWith('-')) {
+      runnerArgs.push('--suite', positional[1]);
+    }
+  } else if (subCmd && !subCmd.startsWith('-')) {
+    runnerArgs.push('--suite', subCmd);
+  }
+
+  if (flags.suite) runnerArgs.push('--suite', flags.suite);
+  if (flags.k) runnerArgs.push('--k', String(flags.k));
+  if (flags.scorecard) runnerArgs.push('--scorecard');
+  if (flags.list) runnerArgs.push('--list');
+  if (flags.json) runnerArgs.push('--json');
+  if (flags.quiet) runnerArgs.push('--quiet');
+
+  const { spawnSync } = require('child_process');
+  const res = spawnSync(process.execPath, [runnerPath, ...runnerArgs], {
+    cwd: TARGET_DIR,
+    stdio: 'inherit',
+    env: process.env
+  });
+
+  process.exit(res.status !== null ? res.status : 1);
+}
+
+// ---------------------------------------------------------------------------
 // doctor
 // ---------------------------------------------------------------------------
 
@@ -1838,6 +2203,7 @@ function runDoctor(flags) {
     { name: 'Shared memory vault (.agents/memory/)', path: path.join(TARGET_DIR, '.agents', 'memory'), type: 'dir', optional: true },
     { name: 'Task board (docs/TASK_BOARD.md)', path: path.join(TARGET_DIR, 'docs', 'TASK_BOARD.md'), type: 'file', optional: true },
     { name: 'Telemetry buffer (.agents/telemetry/)', path: path.join(TARGET_DIR, '.agents', 'telemetry'), type: 'dir', optional: true },
+    { name: 'Evaluation benchmarks (.agents/evals/)', path: path.join(TARGET_DIR, '.agents', 'evals'), type: 'dir', optional: true },
     { name: 'Mandatory Design Gate (DESIGN.md)', path: (fs.existsSync(path.join(TARGET_DIR, 'DESIGN.md')) || !fs.existsSync(path.join(TARGET_DIR, 'docs', 'DESIGN.md'))) ? path.join(TARGET_DIR, 'DESIGN.md') : path.join(TARGET_DIR, 'docs', 'DESIGN.md'), type: 'file', optional: true },
     { name: 'Interactive Testing Guide (docs/TESTING_GUIDE.md)', path: path.join(TARGET_DIR, 'docs', 'TESTING_GUIDE.md'), type: 'file', optional: true },
     { name: 'Team roster (.agents/AGENTS.md)', path: path.join(TARGET_DIR, '.agents', 'AGENTS.md'), type: 'file' },
@@ -1982,6 +2348,9 @@ function runStatus(flags) {
   console.log(`  Secret Scanner:${hasGitleaks ? colors.green + ' Active (Gitleaks)' : colors.cyan + ' Active (Dev-OS built-in)'}${colors.reset}`);
   console.log(`  Memory Vault:  ${hasMemory ? colors.green + 'Active (.agents/memory/)' : colors.gray + 'None'}${colors.reset}`);
   console.log(`  Task Board:    ${hasTaskBoard ? colors.green + 'Active (docs/TASK_BOARD.md)' : colors.gray + 'None'}${colors.reset}`);
+  const latestScorecardPath = path.join(TARGET_DIR, '.agents', 'evals', 'reports', 'latest-scorecard.json');
+  const latestScorecard = fs.existsSync(latestScorecardPath) ? JSON.parse(fs.readFileSync(latestScorecardPath, 'utf8')) : null;
+  console.log(`  Eval Benchmark:${latestScorecard ? (latestScorecard.verdict === 'EVAL_PASSED' ? colors.green + ' Passed (' + latestScorecard.score + '%)' : colors.red + ' Regressed (' + latestScorecard.score + '%)') : colors.gray + ' None'}${colors.reset}`);
   if (manifest && manifest.installedPacks) {
     console.log(`  Active Packs:  ${colors.cyan}${manifest.installedPacks.join(', ')}${colors.reset}`);
   }
@@ -2047,6 +2416,13 @@ async function main() {
       break;
     case 'status':
       runStatus(flags);
+      break;
+    case 'eval':
+    case 'benchmark':
+      runEval(flags, positional);
+      break;
+    case 'design':
+      await runDesign(flags, positional);
       break;
     case 'version':
       printVersion();

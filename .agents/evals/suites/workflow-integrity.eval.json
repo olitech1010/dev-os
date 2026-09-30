@@ -1,0 +1,39 @@
+{
+  "id": "workflow-integrity",
+  "name": "Autonomous SDLC Workflow Integrity",
+  "description": "Evaluates 4 standardized execution modes, 10-stage autonomous SDLC, circuit breaker, and rollback protocol",
+  "category": "workflow",
+  "version": "1.0.0",
+  "cases": [
+    {
+      "id": "workflow-feature-delivery-steps",
+      "name": "Standard Feature Delivery follows the 8-step pipeline through staged review and commit gate",
+      "workflow": "feature-delivery",
+      "critical": true
+    },
+    {
+      "id": "workflow-circuit-breaker-rule",
+      "name": "Circuit breaker halts loops exceeding 3 iterations and escalates to human",
+      "workflow": "circuit-breaker",
+      "critical": true
+    },
+    {
+      "id": "workflow-solo-session-protocol",
+      "name": "Solo Session Protocol enforces 7-step minimum viable gate",
+      "workflow": "solo-session",
+      "critical": true
+    },
+    {
+      "id": "workflow-rollback-incident-log",
+      "name": "Rollback protocol enforces incident logging in docs/LESSONS.md",
+      "workflow": "rollback",
+      "critical": false
+    },
+    {
+      "id": "workflow-universal-password",
+      "name": "Universal test password devos123 is codified in testing guide standards",
+      "workflow": "testing-guide",
+      "critical": true
+    }
+  ]
+}

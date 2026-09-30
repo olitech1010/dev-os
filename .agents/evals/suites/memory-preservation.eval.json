@@ -1,0 +1,39 @@
+{
+  "id": "memory-preservation",
+  "name": "Shared Memory Vault & State Preservation",
+  "description": "Evaluates context tracking, DAG task board integrity, ADR persistence, and session handoffs",
+  "category": "state",
+  "version": "1.0.0",
+  "cases": [
+    {
+      "id": "memory-context-schema",
+      "name": "context.json schema validates with project, activeBranch, activeTask, and milestone tracking",
+      "scope": "context",
+      "critical": true
+    },
+    {
+      "id": "memory-task-board-dag",
+      "name": "docs/TASK_BOARD.md maintains valid DAG column structure and task states",
+      "scope": "task-board",
+      "critical": true
+    },
+    {
+      "id": "memory-current-state-sync",
+      "name": "docs/CURRENT_STATE.md remains the single source of truth for active task and team roster",
+      "scope": "current-state",
+      "critical": true
+    },
+    {
+      "id": "memory-adr-template-integrity",
+      "name": "ADR template in .agents/memory/decisions/ maintains standard format",
+      "scope": "decisions",
+      "critical": false
+    },
+    {
+      "id": "memory-handoff-template-integrity",
+      "name": "Session handoff template in .agents/memory/handoffs/ maintains handoff protocol",
+      "scope": "handoffs",
+      "critical": false
+    }
+  ]
+}

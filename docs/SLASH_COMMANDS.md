@@ -123,11 +123,18 @@ Use $ARGUMENTS to reference user input after the command.
 - **Usage**: `/auto Build an offline-first markdown note taking application with full-text search`
 
 ### `/design`
-- **Description**: Execute Mandatory Design Gate; extract tokens from ui-ux-pro-max and author DESIGN.md at project root.
+- **Description**: Match authentic brand design systems from catalog (VoltAgent/awesome-design-md) and apply DESIGN.md at project root.
 - **Target Agent**: UI Designer
 - **Triage Level**: STANDARD
 - **Workflow**: standard
 - **Usage**: `/design Minimalist developer portfolio with terminal aesthetics`
+
+### `/redesign`
+- **Description**: Orchestrate multi-agent UI redesign refactoring existing frontend components to match updated DESIGN.md.
+- **Target Agent**: Orchestrator
+- **Triage Level**: STANDARD
+- **Workflow**: standard
+- **Usage**: `/redesign`
 
 ### `/humanize`
 - **Description**: Audit and scrub AI writing tells from documentation and marketing copy.
@@ -142,6 +149,13 @@ Use $ARGUMENTS to reference user input after the command.
 - **Triage Level**: TRIVIAL
 - **Workflow**: direct
 - **Usage**: `/telemetry` or `/telemetry report`
+
+### `/eval`
+- **Description**: Run capability benchmarks, measure pass@k reliability, and generate agent scorecards.
+- **Target Agent**: Eval Engineer
+- **Triage Level**: STANDARD
+- **Workflow**: direct
+- **Usage**: `/eval` or `/eval gates`
 
 ## Creating Custom Commands
 

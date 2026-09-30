@@ -20,20 +20,25 @@
 ## Active Board
 
 ### [ IN_PROGRESS ]
-- **`TASK-001`**: Dev-OS v3 Upgrades — Runtime Hooks, Memory, Packs, Task Board & Multi-Harness
-  - **Assignee:** Developer / Orchestrator
-  - **DependsOn:** None
-  - **Triage Level:** STANDARD
-  - **ParallelGate:** [QA: pending, Tester: pending, Security: pending]
-  - **HumanCheckpoint:** pending
+*(Ready for next milestone: TASK-003)*
 
 ### [ QUEUED ]
-*(No tasks currently queued)*
+- **`TASK-003`**: Autonomous Executive Mode SDLC Pipeline Runner (`devos run` / `/auto` full multi-agent stage execution loop from idea to tested software)
+  - **Assignee:** Executive Proxy / Orchestrator
+  - **DependsOn:** TASK-002
+  - **Triage Level:** STANDARD
 
 ### [ BACKLOG ]
-- **`TASK-002`**: Reliability & Eval Layer (`pass@k` test harness and agent scorecards)
+- **`TASK-004`**: Observability & Telemetry RCA Auto-PR Engine (`devos telemetry pr/report` automated diagnostic feedback loop to `olitech1010/dev-os`)
+- **`TASK-005`**: Dynamic Upstream Skills & Registry Ecosystem Synchronization (`devos skill update` / bi-directional sync with `skills.sh`)
 
 ### [ DONE ]
+- **`TASK-002`**: Dev-OS v4.2.0 Reliability & Eval Layer (`pass@k` test harness, benchmark evals, agent scorecards, devos eval CLI, and Awesome Design Catalog)
+  - **ParallelGate:** [QA: pass, Tester: pass, Security: pass]
+  - **HumanCheckpoint:** approved
+- **`TASK-001c`**: Dev-OS v4.1.0 5-Layer Quality Gate Architecture — Anti-AI UI standard (`ui-taste-check.sh`), `env-check.sh`, `db-check.sh`, and Hard Rules #19–21
+- **`TASK-001b`**: Dev-OS v4.0.0 Autonomous SDLC — Modes (`auto`), Root `DESIGN.md` Design Gate, Telemetry, and Testing Guide
+- **`TASK-001`**: Dev-OS v3.0 Upgrades — Runtime Hooks, Memory Vault, Packs, Task Board & Multi-Harness
 - **`TASK-000`**: Dev-OS v2.1.1 Official npm scope release under `@olives/devos`
 
 ---

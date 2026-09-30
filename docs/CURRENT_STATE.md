@@ -3,26 +3,31 @@
 > This file is maintained by the Orchestrator agent. It is updated at each phase transition to preserve context across long sessions.
 
 ## Current Task
-- **Task:** Dev-OS v4.1.0 (5-Layer Quality Gate Architecture: Layer 1 Design Gate, Layer 2 Mechanical Scanners [`gitleaks`, `ui-taste-check.sh`, `humanize-check.sh`, `env-check.sh`], Layer 3 Database Safety Gate [`db-check.sh`], Layer 4 Parallel Engineering Gate, Layer 5 Human Checkpoint Gate, Hard Rules #19–21).
+- **Task:** TASK-002: Dev-OS v4.2.0 Reliability & Eval Layer (`pass@k` test harness, benchmark evaluation suites, agent scorecards, `devos eval` CLI, and Awesome Design Catalog).
 - **Branch:** main
 - **Triage Level:** STANDARD
-- **Status:** COMPLETED & VERIFIED (Smoke tests 89/89 pass, all 4 mechanical scanners 100% clean, ready for staged review and commit)
+- **Status:** APPROVED & COMMITTING (All 33 benchmark evaluation cases pass 100% with EVAL_PASSED, 94 smoke test assertions pass, 4 mechanical scanners clean, approved by human)
 
 ## Active Agents
 | Agent | Status | Current Assignment |
 |---|---|---|
-| Orchestrator | IDLE | Coordinating v4.0.0 autonomous SDLC and gate architecture |
-| Executive Proxy | IDLE | Autonomous Tech Lead proxy for `devos run` / `/auto` mode |
-| UI Designer | IDLE | Mandatory Design Gate (`DESIGN.md` at project root) and `ui-ux-pro-max` integration |
-| Developer | IDLE | Implemented hook gates, CLI runners, and manifest telemetry settings |
-| Tester | IDLE | Verified end-to-end smoke test suite (80/80 passing) & Testing Guide protocol |
-| QA | IDLE | Verified Design Gate, Humanizer scanner, and coding standards compliance |
-| Security | IDLE | Audited telemetry sanitization (zero secrets, zero code logged) |
-| Telemetry | IDLE | Configured local failure buffer (`.agents/telemetry/events.jsonl`) & RCA engine |
-| Eval Engineer | IDLE | Evaluated multi-harness parity across Claude, Antigravity, Cursor, OpenCode, Codex |
-| Release Manager | IDLE | Humanizer documentation scrubbing and version bump to 4.0.0 |
+| Orchestrator | IDLE | Coordinated Task Board DAG, milestone handoffs, and verification loop |
+| Eval Engineer | IDLE | Delivered 5 capability benchmark suites, pass@k calculator, and scorecards |
+| Developer | IDLE | Implemented `scripts/eval-runner.js`, `devos eval` CLI, and `/eval` command |
+| QA | IDLE | Verified code quality, standards, zero-dependency adherence, and gates |
+| Tester | IDLE | Verified smoke test suite expansion (94/94 assertions passing) |
+| Security | IDLE | Audited execution safety and sandboxing |
+| Executive Proxy | QUEUED | Assigned to upcoming TASK-003 autonomous SDLC pipeline runner |
+| Telemetry | QUEUED | Assigned to upcoming TASK-004 automated RCA feedback PR loop |
+| UI Designer | IDLE | Idle |
+| DBA | IDLE | Idle |
+| DevOps | IDLE | Idle |
+| Researcher | IDLE | Idle |
+| Memory Manager | ACTIVE | Maintained context.json and queued future milestones |
+| Release Manager | IDLE | Release notes authored in CHANGELOG.md; version bumped to 4.2.0 |
 
 ## Recent Decisions
+- **Established First-Class Reliability & Evaluation Layer (TASK-002 / v4.2.0)**: Built zero-dependency evaluation runner (`scripts/eval-runner.js` / `devos eval`), created 5 standardized benchmark suites in `.agents/evals/suites/` (`gates`, `harness-parity`, `memory-preservation`, `agent-authority`, `workflow-integrity`), implemented mathematical pass@k curve estimation, automated timestamped scorecard generation in `.agents/evals/reports/`, added `/eval` slash command, and authored `eval-harness` skill.
 - **Established The 5-Layer Quality Gate Architecture**: Codified a comprehensive defense-in-depth pipeline: Layer 1 (Design & Architecture Gate via `pre-tool-use.sh`), Layer 2 (Mechanical Scanners: `gitleaks`, `ui-taste-check.sh`, `humanize-check.sh`, `env-check.sh`), Layer 3 (Data & Migration Safety Gate via `db-check.sh`), Layer 4 (Parallel Engineering Gate via QA + Tester + Security), and Layer 5 (Human Checkpoint Gate via `commit.sh`).
 - **Environment & Config Parity Gate (Hard Rule #20)**: Built `.agents/scripts/env-check.sh` to mechanically audit application code against `.env.example`, ensuring 100% variable documentation and zero committed credentials.
 - **Database & Migration Safety Gate (Hard Rule #21)**: Built `.agents/scripts/db-check.sh` to audit SQL migrations for mandatory Row Level Security (`ENABLE ROW LEVEL SECURITY`), foreign key indexing, and non-destructive constraint verification.

@@ -225,10 +225,10 @@ Observability and failure analysis specialist. Monitors `.agents/telemetry/event
 
 Quality benchmark and regression prevention engineer inspired by ECC and DeepSeek Harness patterns.
 
-- Maintains capability evals and regression suites
-- Measures pass@k rates on automated workflows
+- Maintains capability evals and regression suites in `.agents/evals/`
+- Measures pass@k rates on automated workflows using `.agents/skills/eval-harness/SKILL.md`
 - Validates cross-harness parity across Claude, Antigravity, Cursor, OpenCode, and Codex
-- Issues formal `EVAL_PASSED` or `EVAL_REGRESSED` verdicts
+- Issues formal `EVAL_PASSED` or `EVAL_REGRESSED` verdicts with actionable scorecards (`devos eval`)
 
 ---
 
@@ -371,6 +371,7 @@ All agents can reference these skills from `skills/`. Each skill is a directory 
 | `autonomous-sdlc/` | Autonomous SDLC modes (interactive, guided, auto, audit) | Executive Proxy, Orchestrator |
 | `telemetry/` | Local failure logging and RCA feedback | Telemetry Agent |
 | `anti-ai-ui/` | Eliminates AI UI clichés and enforces authentic craft | UI Designer, Developer, QA |
+| `eval-harness/` | Benchmark capability evaluations, pass@k metrics, and agent scorecards | Eval Engineer |
 
 ---
 

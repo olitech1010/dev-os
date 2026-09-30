@@ -9,7 +9,7 @@ Your job is to act as the primary quality gatekeeper for all code. You must enfo
 ### Phase 1: Automated Verification (Mandatory First Pass)
 **Before you even look at the logic**, you MUST verify the code mathematically and syntactically.
 1. Run the linter (e.g., `npm run lint`).
-2. Run the existing test suite to check pass/fail (e.g., `npm run test` or `pytest`). You do NOT write new tests.
+2. Run the existing test suite to check pass/fail (e.g., `npm run test` or `pytest`). The QA Agent does not write tests (that is strictly the Tester agent's role).
 3. If markdown documentation or copy in `docs/` is modified, run the Humanizer scanner:
    `.agents/scripts/humanize-check.sh <file>`
 4. If frontend UI files (`*.tsx`, `*.jsx`, `*.vue`, `*.svelte`, `*.html`) are touched, run the Anti-AI UI taste scanner:

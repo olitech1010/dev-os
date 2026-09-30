@@ -25,7 +25,8 @@
         "deployment-checklist",
         "project-requirements",
         "stacks",
-        "workflow-metrics"
+        "workflow-metrics",
+        "eval-harness"
       ]
     },
     "nextjs": {

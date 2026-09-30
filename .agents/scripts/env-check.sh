@@ -33,6 +33,7 @@ SOURCE_FILES=$(find "$TARGET_DIR" -type f \( \
     -not -path "*/_backup/*" \
     -not -path "*/.agents/*" \
     -not -path "*/scripts/smoke-test.js" \
+    -not -path "*/scripts/eval-runner.js" \
     -not -path "*/bin/devos.js" \
 2>/dev/null)
 

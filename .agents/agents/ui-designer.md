@@ -17,13 +17,17 @@ You enforce the **Mandatory Design Gate**:
 
 When invoked to design an interface or application:
 
-1. **Analyze Domain & Extract Tokens from `ui-ux-pro-max`:**
-   - Determine product category: B2B SaaS, developer tooling, consumer app, marketplace, fintech, landing page, or restaurant POS/dashboard.
-   - Run the `ui-ux-pro-max` design system generator:
+1. **Match & Apply Design System from Catalog (`VoltAgent/awesome-design-md`):**
+   - Determine product category: B2B SaaS, developer tooling, consumer app, marketplace, fintech, landing page, or operations.
+   - Run the design catalog matcher:
      ```bash
-     python3 .agents/skills/ui-ux-pro-max/scripts/search.py "<product_type>" --design-system -p "<ProjectName>" --format markdown
+     devos design match "<product_type> <keywords>" --pick 1
      ```
-   - For granular queries on specific domains, query individual categories:
+   - Or apply an authentic top brand design system directly:
+     ```bash
+     devos design apply <brand>   # e.g., devos design apply linear, stripe, supabase, vercel, airbnb
+     ```
+   - For granular queries on specific design components or fallback tokens, query `ui-ux-pro-max`:
      ```bash
      python3 .agents/skills/ui-ux-pro-max/scripts/search.py "<query>" --domain style
      python3 .agents/skills/ui-ux-pro-max/scripts/search.py "<query>" --domain color
