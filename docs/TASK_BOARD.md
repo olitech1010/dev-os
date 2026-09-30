@@ -20,13 +20,13 @@
 ## Active Board
 
 ### [ IN_PROGRESS ]
-*(Ready for next milestone: TASK-003)*
-
-### [ QUEUED ]
 - **`TASK-003`**: Autonomous Executive Mode SDLC Pipeline Runner (`devos run` / `/auto` full multi-agent stage execution loop from idea to tested software)
   - **Assignee:** Executive Proxy / Orchestrator
   - **DependsOn:** TASK-002
   - **Triage Level:** STANDARD
+
+### [ QUEUED ]
+*(Ready for next milestone upon completion of TASK-003)*
 
 ### [ BACKLOG ]
 - **`TASK-004`**: Observability & Telemetry RCA Auto-PR Engine (`devos telemetry pr/report` automated diagnostic feedback loop to `olitech1010/dev-os`)
