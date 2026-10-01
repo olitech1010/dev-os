@@ -34,6 +34,24 @@
       "name": "Universal test password devos123 is codified in testing guide standards",
       "workflow": "testing-guide",
       "critical": true
+    },
+    {
+      "id": "workflow-sdlc-runner-state",
+      "name": "SDLC pipeline runner writes and reads sdlc-state.json with correct schema",
+      "workflow": "sdlc-runner",
+      "critical": true
+    },
+    {
+      "id": "workflow-sdlc-runner-gates",
+      "name": "SDLC runner enforces Mandatory Design Gate before implementation stage",
+      "workflow": "sdlc-runner",
+      "critical": true
+    },
+    {
+      "id": "workflow-sdlc-runner-delegation",
+      "name": "SDLC runner produces valid agent delegation prompts for all 10 stages",
+      "workflow": "sdlc-runner",
+      "critical": true
     }
   ]
 }

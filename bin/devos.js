@@ -96,7 +96,13 @@ function parseArgs(args) {
     list: false,
     pick: null,
     top: null,
-    category: null
+    category: null,
+    // SDLC pipeline runner flags
+    status: false,
+    dryRun: false,
+    resume: false,
+    reset:  false,
+    step:   null
   };
 
   const positional = [];
@@ -159,6 +165,17 @@ function parseArgs(args) {
       i++;
     } else if (arg === '--category') {
       flags.category = args[i + 1] || null;
+      i++;
+    } else if (arg === '--status') {
+      flags.status = true;
+    } else if (arg === '--dry-run') {
+      flags.dryRun = true;
+    } else if (arg === '--resume') {
+      flags.resume = true;
+    } else if (arg === '--reset') {
+      flags.reset = true;
+    } else if (arg === '--step') {
+      flags.step = args[i + 1] || null;
       i++;
     } else if (!arg.startsWith('-')) {
       positional.push(arg);
@@ -1720,38 +1737,32 @@ function runSkill(flags, positional) {
 // ---------------------------------------------------------------------------
 
 function runAuto(flags, positional) {
-  if (!flags.quiet && !flags.json) printBanner();
-  const idea = positional.join(' ').trim();
-
-  console.log(`${colors.bold}AUTONOMOUS SDLC RUNNER (devos run / devos auto)${colors.reset}`);
-  console.log(`${colors.gray}${RULE}${colors.reset}`);
-  console.log(`  Execution Mode: ${colors.green}Autonomous (Founder / Executive Proxy)${colors.reset}`);
-  if (idea) {
-    console.log(`  Target Goal:    ${colors.cyan}"${idea}"${colors.reset}\n`);
-  } else {
-    console.log(`  Target Goal:    ${colors.cyan}Continuous Autonomous Delivery${colors.reset}\n`);
+  const runnerPath = path.join(TEMPLATE_DIR, 'scripts', 'sdlc-runner.js');
+  if (!fs.existsSync(runnerPath)) {
+    console.error(`${colors.red}[ FAIL ] SDLC runner (scripts/sdlc-runner.js) not found. Run 'devos update' to restore it.${colors.reset}`);
+    process.exit(1);
   }
 
-  console.log(`${colors.bold}10-Stage Professional SDLC Execution Pipeline:${colors.reset}`);
-  console.log(`  ${colors.cyan}1. Inception:${colors.reset}            Architect (grill-me) → docs/PROJECT_REQUIREMENTS.md`);
-  console.log(`  ${colors.cyan}2. Design Gate:${colors.reset}          UI Designer (ui-ux-pro-max) → DESIGN.md`);
-  console.log(`  ${colors.cyan}3. Architecture & DB:${colors.reset}    DBA → Migrations + Seed Fixtures (test password: devos123)`);
-  console.log(`  ${colors.cyan}4. Task Decomposition:${colors.reset}   Orchestrator → docs/TASK_BOARD.md DAG`);
-  console.log(`  ${colors.cyan}5. Implementation:${colors.reset}       Developer → Code authoring (dynamic subagents)`);
-  console.log(`  ${colors.cyan}6. Test Suite:${colors.reset}           Tester → Automated unit & integration tests`);
-  console.log(`  ${colors.cyan}7. Testing Guide:${colors.reset}        Tester → Interactive docs/TESTING_GUIDE.md`);
-  console.log(`  ${colors.cyan}8. Quality Assurance:${colors.reset}    QA → Lint, types, standards & Design Gate audit`);
-  console.log(`  ${colors.cyan}9. Security Audit:${colors.reset}       Security → OWASP, auth & secret scan`);
-  console.log(`  ${colors.cyan}10. Humanizer Audit:${colors.reset}     Release Manager → Scrub AI tells from docs & copy\n`);
+  // Forward all relevant flags and positional args to sdlc-runner
+  const runnerArgs = [];
+  if (flags.status)  runnerArgs.push('--status');
+  if (flags.dryRun)  runnerArgs.push('--dry-run');
+  if (flags.resume)  runnerArgs.push('--resume');
+  if (flags.reset)   runnerArgs.push('--reset');
+  if (flags.list)    runnerArgs.push('--list');
+  if (flags.json)    runnerArgs.push('--json');
+  if (flags.quiet)   runnerArgs.push('--quiet');
+  if (flags.step)    runnerArgs.push('--step', flags.step);
+  if (positional.length) runnerArgs.push(...positional);
 
-  console.log(`${colors.bold}Next Action:${colors.reset}`);
-  console.log(`  To trigger this autonomous run in your AI coding harness, use:`);
-  console.log(`    $ ${colors.green}/auto ${idea || '<your product idea>'}${colors.reset}`);
-  console.log(`  Or hand off to the Executive Proxy:`);
-  console.log(`    "Executive Proxy, run autonomous SDLC mode for: ${idea || '<your product idea>'}"\n`);
-  console.log(`${colors.bold}💡 Prompting Tip (Prompt the What, Not the How):${colors.reset}`);
-  console.log(`  Do not waste prompt tokens micromanaging roles, secret protection, or responsive styling.`);
-  console.log(`  Dev-OS mechanically enforces all gates, roles, and safety rules out of the box.\n`);
+  const { spawnSync } = require('child_process');
+  const res = spawnSync(process.execPath, [runnerPath, ...runnerArgs], {
+    cwd:   TARGET_DIR,
+    stdio: 'inherit',
+    env:   process.env
+  });
+
+  process.exit(res.status !== null ? res.status : 1);
 }
 
 // ---------------------------------------------------------------------------

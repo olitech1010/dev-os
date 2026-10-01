@@ -186,8 +186,33 @@ try {
   check('pre-tool-use.sh passes UI file creation when root DESIGN.md is present', uiCheckPass.status === 0);
 
   // CLI Subcommands verification: run/auto & telemetry
-  const autoRun = runCli(['auto', 'Build an MVP habit tracker', '--quiet'], proj);
-  check('devos auto exits 0', autoRun.status === 0 && autoRun.stdout.includes('Autonomous (Founder / Executive Proxy)'));
+  const autoList = runCli(['auto', '--list', '--quiet'], proj);
+  check('devos auto --list exits 0 and shows 10 stages', autoList.status === 0 && autoList.stdout.includes('Inception') && autoList.stdout.includes('Humanizer Audit'));
+
+  const autoDryRun = runCli(['auto', '--dry-run', 'Build an MVP habit tracker', '--quiet'], proj);
+  check('devos auto --dry-run exits 0', autoDryRun.status === 0 && autoDryRun.stdout.includes('DRY-RUN'));
+
+  const autoInit = runCli(['auto', 'Build an MVP habit tracker', '--quiet'], proj);
+  const sdlcStatePath = path.join(proj, '.agents', 'memory', 'sdlc-state.json');
+  check('devos auto initialises pipeline and writes sdlc-state.json', autoInit.status === 0 && fs.existsSync(sdlcStatePath));
+
+  const sdlcState = fs.existsSync(sdlcStatePath) ? JSON.parse(fs.readFileSync(sdlcStatePath, 'utf8')) : {};
+  check('sdlc-state.json has correct schema', sdlcState.schemaVersion === '1.0.0' && sdlcState.currentStage === 'inception' && sdlcState.mode === 'auto');
+
+  const autoStatus = runCli(['auto', '--status', '--quiet'], proj);
+  check('devos auto --status exits 0', autoStatus.status === 0 && autoStatus.stdout.includes('inception'));
+
+  const autoStep = runCli(['auto', '--step', 'inception', '--quiet'], proj);
+  check('devos auto --step inception exits 0 with delegation prompt', autoStep.status === 0 && autoStep.stdout.includes('Architect Agent') && autoStep.stdout.includes('grill-me'));
+
+  const autoStepDesign = runCli(['auto', '--step', 'design', '--quiet'], proj);
+  check('devos auto --step design shows gate status', autoStepDesign.status === 0 && autoStepDesign.stdout.includes('Gate Check'));
+
+  const autoJson = runCli(['auto', '--status', '--json'], proj);
+  check('devos auto --status --json outputs valid JSON', (() => { try { const j = JSON.parse(autoJson.stdout); return j.currentStage === 'inception'; } catch { return false; } })());
+
+  const autoReset = runCli(['auto', '--reset', '--quiet'], proj);
+  check('devos auto --reset clears state', autoReset.status === 0 && !fs.existsSync(path.join(proj, '.agents', 'memory', 'sdlc-state.json')));
 
   const telemStatus = runCli(['telemetry', 'status', '--quiet'], proj);
   check('devos telemetry status exits 0', telemStatus.status === 0 && telemStatus.stdout.includes('Enabled (on - recommended)'));

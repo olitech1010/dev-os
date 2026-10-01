@@ -100,3 +100,47 @@ In `auto` mode, the team executes the following 10-stage pipeline:
 - The Developer MUST NOT write code without passing through the QA gate.
 - The Tester MUST author `docs/TESTING_GUIDE.md` so non-technical stakeholders can verify the application.
 - All documentation in `/docs/` MUST be scanned using `.agents/scripts/humanize-check.sh`.
+
+---
+
+## 4. SDLC Pipeline Runner CLI Reference
+
+The `scripts/sdlc-runner.js` engine executes, tracks, and gates the 10-stage pipeline. State is persisted in `.agents/memory/sdlc-state.json`.
+
+### Commands
+
+| Command | Description |
+|---|---|
+| `devos run "<idea>"` | Initialise a new pipeline run for a product idea |
+| `devos run --status` | Show current stage and pipeline progress |
+| `devos run --step <stage-id>` | Print the ready-to-paste delegation prompt for one stage |
+| `devos run --resume` | Resume an interrupted run from the current stage |
+| `devos run --dry-run "<idea>"` | Preview pipeline + gate checks without writing state |
+| `devos run --list` | List all 10 stages with agents, skills, and deliverables |
+| `devos run --reset` | Clear state to start a fresh run |
+| `devos run --json` | Output pipeline state as JSON |
+
+### Stage IDs
+
+`inception` · `design` · `database` · `tasks` · `implementation` · `tests` · `testing-guide` · `qa` · `security` · `humanize`
+
+### Typical Workflow
+
+```
+$ devos run "Build a B2B SaaS payroll tool for Ghana"
+# → Initialises pipeline, shows stage list with gate status
+
+$ devos run --step inception
+# → Prints ready-to-paste delegation prompt for the Architect agent
+
+# (paste into AI assistant, receive PROJECT_REQUIREMENTS.md)
+
+$ devos run --step design
+# → Prints delegation prompt for the UI Designer (design catalog match)
+
+# ... continue stage by stage ...
+
+$ devos run --status
+# → Shows live progress dashboard with checked/unchecked stages
+```
+

@@ -3,6 +3,19 @@
 All notable changes to Dev-OS are documented in this file.
 This project follows [Semantic Versioning](https://semver.org/).
 
+## [4.3.0] — 2026-10-01
+
+### Autonomous SDLC Pipeline Runner — TASK-003
+
+- **Stateful 10-Stage Pipeline Engine (`scripts/sdlc-runner.js` / `devos run`)**: Replaced the static `devos auto` informational printout with a real, stateful execution engine. State persists in `.agents/memory/sdlc-state.json` (`schemaVersion 1.0.0`) and survives session interruptions. Supports `devos run --resume` to continue from the current stage.
+- **Gate-Enforced Stage Sequencing**: Design Gate, Mandatory Design Gate (Stage 5), and all mechanical checks are verified before each stage. The runner blocks implementation without `DESIGN.md` and blocks the design stage without `PROJECT_REQUIREMENTS.md`.
+- **Per-Stage Delegation Prompts (`devos run --step <stage-id>`)**: Running `devos run --step inception` (or any of the 10 stage IDs) prints a ready-to-paste, context-aware delegation prompt for that agent — including the product idea, expected deliverable, gate status, and skill reference.
+- **Dry-Run Preview (`devos run --dry-run "<idea>")**: Prints a full pipeline preview with per-stage gate status without writing any state, so founders and engineers can verify readiness before beginning.
+- **`npm run auto` / `npm run sdlc` Scripts**: Added convenience npm script aliases for `scripts/sdlc-runner.js`.
+- **Smoke Test Coverage (10 new assertions, 113 total)**: Added `devos auto --list`, `--dry-run`, pipeline init, `sdlc-state.json` schema validation, `--status`, `--step inception`, `--step design`, `--status --json`, and `--reset` assertions. All 113 pass.
+- **Eval Suite Expanded (3 new cases, 36 total)**: Added `workflow-sdlc-runner-state`, `workflow-sdlc-runner-gates`, and `workflow-sdlc-runner-delegation` to `workflow-integrity.eval.json`.
+- **`autonomous-sdlc` Skill Updated**: Added Section 4 — SDLC Pipeline Runner CLI Reference with command table, stage ID list, and typical workflow walkthrough.
+
 ## [4.2.0] — 2026-09-23
 
 ### Reliability & Evaluation Layer, pass@k Benchmark Engine, Eval CLI & Awesome Design Catalog

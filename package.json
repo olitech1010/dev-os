@@ -1,6 +1,6 @@
 {
   "name": "@olives/devos",
-  "version": "4.2.0",
+  "version": "4.3.0",
   "publishConfig": {
     "access": "public"
   },
@@ -11,9 +11,11 @@
     "devos-init": "bin/devos.js"
   },
   "scripts": {
-    "start": "node ./bin/devos.js",
-    "test": "node ./scripts/smoke-test.js",
-    "eval": "node ./scripts/eval-runner.js",
+    "start":          "node ./bin/devos.js",
+    "test":           "node ./scripts/smoke-test.js",
+    "eval":           "node ./scripts/eval-runner.js",
+    "auto":           "node ./scripts/sdlc-runner.js",
+    "sdlc":           "node ./scripts/sdlc-runner.js",
     "prepublishOnly": "node ./scripts/smoke-test.js"
   },
   "repository": {
