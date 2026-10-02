@@ -1,11 +1,11 @@
 {
-  "timestamp": "2026-09-29T14:58:01.168Z",
+  "timestamp": "2026-10-02T10:01:36.988Z",
   "verdict": "EVAL_PASSED",
   "score": 100,
-  "durationMs": 43670,
+  "durationMs": 103517,
   "kSampling": 1,
-  "totalCases": 33,
-  "passedCases": 33,
+  "totalCases": 36,
+  "passedCases": 36,
   "failedCases": 0,
   "criticalFailures": 0,
   "passAtK": {
@@ -45,8 +45,8 @@
     "workflow-integrity": {
       "name": "Autonomous SDLC Workflow Integrity",
       "category": "workflow",
-      "total": 5,
-      "passed": 5,
+      "total": 8,
+      "passed": 8,
       "failed": 0
     }
   },
