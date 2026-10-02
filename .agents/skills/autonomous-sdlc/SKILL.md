@@ -124,6 +124,18 @@ The `scripts/sdlc-runner.js` engine executes, tracks, and gates the 10-stage pip
 
 `inception` · `design` · `database` · `tasks` · `implementation` · `tests` · `testing-guide` · `qa` · `security` · `humanize`
 
+### Stage 5 — Implementation: Triple Gate
+
+Stage 5 enforces **three** simultaneous conditions before the Developer may write any code:
+
+| # | Gate | Required File/Dir |
+|---|---|---|
+| 1 | Mandatory Design Gate | `DESIGN.md` at project root |
+| 2 | Task Decomposition Gate | `docs/TASK_BOARD.md` |
+| 3 | **Implementation Plan Gate** | Any file in `docs/superpowers/plans/` (produced by `brainstorming` → `writing-plans`) |
+
+All three must be satisfied. `devos run --step implementation` shows which conditions are blocking.
+
 ### Typical Workflow
 
 ```
@@ -137,6 +149,12 @@ $ devos run --step inception
 
 $ devos run --step design
 # → Prints delegation prompt for the UI Designer (design catalog match)
+
+$ devos run --step tasks
+# → Orchestrator prompt: produce TASK_BOARD.md + trigger brainstorming → writing-plans
+
+$ devos run --step implementation
+# → Shows all 3 gate statuses; gives Developer delegation prompt only when all pass
 
 # ... continue stage by stage ...
 

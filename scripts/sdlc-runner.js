@@ -91,10 +91,14 @@ const STAGES = [
     index:       5,
     label:       'Implementation',
     agent:       'Developer',
-    skill:       'frontend-ui-engineering / backend-patterns',
+    skill:       'brainstorming / frontend-ui-engineering / backend-patterns',
     deliverable: 'Source code (staged, not committed)',
-    gate:        { file: 'DESIGN.md', label: 'DESIGN.md at project root (Mandatory Design Gate)' },
-    description: 'Developer implements features following DESIGN.md and CODING_STANDARDS.md. No raw git commit allowed.'
+    gates: [
+      { file: 'DESIGN.md',               label: 'DESIGN.md at project root (Mandatory Design Gate)' },
+      { file: 'docs/TASK_BOARD.md',       label: 'docs/TASK_BOARD.md (Task Decomposition Gate)' },
+      { dir:  'docs/superpowers/plans',   label: 'Implementation plan in docs/superpowers/plans/ (brainstorming → writing-plans Gate)' }
+    ],
+    description: 'Developer implements features following DESIGN.md, TASK_BOARD.md, and the approved implementation plan. No raw git commit allowed.'
   },
   {
     id:          'tests',
@@ -224,14 +228,42 @@ function resetState() {
 }
 
 // ── gate verification ──────────────────────────────────────────────────────
+/**
+ * Check whether a stage's gate conditions are satisfied.
+ * Each condition is one of:
+ *   { file: 'relative/path' }       — exact file must exist
+ *   { dir:  'relative/path' }       — directory must exist and contain ≥1 file
+ *
+ * A stage may have:
+ *   gate:  <single condition>       — legacy single gate
+ *   gates: [<condition>, ...]       — ALL conditions must pass (AND logic)
+ *
+ * Returns: { ok: boolean, failures: string[] }
+ */
 function checkGate(stage) {
-  if (!stage.gate) return { ok: true };
-  const target = path.join(ROOT, stage.gate.file);
-  const exists = fs.existsSync(target);
-  return {
-    ok:      exists,
-    missing: exists ? null : stage.gate.label
-  };
+  const conditions = stage.gates
+    ? stage.gates
+    : stage.gate
+      ? [stage.gate]
+      : [];
+
+  if (conditions.length === 0) return { ok: true, failures: [] };
+
+  const failures = [];
+  for (const cond of conditions) {
+    if (cond.file) {
+      const target = path.join(ROOT, cond.file);
+      if (!fs.existsSync(target)) failures.push(cond.label);
+    } else if (cond.dir) {
+      const target = path.join(ROOT, cond.dir);
+      const hasFiles = fs.existsSync(target) &&
+        fs.statSync(target).isDirectory() &&
+        fs.readdirSync(target).some(f => !f.startsWith('.'));
+      if (!hasFiles) failures.push(cond.label);
+    }
+  }
+
+  return { ok: failures.length === 0, failures };
 }
 
 function checkHumanizerScript() {
@@ -279,8 +311,12 @@ function printStageList() {
     console.log(`      ${c.gray}Agent:${c.reset}       ${s.agent}`);
     console.log(`      ${c.gray}Skill:${c.reset}       ${s.skill}`);
     console.log(`      ${c.gray}Deliverable:${c.reset} ${s.deliverable}`);
-    if (s.gate) {
-      console.log(`      ${c.yellow}Gate:${c.reset}        Requires ${s.gate.label}`);
+    const allConds = s.gates || (s.gate ? [s.gate] : []);
+    if (allConds.length === 1) {
+      console.log(`      ${c.yellow}Gate:${c.reset}        Requires ${allConds[0].label}`);
+    } else if (allConds.length > 1) {
+      console.log(`      ${c.yellow}Gates${c.reset}        (all required):`);
+      allConds.forEach((g, i) => console.log(`        ${i + 1}. ${g.label}`));
     }
     console.log('');
   });
@@ -328,12 +364,16 @@ function printStagePrompt(stageId, idea) {
   console.log(`${c.bold}Assigned Agent:${c.reset}  ${stage.agent}`);
   console.log(`${c.bold}Skill:${c.reset}           ${stage.skill}`);
   console.log(`${c.bold}Deliverable:${c.reset}     ${stage.deliverable}`);
-  if (stage.gate) {
+  const hasConds = stage.gates || stage.gate;
+  if (hasConds) {
     const gateResult = checkGate(stage);
-    const gateStr = gateResult.ok
-      ? `${c.green}PASS${c.reset} — ${stage.gate.label} exists`
-      : `${c.red}BLOCKED${c.reset} — ${stage.gate.label} is missing`;
-    console.log(`${c.bold}Gate Check:${c.reset}      ${gateStr}`);
+    if (gateResult.ok) {
+      console.log(`${c.bold}Gate Check:${c.reset}      ${c.green}PASS${c.reset} — all conditions satisfied`);
+    } else {
+      gateResult.failures.forEach(f => {
+        console.log(`${c.bold}Gate Check:${c.reset}      ${c.red}BLOCKED${c.reset} — ${f}`);
+      });
+    }
   }
   console.log('');
   console.log(`${c.bold}Delegation Prompt:${c.reset}`);
@@ -345,8 +385,8 @@ function printStagePrompt(stageId, idea) {
     inception: `You are the Architect Agent. Using the grill-me skill, extrapolate requirements for the following product and produce docs/PROJECT_REQUIREMENTS.md:\n\n"${ideaStr}"\n\nBe exhaustive. Cover functional requirements, non-functional requirements, data models, user roles, edge cases, and compliance constraints. Output docs/PROJECT_REQUIREMENTS.md.`,
     design: `You are the UI Designer Agent. Read docs/PROJECT_REQUIREMENTS.md, then use the awesome-design-catalog (devos design match) and ui-ux-pro-max skill to select the best matching real-world design system for this product and write DESIGN.md at the project root. The design system must be sourced from the catalog — not generated. Output DESIGN.md.`,
     database: `You are the DBA Agent. Read docs/PROJECT_REQUIREMENTS.md and DESIGN.md, then design a complete database schema. Write RLS-enabled migrations in database/migrations/ and realistic seed fixtures. All dev/test user accounts must use the password devos123. Output migration files and seed data.`,
-    tasks: `You are the Orchestrator Agent. Read docs/PROJECT_REQUIREMENTS.md and design a deterministic DAG of implementation tasks. Write docs/TASK_BOARD.md with tasks sequenced by dependency. Each task must have an assigned agent, triage level, and gate requirements.`,
-    implementation: `You are the Developer Agent. Read DESIGN.md, CODING_STANDARDS.md, and docs/TASK_BOARD.md. Implement features task by task. Never commit directly — present a staged summary for review. Do not bypass the Mandatory Design Gate or QA review.`,
+    tasks: `You are the Orchestrator Agent. Read docs/PROJECT_REQUIREMENTS.md and design a deterministic DAG of implementation tasks. Write docs/TASK_BOARD.md with tasks sequenced by dependency. Each task must have an assigned agent, triage level, and gate requirements.\n\nOnce TASK_BOARD.md is written, trigger the brainstorming skill with the Developer to produce an implementation plan in docs/superpowers/plans/YYYY-MM-DD-<topic>-implementation.md before any code is written. This plan is a hard gate for Stage 5.`,
+    implementation: `You are the Developer Agent. Before writing any code:\n1. Confirm DESIGN.md exists at the project root (Mandatory Design Gate).\n2. Read docs/TASK_BOARD.md to understand the task DAG.\n3. Read the approved implementation plan in docs/superpowers/plans/ (produced by the brainstorming → writing-plans workflow).\nThen implement features task by task following CODING_STANDARDS.md and DESIGN.md tokens. Never commit directly — present a staged summary for human review. Do not bypass the QA gate.`,
     tests: `You are the Tester Agent. Read the feature spec in docs/PROJECT_REQUIREMENTS.md. Write unit and integration tests covering happy path, edge cases, and failure states. Run the suite and report results. Do not fix application code — report failures to the Developer.`,
     'testing-guide': `You are the Tester Agent working with QA. Produce an interactive docs/TESTING_GUIDE.md that a non-technical founder can follow step by step to verify the entire application. All dev accounts must use password devos123. Seed data must be realistic.`,
     qa: `You are the QA Agent. Review all code produced by the Developer. Check against CODING_STANDARDS.md, confirm no forbidden patterns, verify TypeScript types are not bypassed, confirm no hardcoded secrets or TODOs without issues, and verify all tests pass. Return APPROVED or CHANGES REQUESTED with numbered items.`,
@@ -366,10 +406,12 @@ function printDryRun(idea, flags) {
   console.log(`${c.bold}Pipeline Preview:${c.reset}`);
 
   STAGES.forEach(s => {
-    const gateStr = s.gate
+    const hasConds = s.gates || s.gate;
+    const gateStr = hasConds
       ? (() => {
           const r = checkGate(s);
-          return r.ok ? `${c.green}gate OK${c.reset}` : `${c.red}gate BLOCKED — ${s.gate.label} missing${c.reset}`;
+          if (r.ok) return `${c.green}gate OK${c.reset}`;
+          return `${c.red}gate BLOCKED — ${r.failures.join('; ')}${c.reset}`;
         })()
       : `${c.gray}no gate${c.reset}`;
 
@@ -377,7 +419,7 @@ function printDryRun(idea, flags) {
     console.log(`      → ${s.deliverable}`);
   });
 
-  const allGatesOk = STAGES.filter(s => s.gate).every(s => checkGate(s).ok);
+  const allGatesOk = STAGES.filter(s => s.gate || s.gates).every(s => checkGate(s).ok);
   const humanizer  = checkHumanizerScript();
 
   console.log('');
@@ -420,7 +462,7 @@ function initPipeline(idea, flags) {
 
   STAGES.forEach(s => {
     const gateResult = checkGate(s);
-    const blocked = s.gate && !gateResult.ok;
+    const blocked = (s.gate || s.gates) && !gateResult.ok;
     const icon = blocked ? `${c.red}✗${c.reset}` : `${c.cyan}▶${c.reset}`;
     console.log(`  ${icon}  ${String(s.index).padStart(2)}. ${s.label} ${c.gray}[${s.agent}]${c.reset}`);
   });
@@ -450,7 +492,7 @@ function resumePipeline(flags) {
   const gateResult = checkGate(current);
   if (!gateResult.ok) {
     console.log(`${c.red}[ BLOCKED ]${c.reset} Stage "${current.label}" gate not satisfied.`);
-    console.log(`  Required: ${gateResult.missing}`);
+    gateResult.failures.forEach(f => console.log(`  Required: ${f}`));
     console.log(`  Complete the previous stage first, then re-run.\n`);
     process.exit(1);
   }
