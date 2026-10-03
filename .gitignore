@@ -28,6 +28,10 @@ npm-debug.log*
 # Local telemetry logs
 .agents/telemetry/*.jsonl
 
+# Session mode lock (runtime state)
+.agents/memory/session.json
+.agents/memory/sdlc-state.json
+
 # Local evaluation run reports
 .agents/evals/reports/scorecard-*.json
 

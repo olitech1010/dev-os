@@ -40,6 +40,18 @@
       "name": "Security persona enforces OWASP Top 10 audits and zero logged secrets",
       "agent": "security",
       "critical": true
+    },
+    {
+      "id": "authority-orchestrator-persistence",
+      "name": "Orchestrator persistence is mounted via per-turn re-injection hook and a documented Hard Rule",
+      "agent": "orchestrator",
+      "critical": true
+    },
+    {
+      "id": "authority-delegation-gate",
+      "name": "Orchestration Gate mechanically blocks solo production writes without an assigned active task",
+      "agent": "orchestrator",
+      "critical": true
     }
   ]
 }

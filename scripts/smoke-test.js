@@ -91,9 +91,12 @@ try {
 
   // Runtime Hooks verification
   check('.claude/hooks.json generated', fs.existsSync(path.join(proj, '.claude', 'hooks.json')));
+  const hooksJson = JSON.parse(fs.readFileSync(path.join(proj, '.claude', 'hooks.json'), 'utf8'));
+  check('UserPromptSubmit hook wired for per-turn orchestrator injection', Boolean(hooksJson.hooks && hooksJson.hooks.UserPromptSubmit && hooksJson.hooks.UserPromptSubmit.length));
   const hookStart = path.join(proj, '.agents', 'hooks', 'session-start.sh');
   const hookPre = path.join(proj, '.agents', 'hooks', 'pre-tool-use.sh');
-  check('runtime hooks installed', fs.existsSync(hookStart) && fs.existsSync(hookPre));
+  const hookPrompt = path.join(proj, '.agents', 'hooks', 'user-prompt-submit.sh');
+  check('runtime hooks installed', fs.existsSync(hookStart) && fs.existsSync(hookPre) && fs.existsSync(hookPrompt));
 
   // Shared Memory Vault & Task Board verification
   check('memory vault installed (.agents/memory/)', fs.existsSync(path.join(proj, '.agents', 'memory', 'decisions', 'ADR-000-template.md')));
@@ -184,6 +187,38 @@ try {
   fs.writeFileSync(path.join(proj, 'DESIGN.md'), '# Design Specification\n', 'utf8');
   const uiCheckPass = spawnSync('bash', [path.join(proj, '.agents', 'hooks', 'pre-tool-use.sh'), 'touch src/components/App.tsx'], { cwd: proj, encoding: 'utf8' });
   check('pre-tool-use.sh passes UI file creation when root DESIGN.md is present', uiCheckPass.status === 0);
+
+  // TASK-006: Orchestrator Persistence & Delegation Enforcement
+  const sessionFile = path.join(proj, '.agents', 'memory', 'session.json');
+  const sessionStart = spawnSync('bash', [hookStart], { cwd: proj, encoding: 'utf8' });
+  check('session-start.sh writes the session mode lock', sessionStart.status === 0 && fs.existsSync(sessionFile));
+  let sessionData = {};
+  try { sessionData = JSON.parse(fs.readFileSync(sessionFile, 'utf8')); } catch (e) {}
+  check('session.json has correct schema', sessionData.schemaVersion === '1.0.0' && sessionData.orchestratorLocked === true && typeof sessionData.delegationRequired === 'boolean');
+
+  const promptHook = spawnSync('bash', [hookPrompt], { cwd: proj, encoding: 'utf8', input: '' });
+  check('user-prompt-submit.sh emits the orchestrator directive', promptHook.status === 0 && promptHook.stdout.includes('Orchestrator Directive') && promptHook.stdout.includes('Mode:'));
+
+  const modeStatus = runCli(['mode', 'status', '--quiet'], proj);
+  check('devos mode status exits 0', modeStatus.status === 0 && modeStatus.stdout.includes('Mode:'));
+  const modeSet = runCli(['mode', 'auto', '--quiet'], proj);
+  sessionData = JSON.parse(fs.readFileSync(sessionFile, 'utf8'));
+  check('devos mode auto sets delegationRequired', modeSet.status === 0 && sessionData.mode === 'auto' && sessionData.delegationRequired === true);
+
+  fs.writeFileSync(path.join(proj, 'docs', 'TASK_BOARD.md'), '# Board\n\n### [ IN_PROGRESS ]\n*(none)*\n\n### [ QUEUED ]\n\n### [ BACKLOG ]\n\n### [ DONE ]\n', 'utf8');
+  const orchBlock = spawnSync('bash', [hookPre, 'echo x > src/app.js'], { cwd: proj, encoding: 'utf8' });
+  check('Orchestration Gate blocks solo production write without an assigned active task', orchBlock.status === 1 && orchBlock.stdout.includes('Orchestration Gate'));
+
+  const orchEscape = spawnSync('bash', [hookPre, 'echo x > src/app.js'], { cwd: proj, encoding: 'utf8', env: { ...process.env, DEVOS_SOLO_APPROVED: 'true' } });
+  check('Orchestration Gate escape hatch allows approved solo work', orchEscape.status === 0);
+
+  fs.writeFileSync(path.join(proj, 'docs', 'TASK_BOARD.md'), '# Board\n\n### [ IN_PROGRESS ]\n- **TASK-X**: thing\n  - **Assignee:** Developer\n\n### [ QUEUED ]\n\n### [ BACKLOG ]\n\n### [ DONE ]\n', 'utf8');
+  const orchAllow = spawnSync('bash', [hookPre, 'echo x > src/app.js'], { cwd: proj, encoding: 'utf8' });
+  check('Orchestration Gate allows writes when an assigned active task exists', orchAllow.status === 0);
+
+  const modeReset = runCli(['mode', 'interactive', '--quiet'], proj);
+  sessionData = JSON.parse(fs.readFileSync(sessionFile, 'utf8'));
+  check('devos mode interactive clears delegation requirement', modeReset.status === 0 && sessionData.delegationRequired === false);
 
   // CLI Subcommands verification: run/auto & telemetry
   const autoList = runCli(['auto', '--list', '--quiet'], proj);

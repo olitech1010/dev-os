@@ -58,7 +58,8 @@ const DEVOS_RULES_DIGEST = [
   '15. Universal Test Credentials: Seed data and testing accounts must use `devos123`.',
   '16. Distinctive Craft & Anti-AI UI Gate: All frontend UI code must pass `.agents/scripts/ui-taste-check.sh` (zero raw emojis, zero sparkles, contextual navigation, tactile affordances, authentic entities).',
   '17. Environment & Config Parity Gate: All environment variables in code must be documented in `.env.example` with zero committed secrets (`.agents/scripts/env-check.sh`).',
-  '18. Database & Migration Safety Gate: SQL migrations must enable RLS on all tables and avoid unapproved destructive operations (`.agents/scripts/db-check.sh`).'
+  '18. Database & Migration Safety Gate: SQL migrations must enable RLS on all tables and avoid unapproved destructive operations (`.agents/scripts/db-check.sh`).',
+  '19. Orchestrator Persistence: Orchestrator mode is locked in `.agents/memory/session.json`; declare active tasks in `docs/TASK_BOARD.md` and delegate to specialist subagents. Change modes only via `devos mode <mode>`.'
 ];
 
 const SOLO_SESSION_PROTOCOL = [
@@ -69,6 +70,13 @@ const SOLO_SESSION_PROTOCOL = [
   '- Step 5: Route commit through `.agents/scripts/commit.sh`.',
   '- Step 6: Update `docs/CURRENT_STATE.md` and log incidents in `docs/LESSONS.md`.',
   '- Escalation: DB schema changes (DBA), security alterations (Security), or loops exceeding 3 attempts must escalate to human.'
+];
+
+const SESSION_MODE_DIRECTIVE = [
+  'Orchestrator mode is locked per session in `.agents/memory/session.json`. Read it at the start of work.',
+  '- It defines the active `mode` (interactive | guided | auto | audit) and `delegationRequired`.',
+  '- Never switch modes implicitly. Change modes only via `devos mode <mode>`.',
+  '- When delegation is required, declare the task under `[ IN_PROGRESS ]` with an Assignee in `docs/TASK_BOARD.md` and route implementation to the specialist subagent.'
 ];
 
 // Flags parser helper
@@ -224,6 +232,7 @@ function printHelp() {
   console.log(`  ${colors.green}update${colors.reset}, ${colors.green}upgrade${colors.reset}    Safely refresh .agents/, skills, commands, harnesses, and hooks`);
   console.log(`  ${colors.green}run${colors.reset}, ${colors.green}auto${colors.reset}         Launch autonomous hands-off SDLC mode (devos run "<product idea>")`);
   console.log(`  ${colors.green}telemetry${colors.reset}            Manage anonymous failure telemetry (status, report, enable, disable)`);
+  console.log(`  ${colors.green}mode${colors.reset}                 Inspect or switch the locked session mode (status, <mode>, lock, unlock)`);
   console.log(`  ${colors.green}doctor${colors.reset}, ${colors.green}check${colors.reset}      Diagnose setup, hooks, memory vault, task board, and health`);
   console.log(`  ${colors.green}pack${colors.reset}, ${colors.green}packs${colors.reset}        Manage composable capability packs (pack list, pack add <name>)`);
   console.log(`  ${colors.green}skill${colors.reset}, ${colors.green}skills${colors.reset}       Manage agent skills from skills.sh (skill list, add <repo>, update, find)`);
@@ -582,6 +591,9 @@ function bootstrapClaudeMd(targetDir) {
     '### Solo Session Protocol (Single-Agent Work)',
     ...SOLO_SESSION_PROTOCOL,
     '',
+    '### Session Mode Lock (Orchestrator Persistence)',
+    ...SESSION_MODE_DIRECTIVE,
+    '',
     '### Tooling & Personas',
     '- Slash commands: `.claude/commands/` (generated from `.agents/commands/` — refresh with `devos update`).',
     '- Agent personas: `.claude/agents/` (generated from `.agents/agents/`).',
@@ -629,6 +641,9 @@ function generateCursorConfig(targetDir) {
     '### Solo Session Protocol',
     ...SOLO_SESSION_PROTOCOL,
     '',
+    '### Session Mode Lock (Orchestrator Persistence)',
+    ...SESSION_MODE_DIRECTIVE,
+    '',
     '### Mechanical Commit Gate',
     'Raw `git commit` is strictly blocked. Always commit through `.agents/scripts/commit.sh`.',
     ''
@@ -662,6 +677,9 @@ function generateOpenCodeConfig(targetDir) {
     '## Solo Session Protocol',
     ...SOLO_SESSION_PROTOCOL,
     '',
+    '## Session Mode Lock (Orchestrator Persistence)',
+    ...SESSION_MODE_DIRECTIVE,
+    '',
     '## Team Roster & Routing',
     'Read `.agents/AGENTS.md` for agent roles (Orchestrator, Developer, QA, Tester, Security, DevOps, etc.).',
     'Route all git commits through `.agents/scripts/commit.sh`.',
@@ -680,6 +698,9 @@ function generateOpenCodeConfig(targetDir) {
     '',
     '### Solo Session Protocol',
     ...SOLO_SESSION_PROTOCOL,
+    '',
+    '### Session Mode Lock (Orchestrator Persistence)',
+    ...SESSION_MODE_DIRECTIVE,
     '',
     '### Core Resources',
     '- Personas: `.agents/agents/`',
@@ -716,6 +737,9 @@ function generateAntigravityConfig(targetDir) {
     '',
     '### Solo Session Protocol',
     ...SOLO_SESSION_PROTOCOL,
+    '',
+    '### Session Mode Lock (Orchestrator Persistence)',
+    ...SESSION_MODE_DIRECTIVE,
     '',
     '### Core Resources & SDLC Governance',
     '- Personas: `.agents/agents/`',
@@ -756,6 +780,9 @@ function generateCodexConfig(targetDir) {
     '### Solo Session Protocol',
     ...SOLO_SESSION_PROTOCOL,
     '',
+    '### Session Mode Lock (Orchestrator Persistence)',
+    ...SESSION_MODE_DIRECTIVE,
+    '',
     'Always use `.agents/scripts/commit.sh` for commits.',
     ''
   ].join('\n');
@@ -782,7 +809,8 @@ function wireHooks(destAgents, destClaude) {
     const hooksConfig = {
       hooks: {
         SessionStart: [{ command: '.agents/hooks/session-start.sh' }],
-        PreToolUse: [{ matcher: 'bash', command: '.agents/hooks/pre-tool-use.sh' }],
+        UserPromptSubmit: [{ command: '.agents/hooks/user-prompt-submit.sh' }],
+        PreToolUse: [{ command: '.agents/hooks/pre-tool-use.sh' }],
         SessionEnd: [{ command: '.agents/hooks/session-end.sh' }]
       }
     };
@@ -1203,6 +1231,10 @@ async function runInit(flags) {
       gitignoreContent += `\n# Dev-OS temporary backups\n.agents/_backup/\n`;
       updated = true;
     }
+    if (!gitignoreContent.includes('.agents/memory/session.json')) {
+      gitignoreContent += `\n# Dev-OS runtime session state\n.agents/memory/session.json\n.agents/memory/sdlc-state.json\n`;
+      updated = true;
+    }
     if (updated) {
       fs.writeFileSync(gitignorePath, gitignoreContent.trim() + '\n', 'utf8');
       return 'updated';
@@ -1218,7 +1250,7 @@ async function runInit(flags) {
   const rows = [
     ['.agents/agents/', `${agentCount} Agent Personas (Orchestrator, Developer, QA, DBA, Security...)`],
     ['.agents/skills/', `${skillCount} Specialist Skills (Packs: ${(packSummary ? packSummary.packs : ['core']).join(', ')})`],
-    ['.agents/hooks/', 'Runtime Lifecycle Hooks (SessionStart, PreToolUse, SessionEnd)'],
+    ['.agents/hooks/', 'Runtime Lifecycle Hooks (SessionStart, UserPromptSubmit, PreToolUse, SessionEnd)'],
     ['.agents/memory/', 'Shared Memory Vault (ADRs in decisions/, session handoffs)'],
     ['docs/TASK_BOARD.md', 'Deterministic Task Board & DAG Workflow State'],
     ['.agents/scripts/', 'Commit Checkpoint Gate (commit.sh) + Hook Installer'],
@@ -1368,7 +1400,8 @@ async function runUpdate(flags) {
     generateOpenCodeConfig(TARGET_DIR);
     generateAntigravityConfig(TARGET_DIR);
     generateCodexConfig(TARGET_DIR);
-    return 'Claude Code, Cursor, OpenCode, Antigravity/Gemini, Codex synchronized';
+    wireHooks(destAgents, destClaude);
+    return 'Claude Code, Cursor, OpenCode, Antigravity/Gemini, Codex and lifecycle hooks synchronized';
   });
 
   // 5b. Refresh skills if requested
@@ -1857,6 +1890,95 @@ function runTelemetry(flags, positional) {
   console.log(`  $ ${colors.cyan}devos telemetry enable${colors.reset}   Enable anonymous failure logging`);
   console.log(`  $ ${colors.cyan}devos telemetry disable${colors.reset}  Disable failure logging`);
   console.log(`  $ ${colors.cyan}devos telemetry clear${colors.reset}    Clear local event buffer\n`);
+}
+
+// ---------------------------------------------------------------------------
+// mode (session mode lock / orchestrator persistence)
+// ---------------------------------------------------------------------------
+
+const VALID_MODES = ['interactive', 'guided', 'auto', 'audit'];
+
+function sessionFilePath() {
+  return path.join(TARGET_DIR, '.agents', 'memory', 'session.json');
+}
+
+function readSession() {
+  const file = sessionFilePath();
+  if (fs.existsSync(file)) {
+    try {
+      return JSON.parse(fs.readFileSync(file, 'utf8'));
+    } catch (e) {}
+  }
+  const manifestPath = path.join(TARGET_DIR, '.agents', 'manifest.json');
+  let mode = 'interactive';
+  if (fs.existsSync(manifestPath)) {
+    try {
+      const m = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
+      if (m.mode) mode = m.mode;
+    } catch (e) {}
+  }
+  return {
+    schemaVersion: '1.0.0',
+    startedAt: null,
+    updatedAt: null,
+    mode,
+    orchestratorLocked: true,
+    delegationRequired: mode === 'auto' || mode === 'guided',
+    switchedBy: 'default'
+  };
+}
+
+function writeSession(session) {
+  const file = sessionFilePath();
+  fs.mkdirSync(path.dirname(file), { recursive: true });
+  session.updatedAt = new Date().toISOString().replace(/\.\d{3}Z$/, 'Z');
+  fs.writeFileSync(file, JSON.stringify(session, null, 2) + '\n', 'utf8');
+}
+
+function runMode(flags, positional) {
+  const action = (positional[0] || 'status').toLowerCase();
+  const session = readSession();
+
+  if (action === 'status') {
+    if (flags.json) {
+      console.log(JSON.stringify(session, null, 2));
+      return;
+    }
+    if (!flags.quiet) {
+      console.log(`\n${colors.bold}DEV-OS SESSION MODE LOCK${colors.reset}`);
+      console.log(`${colors.gray}${'.'.repeat(60)}${colors.reset}`);
+    }
+    console.log(`  Mode:            ${colors.cyan}${session.mode}${colors.reset}`);
+    console.log(`  Orchestrator:    ${session.orchestratorLocked ? colors.green + 'locked' : colors.yellow + 'unlocked'}${colors.reset}`);
+    console.log(`  Delegation:      ${session.delegationRequired ? colors.green + 'required' : colors.gray + 'optional'}${colors.reset}`);
+    console.log(`  Session File:    ${path.relative(TARGET_DIR, sessionFilePath()) || sessionFilePath()}`);
+    console.log(`\nCommands:`);
+    console.log(`  $ ${colors.cyan}devos mode <interactive|guided|auto|audit>${colors.reset}  Switch mode (locked artifact)`);
+    console.log(`  $ ${colors.cyan}devos mode lock${colors.reset} / ${colors.cyan}unlock${colors.reset}           Toggle orchestrator lock\n`);
+    return;
+  }
+
+  if (action === 'lock' || action === 'unlock') {
+    session.orchestratorLocked = action === 'lock';
+    session.switchedBy = 'devos mode';
+    writeSession(session);
+    console.log(`${colors.green}[ OK ] Orchestrator ${action}ed.${colors.reset}\n`);
+    return;
+  }
+
+  if (VALID_MODES.includes(action)) {
+    session.mode = action;
+    session.delegationRequired = action === 'auto' || action === 'guided' || process.env.DEVOS_ENFORCE_ORCHESTRATOR === '1';
+    session.switchedBy = 'devos mode';
+    writeSession(session);
+    console.log(`${colors.green}[ OK ] Session mode set to '${action}'.${colors.reset}`);
+    console.log(`${colors.gray}      delegation required: ${session.delegationRequired}${colors.reset}\n`);
+    return;
+  }
+
+  console.log(`${colors.red}[ FAIL ] Unknown mode '${action}'.${colors.reset}`);
+  console.log(`         Valid modes: ${VALID_MODES.join(', ')}\n`);
+  process.exit(1);
 }
 
 // ---------------------------------------------------------------------------
@@ -2401,6 +2523,9 @@ async function main() {
       break;
     case 'telemetry':
       runTelemetry(flags, positional);
+      break;
+    case 'mode':
+      runMode(flags, positional);
       break;
     case 'doctor':
     case 'check':

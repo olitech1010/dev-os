@@ -3,6 +3,20 @@
 All notable changes to Dev-OS are documented in this file.
 This project follows [Semantic Versioning](https://semver.org/).
 
+## [4.4.0] — 2026-10-03
+
+### Orchestrator Persistence & Delegation Enforcement — TASK-006
+
+- **Session Mode Lock (`.agents/memory/session.json`)**: Orchestrator mode is now a machine-readable, locked artifact written by `session-start.sh`. It records the active `mode` (`interactive`, `guided`, `auto`, `audit`), `orchestratorLocked`, and `delegationRequired`. Modes persist across sessions and cannot be switched implicitly.
+- **Per-Turn Re-Injection Hook (`.agents/hooks/user-prompt-submit.sh`)**: New `UserPromptSubmit` hook re-asserts the Orchestrator directive, locked mode, and delegation mandate on every turn. This is the mechanical counter to prompt-context decay — no more "unless I keep telling it."
+- **Orchestration Gate / MREE (`.agents/hooks/pre-tool-use.sh`)**: The Mechanical Routing Enforcement Engine now blocks solo production-code writes when delegation is enforced but no `[ IN_PROGRESS ]` task with an `Assignee:` is declared in `docs/TASK_BOARD.md`. Exempts docs, tests, scripts, hooks, and config. Escape hatch: `DEVOS_SOLO_APPROVED=true` (logged).
+- **Task Board Regex Fix**: Corrected the task-board gate regex (`[IN_PROGRESS]` → `[ IN_PROGRESS ]`) and hardened it to require an actual task body with an `Assignee:`, not just a section header or DAG legend.
+- **`devos mode` CLI & `/mode` Command**: Added `devos mode [status|<interactive|guided|auto|audit>|lock|unlock]` and a `/mode` slash command. Mode switches are explicit and audited via the session lock.
+- **Hard Rule #23 (Orchestrator Persistence)**: Codified the session lock, per-turn re-injection, delegation gate, and the "change modes only via `devos mode`" invariant in `.agents/AGENTS.md`. Added a matching entry to the embedded Hard Rules digest.
+- **Harness Parity**: `UserPromptSubmit` wired natively for Claude Code; the Session Mode Lock directive is embedded in the generated Cursor, OpenCode, Antigravity/Gemini, Codex, and CLAUDE.md configs so non-hook harnesses re-read the lock at the start of work.
+- **Smoke Test Coverage (10 new assertions, 123 total)**: Added assertions for the wired `UserPromptSubmit` hook, session lock schema, per-turn directive output, `devos mode` transitions, Orchestration Gate blocking, the solo escape hatch, and assigned-task allowance.
+- **Eval Suite Expanded (2 new critical cases, 38 total)**: Added `authority-orchestrator-persistence` and `authority-delegation-gate` to `agent-authority.eval.json`. Full suite passes at 100% reliability.
+
 ## [4.3.0] — 2026-10-01
 
 ### Autonomous SDLC Pipeline Runner — TASK-003

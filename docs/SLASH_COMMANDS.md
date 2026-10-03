@@ -157,6 +157,13 @@ Use $ARGUMENTS to reference user input after the command.
 - **Workflow**: direct
 - **Usage**: `/eval` or `/eval gates`
 
+### `/mode`
+- **Description**: Inspect or switch the locked SDLC execution mode and orchestrator delegation requirement.
+- **Target Agent**: Orchestrator
+- **Triage Level**: TRIVIAL
+- **Workflow**: direct
+- **Usage**: `/mode` or `/mode auto`
+
 ## Creating Custom Commands
 
 To create a new command:

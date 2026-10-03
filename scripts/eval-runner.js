@@ -399,6 +399,28 @@ function executeAgentAuthoritySuite(cItem) {
       const ok = content.includes('OWASP') && (content.includes('secret') || content.includes('credential'));
       return { ok, detail: ok ? null : 'security.md lacks OWASP Top 10 or secret audit directives' };
     }
+    case 'authority-orchestrator-persistence': {
+      const promptHook = path.join(ROOT, '.agents', 'hooks', 'user-prompt-submit.sh');
+      const startHook = path.join(ROOT, '.agents', 'hooks', 'session-start.sh');
+      const agentsMd = path.join(ROOT, '.agents', 'AGENTS.md');
+      if (!fs.existsSync(promptHook)) return { ok: false, detail: 'user-prompt-submit.sh missing' };
+      const promptContent = fs.readFileSync(promptHook, 'utf8');
+      const startContent = fs.existsSync(startHook) ? fs.readFileSync(startHook, 'utf8') : '';
+      const agentsContent = fs.existsSync(agentsMd) ? fs.readFileSync(agentsMd, 'utf8') : '';
+      const ok = promptContent.includes('Orchestrator Directive') &&
+        startContent.includes('session.json') &&
+        agentsContent.includes('Orchestrator Persistence');
+      return { ok, detail: ok ? null : 'Orchestrator persistence hook, session lock, or Hard Rule missing' };
+    }
+    case 'authority-delegation-gate': {
+      const hookPath = path.join(ROOT, '.agents', 'hooks', 'pre-tool-use.sh');
+      if (!fs.existsSync(hookPath)) return { ok: false, detail: 'pre-tool-use.sh missing' };
+      const content = fs.readFileSync(hookPath, 'utf8');
+      const ok = content.includes('Orchestration Gate') &&
+        content.includes('has_active_task') &&
+        content.includes('DEVOS_SOLO_APPROVED');
+      return { ok, detail: ok ? null : 'Orchestration Gate, active-task check, or solo escape hatch missing' };
+    }
     default:
       return { ok: true, detail: null };
   }

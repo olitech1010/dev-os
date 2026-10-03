@@ -20,19 +20,26 @@
 ## Active Board
 
 ### [ IN_PROGRESS ]
-- **`TASK-003`**: Autonomous Executive Mode SDLC Pipeline Runner (`devos run` / `/auto` full multi-agent stage execution loop from idea to tested software)
-  - **Assignee:** Executive Proxy / Orchestrator
-  - **DependsOn:** TASK-002
+- **`TASK-006`**: Orchestrator Persistence & Delegation Enforcement (session mode lock, per-turn re-injection hook, Mechanical Routing Enforcement Gate, mode-switch guard)
+  - **Assignee:** Orchestrator / Developer
+  - **DependsOn:** TASK-003
   - **Triage Level:** STANDARD
+  - **Plan:** `docs/superpowers/plans/2026-10-03-orchestrator-persistence-delegation-enforcement.md`
 
 ### [ QUEUED ]
-*(Ready for next milestone upon completion of TASK-003)*
+*(Ready for next milestone upon completion of TASK-006)*
 
 ### [ BACKLOG ]
 - **`TASK-004`**: Observability & Telemetry RCA Auto-PR Engine (`devos telemetry pr/report` automated diagnostic feedback loop to `olitech1010/dev-os`)
 - **`TASK-005`**: Dynamic Upstream Skills & Registry Ecosystem Synchronization (`devos skill update` / bi-directional sync with `skills.sh`)
 
 ### [ DONE ]
+- **`TASK-003`**: Autonomous Executive Mode SDLC Pipeline Runner (`devos run` / `/auto` full multi-agent stage execution loop from idea to tested software)
+  - **Assignee:** Executive Proxy / Orchestrator
+  - **DependsOn:** TASK-002
+  - **Triage Level:** STANDARD
+  - **ParallelGate:** [QA: pass, Tester: pass, Security: pass]
+  - **HumanCheckpoint:** approved
 - **`TASK-002`**: Dev-OS v4.2.0 Reliability & Eval Layer (`pass@k` test harness, benchmark evals, agent scorecards, devos eval CLI, and Awesome Design Catalog)
   - **ParallelGate:** [QA: pass, Tester: pass, Security: pass]
   - **HumanCheckpoint:** approved

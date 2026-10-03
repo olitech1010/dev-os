@@ -32,6 +32,14 @@ LOG_TELEMETRY() {
     fi
 }
 
+# A board only counts as having an active task if the [ IN_PROGRESS ] section body
+# declares one with an Assignee. The section header or the DAG legend is not proof.
+has_active_task() {
+    [ -f "docs/TASK_BOARD.md" ] || return 1
+    ACTIVE_BLOCK=$(awk '/^###[[:space:]]*\[[[:space:]]*IN_PROGRESS[[:space:]]*\]/{f=1;next} /^###[[:space:]]/{f=0} f' "docs/TASK_BOARD.md")
+    echo "$ACTIVE_BLOCK" | grep -Eq 'Assignee:'
+}
+
 # 1. Block destructive file-system and git commands (Hard Rule #1)
 if echo "$INPUT_CMD" | grep -Eq 'rm -rf\s+[/~*]|rm -rf\s+\.\./|git reset --hard\s+origin|DROP\s+(TABLE|DATABASE)|TRUNCATE\s+TABLE'; then
     echo ""
@@ -79,14 +87,42 @@ fi
 
 # 4. Task Board Active Task Gate (Optional strict mode when DEVOS_ENFORCE_TASK_BOARD=1)
 if [ "$DEVOS_ENFORCE_TASK_BOARD" = "1" ] && [ -f "docs/TASK_BOARD.md" ]; then
-    if ! grep -q '\[IN_PROGRESS\]' "docs/TASK_BOARD.md"; then
+    if ! has_active_task; then
         echo ""
         echo "[ FAIL ] Dev-OS Policy Violation (Task Board State Gate)"
-        echo "         No active task marked [IN_PROGRESS] in 'docs/TASK_BOARD.md'."
+        echo "         No active task marked [ IN_PROGRESS ] in 'docs/TASK_BOARD.md'."
         echo "         Select or start a task first: devos task start <id>"
         echo ""
         LOG_TELEMETRY "TASK_BOARD_GATE" "$INPUT_CMD"
         exit 1
+    fi
+fi
+
+# 5. Orchestration Gate — Mechanical Routing Enforcement (MREE)
+# Blocks solo production-code authoring when orchestrator delegation is enforced and no
+# active task with an assignee is declared. Escape hatch: DEVOS_SOLO_APPROVED=true.
+if echo "$INPUT_CMD" | grep -Eq '\.(ts|tsx|js|jsx|mjs|cjs|py|rb|go|rs|java|php|vue|svelte|sql)\b'; then
+    if ! echo "$INPUT_CMD" | grep -Eq '\.agents/|docs/|/scripts/|scripts/|/tests/|tests/|/hooks/|/commands/|/agents/|/skills/|node_modules/|\.test\.|\.spec\.|\.config\.|\.d\.ts|\.md\b'; then
+        ORCH_ENFORCED="0"
+        if [ "$DEVOS_ENFORCE_ORCHESTRATOR" = "1" ]; then ORCH_ENFORCED="1"; fi
+        if [ -f ".agents/memory/session.json" ] && grep -Eq '"delegationRequired"[[:space:]]*:[[:space:]]*true' .agents/memory/session.json; then
+            ORCH_ENFORCED="1"
+        fi
+
+        if [ "$ORCH_ENFORCED" = "1" ] && [ "$DEVOS_SOLO_APPROVED" != "true" ]; then
+            if ! has_active_task; then
+                echo ""
+                echo "[ FAIL ] Dev-OS Policy Violation (Orchestration Gate / MREE)"
+                echo "         Orchestrator delegation is enforced but no active task with an assignee is declared."
+                echo "         Remediation:"
+                echo "           1. Declare the task under [ IN_PROGRESS ] with an Assignee in docs/TASK_BOARD.md."
+                echo "           2. Delegate implementation to the assigned specialist subagent."
+                echo "           3. To intentionally work solo, export DEVOS_SOLO_APPROVED=true."
+                echo ""
+                LOG_TELEMETRY "ORCHESTRATION_GATE" "$INPUT_CMD"
+                exit 1
+            fi
+        fi
     fi
 fi
 
