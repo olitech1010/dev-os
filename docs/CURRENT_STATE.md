@@ -12,6 +12,8 @@
 | Agent | Status | Current Assignment |
 |---|---|---|
 | Orchestrator | ACTIVE | Ready to scope TASK-004 or TASK-005 |
+| Eval Engineer | DONE | All 38 eval cases verified (100% reliability) |
+| Orchestrator | ACTIVE | Ready to scope TASK-004 or TASK-005 |
 | Memory Manager | ACTIVE | Updated context.json, task board, changelog v4.5.0 |
 
 ## Recent Decisions
