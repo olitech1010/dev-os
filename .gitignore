@@ -35,4 +35,14 @@ npm-debug.log*
 # Local evaluation run reports
 .agents/evals/reports/scorecard-*.json
 
+# Dev-OS maintainer workspace (personal state, never commit)
+docs/CURRENT_STATE.md
+docs/TASK_BOARD.md
+docs/LESSONS.md
+docs/2026-*.md
+docs/FIELD_REPORT_*.md
+docs/PLAN_*.md
+docs/superpowers/
+.agents/memory/context.json
+
 

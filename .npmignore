@@ -1,0 +1,23 @@
+# Dev-OS npm package defense-in-depth
+# The package.json "files" allowlist is the primary gate; this is a safety net.
+
+# Personal workspace state (never ship)
+docs/CURRENT_STATE.md
+docs/TASK_BOARD.md
+docs/LESSONS.md
+docs/2026-*.md
+docs/FIELD_REPORT_*.md
+docs/PLAN_*.md
+docs/superpowers/
+
+# Runtime state
+.agents/memory/context.json
+.agents/memory/session.json
+.agents/memory/sdlc-state.json
+.agents/telemetry/*.jsonl
+
+# Eval run history
+.agents/evals/reports/scorecard-*.json
+
+# Backups
+.agents/_backup/

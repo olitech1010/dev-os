@@ -3,32 +3,28 @@
 > This file is maintained by the Orchestrator agent. It is updated at each phase transition to preserve context across long sessions.
 
 ## Current Task
-- **Task:** TASK-006: Orchestrator Persistence & Delegation Enforcement — **COMPLETE** (staged, pending human commit)
+- **Task:** TASK-007: Docs/Package Separation — **COMPLETE** (committed, pushed to origin)
 - **Branch:** main
 - **Triage Level:** STANDARD
-- **Plan:** `docs/superpowers/plans/2026-10-03-orchestrator-persistence-delegation-enforcement.md`
-- **Status:** CHANGES STAGED — awaiting human checkpoint
+- **Status:** DONE — ready for next milestone (TASK-004 or TASK-005)
 
 ## Active Agents
 | Agent | Status | Current Assignment |
 |---|---|---|
-| Orchestrator | ACTIVE | Mounting session mode lock; ready to scope TASK-004 |
-| Developer | DONE | Delivered session lock, per-turn hook, Orchestration Gate, `devos mode`, `/mode` |
-| QA | DONE | Smoke suite 123/123 passing |
-| Tester | DONE | 10 new assertions for hooks, session lock, and gate behavior |
-| Eval Engineer | DONE | 2 new critical cases; 38/38, 100% reliability |
-| Security | DONE | Orchestration Gate preserves commit and destructive-action gates |
-| Memory Manager | ACTIVE | Updated context.json, task board, changelog |
+| Orchestrator | ACTIVE | Ready to scope TASK-004 or TASK-005 |
+| Memory Manager | ACTIVE | Updated context.json, task board, changelog v4.5.0 |
 
 ## Recent Decisions
-- **TASK-006 — Orchestrator Persistence (Hard Rule #23)**: The field-reported failure mode (orchestrator mode not mounted, no delegation without repeated human enforcement, silent mode switching) is addressed mechanically, not by prose. Enforcement moved to runtime hook validation per the v4 roadmap's Mechanical Routing Enforcement Engine (MREE, Pillar 1).
-- **Session Mode Lock**: `.agents/memory/session.json` is the single source of truth for active mode and delegation policy. Modes change only via `devos mode <mode>`.
-- **Per-Turn Re-Injection**: `UserPromptSubmit` re-asserts role and mode every turn to counter context decay.
-- **Orchestration Gate**: Solo production-code writes are blocked when delegation is enforced and no assigned `[ IN_PROGRESS ]` task exists. Escape hatch `DEVOS_SOLO_APPROVED=true` is logged.
-- **Task Board Gate Fix**: Corrected a latent regex bug (`[IN_PROGRESS]` never matched `[ IN_PROGRESS ]`) and hardened it to require an `Assignee:`-bearing task body.
+- **TASK-007 — Docs/Package Separation**: Separated shipped artifacts (`templates/`) from maintainer workspace (`docs/`) to eliminate personal-state leakage from npm package and GitHub clones.
+  - **npm package hygiene**: Precise `files` allowlist drops `docs/` and bulk `.agents/`; ships only `templates/`, curated `.agents/` subpaths. Verified: 0 personal artifacts in tarball.
+  - **Install-time scaffolding**: `devos init` installs public docs from `templates/docs/`, state scaffolds (`CURRENT_STATE`, `TASK_BOARD`, `LESSONS`, `context.json`) from `templates/scaffolds/`.
+  - **Maintainer workspace**: `docs/` now holds personal live state + research/plans, all gitignored. Clones get clean scaffolds via `devos scaffold`.
+  - **Git hygiene**: Personal files `git rm --cached` + gitignored.
+- **Version bump**: 4.4.0 → 4.5.0 (includes TASK-006 + TASK-007).
+- **All gates green**: 123/123 smoke, 38/38 eval (100%).
 
 ## Blockers
-- None. Ready for staged review and human commit approval.
+- None. Ready to proceed to TASK-004 (Telemetry RCA Auto-PR) or TASK-005 (Skills Registry Sync).
 
 ## Context Summary
-Dev-OS v4.4.0 makes Orchestrator mode persist and self-enforce. A session mode lock, a per-turn re-injection hook, and the Orchestration Gate (MREE) replace advisory delegation with runtime validation. Modes are explicit and audited; solo work is blocked unless a task is assigned or explicitly approved. Full smoke suite passes at 123 assertions; eval suite passes at 38/38 (100%). Zero external npm runtime dependencies.
+Dev-OS v4.5.0 delivers clean package/clones + Orchestrator enforcement. The templates/workspace split eliminates the #1 complaint from field reports: personal state leaking to users. Orchestrator mode now persists via session lock, per-turn re-injection, and the Orchestration Gate (MREE). Full smoke suite passes at 123 assertions; eval suite passes at 38/38 (100%). Zero external npm runtime dependencies.

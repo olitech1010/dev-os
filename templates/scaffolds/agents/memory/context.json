@@ -1,0 +1,16 @@
+{
+  "project": "",
+  "activeBranch": "main",
+  "activeTask": "(none)",
+  "orchestratorMode": {
+    "enabled": true,
+    "note": "This project uses Dev-OS multi-agent workflow. All decisions, delegation, gate enforcement, and commit flow follow the AGENTS.md protocol.",
+    "activeAgentRole": "Orchestrator",
+    "project": "",
+    "workflow": "devos-on-devos"
+  },
+  "completedMilestones": [],
+  "upcomingMilestones": [],
+  "blockers": [],
+  "lastUpdated": ""
+}

@@ -1,8 +1,8 @@
 {
   "project": "Dev-OS",
   "activeBranch": "main",
-  "activeTask": "TASK-006 (complete, staged pending commit) — Orchestrator Persistence & Delegation Enforcement",
-  "currentMilestone": "TASK-006: Orchestrator Persistence & Delegation Enforcement (session mode lock, per-turn re-injection, MREE gate)",
+  "activeTask": "TASK-007 (complete) — Docs/Package Separation",
+  "currentMilestone": "TASK-007: Docs/Package Separation (templates/ scaffolds, precise npm files, gitignore, scaffold command)",
   "orchestratorMode": {
     "enabled": true,
     "note": "Antigravity (this agent) IS the Orchestrator. We are using the Dev-OS multi-agent workflow to build Dev-OS itself (dogfooding). All decisions, delegation, gate enforcement, and commit flow follow the AGENTS.md protocol. No solo monolithic work — every task is triaged and routed per the 21+1 Hard Rules.",

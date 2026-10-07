@@ -1,6 +1,6 @@
 {
   "name": "@olives/devos",
-  "version": "4.4.0",
+  "version": "4.5.0",
   "publishConfig": {
     "access": "public"
   },
@@ -50,8 +50,19 @@
   "files": [
     "bin/",
     "scripts/",
-    ".agents/",
-    "docs/",
+    ".agents/AGENTS.md",
+    ".agents/packs.json",
+    ".agents/manifest.json",
+    ".agents/agents/",
+    ".agents/commands/",
+    ".agents/hooks/",
+    ".agents/skills/",
+    ".agents/scripts/",
+    ".agents/evals/suites/",
+    ".agents/memory/decisions/",
+    ".agents/memory/handoffs/",
+    ".agents/catalog/",
+    "templates/",
     "CODING_STANDARDS.md",
     "README.md",
     "LICENSE",

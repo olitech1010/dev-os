@@ -13,6 +13,7 @@ const { spawnSync } = require('child_process');
 
 // Package metadata
 const TEMPLATE_DIR = path.resolve(__dirname, '..');
+const TEMPLATES_DIR = path.join(TEMPLATE_DIR, 'templates');
 const TARGET_DIR = process.cwd();
 const PKG_PATH = path.join(TEMPLATE_DIR, 'package.json');
 const PKG = fs.existsSync(PKG_PATH) ? JSON.parse(fs.readFileSync(PKG_PATH, 'utf8')) : { version: '3.0.0' };
@@ -233,6 +234,7 @@ function printHelp() {
   console.log(`  ${colors.green}run${colors.reset}, ${colors.green}auto${colors.reset}         Launch autonomous hands-off SDLC mode (devos run "<product idea>")`);
   console.log(`  ${colors.green}telemetry${colors.reset}            Manage anonymous failure telemetry (status, report, enable, disable)`);
   console.log(`  ${colors.green}mode${colors.reset}                 Inspect or switch the locked session mode (status, <mode>, lock, unlock)`);
+  console.log(`  ${colors.green}scaffold${colors.reset}            Regenerate missing state scaffolds from templates (CURRENT_STATE, TASK_BOARD, LESSONS, context.json)`);
   console.log(`  ${colors.green}doctor${colors.reset}, ${colors.green}check${colors.reset}      Diagnose setup, hooks, memory vault, task board, and health`);
   console.log(`  ${colors.green}pack${colors.reset}, ${colors.green}packs${colors.reset}        Manage composable capability packs (pack list, pack add <name>)`);
   console.log(`  ${colors.green}skill${colors.reset}, ${colors.green}skills${colors.reset}       Manage agent skills from skills.sh (skill list, add <repo>, update, find)`);
@@ -1138,23 +1140,36 @@ async function runInit(flags) {
     }
   }
 
-  // Step 3: Copy docs directory and TASK_BOARD.md if fresh or missing
+  // Step 3: Install public docs from templates/docs and state scaffolds from templates/scaffolds
   const destDocs = path.join(TARGET_DIR, 'docs');
   if (!insideSource && (isFresh || !fs.existsSync(destDocs))) {
     step('Installing project documentation into docs/', () => {
-      copyRecursiveSync(path.join(TEMPLATE_DIR, 'docs'), destDocs);
+      copyRecursiveSync(path.join(TEMPLATES_DIR, 'docs'), destDocs);
     });
-  } else {
-    // Ensure docs/TASK_BOARD.md exists
-    const srcBoard = path.join(TEMPLATE_DIR, 'docs', 'TASK_BOARD.md');
-    const destBoard = path.join(destDocs, 'TASK_BOARD.md');
-    if (fs.existsSync(srcBoard) && !fs.existsSync(destBoard)) {
-      step('Installing deterministic task board (docs/TASK_BOARD.md)', () => {
-        fs.mkdirSync(destDocs, { recursive: true });
-        fs.copyFileSync(srcBoard, destBoard);
-      });
-    }
   }
+  // Install state scaffolds (CURRENT_STATE, TASK_BOARD, LESSONS) from templates/scaffolds
+  step('Installing state scaffolds into docs/', () => {
+    fs.mkdirSync(destDocs, { recursive: true });
+    const scaffoldFiles = ['CURRENT_STATE.md', 'TASK_BOARD.md', 'LESSONS.md'];
+    for (const f of scaffoldFiles) {
+      const src = path.join(TEMPLATES_DIR, 'scaffolds', 'docs', f);
+      const dest = path.join(destDocs, f);
+      if (fs.existsSync(src) && !fs.existsSync(dest)) {
+        fs.copyFileSync(src, dest);
+      }
+    }
+  });
+
+  // Install memory context scaffold from templates/scaffolds
+  step('Installing memory context scaffold', () => {
+    const memDir = path.join(destAgents, 'memory');
+    fs.mkdirSync(memDir, { recursive: true });
+    const ctxSrc = path.join(TEMPLATES_DIR, 'scaffolds', 'agents', 'memory', 'context.json');
+    const ctxDest = path.join(memDir, 'context.json');
+    if (fs.existsSync(ctxSrc) && !fs.existsSync(ctxDest)) {
+      fs.copyFileSync(ctxSrc, ctxDest);
+    }
+  });
 
   // If autoGoal was specified, record in docs/TASK_BOARD.md
   if (autoGoal) {
@@ -1981,9 +1996,48 @@ function runMode(flags, positional) {
   process.exit(1);
 }
 
-// ---------------------------------------------------------------------------
-// design (catalog, matcher & redesign engine)
-// ---------------------------------------------------------------------------
+function runScaffold(flags, positional) {
+  if (!flags.quiet) {
+    console.log(`\n${colors.bold}DEV-OS SCAFFOLD${colors.reset}`);
+    console.log(`${colors.gray}${'.'.repeat(60)}${colors.reset}`);
+  }
+
+  const destDocs = path.join(TARGET_DIR, 'docs');
+  const destAgents = path.join(TARGET_DIR, '.agents');
+  fs.mkdirSync(destDocs, { recursive: true });
+  fs.mkdirSync(path.join(destAgents, 'memory'), { recursive: true });
+
+  let installed = 0;
+
+  const docScaffolds = ['CURRENT_STATE.md', 'TASK_BOARD.md', 'LESSONS.md'];
+  for (const f of docScaffolds) {
+    const src = path.join(TEMPLATES_DIR, 'scaffolds', 'docs', f);
+    const dest = path.join(TARGET_DIR, 'docs', f);
+    if (fs.existsSync(src) && !fs.existsSync(dest)) {
+      fs.copyFileSync(src, dest);
+      if (!flags.quiet) console.log(`  ${colors.green}[ OK ]${colors.reset} Installed ${f}`);
+      installed++;
+    }
+  }
+
+  const memDir = path.join(TARGET_DIR, '.agents', 'memory');
+  fs.mkdirSync(memDir, { recursive: true });
+  const ctxSrc = path.join(TEMPLATES_DIR, 'scaffolds', 'agents', 'memory', 'context.json');
+  const ctxDest = path.join(memDir, 'context.json');
+  if (fs.existsSync(ctxSrc) && !fs.existsSync(ctxDest)) {
+    fs.copyFileSync(ctxSrc, ctxDest);
+    if (!flags.quiet) console.log(`  ${colors.green}[ OK ]${colors.reset} Installed .agents/memory/context.json`);
+    installed++;
+  }
+
+  if (!flags.quiet) {
+    if (installed > 0) {
+      console.log(`\n${colors.green}[ OK ]${colors.reset} Scaffold complete (${installed} files installed).`);
+    } else {
+      console.log(`\n${colors.gray}Already scaffolded — no missing files.${colors.reset}`);
+    }
+  }
+}
 
 function getDesignCatalogDir() {
   const candidates = [
@@ -2526,6 +2580,9 @@ async function main() {
       break;
     case 'mode':
       runMode(flags, positional);
+      break;
+    case 'scaffold':
+      runScaffold(flags, positional);
       break;
     case 'doctor':
     case 'check':
