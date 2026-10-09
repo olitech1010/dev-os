@@ -112,6 +112,38 @@ try {
 
   const skillList = runCli(['skill', 'list', '--json'], proj);
   check('devos skill list exits 0', skillList.status === 0, skillList.stderr);
+  let parsedSkills = [];
+  try { parsedSkills = JSON.parse(skillList.stdout); } catch (e) {}
+  check('devos skill list --json outputs array of skill objects', Array.isArray(parsedSkills) && parsedSkills.length > 0 && typeof parsedSkills[0].tokens === 'number');
+
+  const skillAudit = runCli(['skill', 'audit'], proj);
+  check('devos skill audit exits 0', skillAudit.status === 0, skillAudit.stderr);
+
+  const skillAuditJson = runCli(['skill', 'audit', '--json'], proj);
+  check('devos skill audit --json exits 0', skillAuditJson.status === 0, skillAuditJson.stderr);
+  let parsedAudit = null;
+  try { parsedAudit = JSON.parse(skillAuditJson.stdout); } catch (e) {}
+  check('devos skill audit --json outputs structured scorecard', Boolean(parsedAudit && parsedAudit.total > 0 && parsedAudit.errors === 0));
+
+  const skillCheck = runCli(['skill', 'check', '--json'], proj);
+  check('devos skill check --json exits 0', skillCheck.status === 0, skillCheck.stderr);
+  let parsedCheck = null;
+  try { parsedCheck = JSON.parse(skillCheck.stdout); } catch (e) {}
+  check('devos skill check --json reports clean integrity', Boolean(parsedCheck && parsedCheck.total > 0 && parsedCheck.customizedCount === 0));
+
+  const skillSyncDry = runCli(['skill', 'sync', '--dry-run'], proj);
+  check('devos skill sync --dry-run exits 0', skillSyncDry.status === 0, skillSyncDry.stderr);
+
+  // Customization safety backup test: modify an installed skill, run sync, verify backup directory
+  const testSkillFile = path.join(proj, '.agents', 'skills', 'anti-ai-ui', 'SKILL.md');
+  if (fs.existsSync(testSkillFile)) {
+    fs.appendFileSync(testSkillFile, '\n<!-- modified by smoke-test -->\n');
+    const syncRes = runCli(['skill', 'sync'], proj);
+    check('devos skill sync exits 0 on modified skill', syncRes.status === 0, syncRes.stderr);
+    const backupDir = path.join(proj, '.agents', '_backup', 'skills');
+    const hasBackup = fs.existsSync(backupDir) && fs.readdirSync(backupDir).some((f) => f.startsWith('anti-ai-ui-'));
+    check('customized skill automatically backed up to .agents/_backup/skills/', hasBackup);
+  }
 
   const memList = runCli(['memory', 'list', '--json'], proj);
   check('devos memory list exits 0', memList.status === 0, memList.stderr);

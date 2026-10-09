@@ -16,5 +16,551 @@
     "gemini"
   ],
   "hooksEnabled": true,
-  "updatedAt": "2026-09-11T18:00:00Z"
+  "updatedAt": "2026-10-09T07:27:47.237Z",
+  "skills": {
+    "agent-browser": {
+      "source": "core",
+      "version": "4.5.0",
+      "hash": "a591ab7a1a3dd47f31d9522c5dc99e93c60aa6916e5f319ac79e6df3d61d27b4",
+      "customized": false,
+      "installedAt": "2026-10-09T07:27:46.994Z",
+      "updatedAt": "2026-10-09T07:27:46.995Z"
+    },
+    "agent-development": {
+      "source": "core",
+      "version": "4.5.0",
+      "hash": "1cf4b6a01bf3b92ed8149f74226a60dcc9203a587ad861fcb18ad58b89b9f3f3",
+      "customized": false,
+      "installedAt": "2026-10-09T07:27:47.018Z",
+      "updatedAt": "2026-10-09T07:27:47.018Z"
+    },
+    "anti-ai-ui": {
+      "source": "core",
+      "version": "4.5.0",
+      "hash": "6c8218acb8a34c833bb141cc2b4d978c3419d8689fcf1d0a0584b2149a0f6d3a",
+      "customized": false,
+      "installedAt": "2026-10-09T07:27:47.019Z",
+      "updatedAt": "2026-10-09T07:27:47.019Z"
+    },
+    "autonomous-sdlc": {
+      "source": "core",
+      "version": "4.5.0",
+      "hash": "d51c74e5c76cdf346dbff32b4858d585a335ebf7649523103d78833d935410a1",
+      "customized": false,
+      "installedAt": "2026-10-09T07:27:47.019Z",
+      "updatedAt": "2026-10-09T07:27:47.019Z"
+    },
+    "backend-dev-guidelines": {
+      "source": "core",
+      "version": "4.5.0",
+      "hash": "e2f2d27c6b52745f71286ec81c6579f08a186bb843812783d54298acb856fd6c",
+      "customized": false,
+      "installedAt": "2026-10-09T07:27:47.025Z",
+      "updatedAt": "2026-10-09T07:27:47.025Z"
+    },
+    "backend-development": {
+      "source": "core",
+      "version": "4.5.0",
+      "hash": "9d2bdeb520c3fdae88254a7e4d50d0507179f78ab3c9fa5fab93db7c77dae847",
+      "customized": false,
+      "installedAt": "2026-10-09T07:27:47.027Z",
+      "updatedAt": "2026-10-09T07:27:47.027Z"
+    },
+    "backend-patterns": {
+      "source": "core",
+      "version": "4.5.0",
+      "hash": "41d249da0be53f77f0a07cfe95b0378d1f5bd9cb0803daad2c72ed79f0a47823",
+      "customized": false,
+      "installedAt": "2026-10-09T07:27:47.027Z",
+      "updatedAt": "2026-10-09T07:27:47.027Z"
+    },
+    "brainstorming": {
+      "source": "core",
+      "version": "4.5.0",
+      "hash": "eb2ad77a31a10c17f89abb9b6124b3ec70b934e4268cdf079dd4d06158eef6c4",
+      "customized": false,
+      "installedAt": "2026-10-09T07:27:47.030Z",
+      "updatedAt": "2026-10-09T07:27:47.030Z"
+    },
+    "code-reviewer": {
+      "source": "core",
+      "version": "4.5.0",
+      "hash": "cd9df265447aa1e2ada018bbd78e343ece1b3c2e45d6a3cd46a707803be140e2",
+      "customized": false,
+      "installedAt": "2026-10-09T07:27:47.031Z",
+      "updatedAt": "2026-10-09T07:27:47.031Z"
+    },
+    "content-strategy": {
+      "source": "core",
+      "version": "4.5.0",
+      "hash": "26496b69869aef96c1bf1fdfbac0bd43bfc25674cebba592cc2ee7ce15b746ca",
+      "customized": false,
+      "installedAt": "2026-10-09T07:27:47.032Z",
+      "updatedAt": "2026-10-09T07:27:47.032Z"
+    },
+    "deploy-to-vercel": {
+      "source": "core",
+      "version": "4.5.0",
+      "hash": "47d27d1fa5ac786bf512075e677bf06b83c7df560c3571cadb73073628a9279b",
+      "customized": false,
+      "installedAt": "2026-10-09T07:27:47.034Z",
+      "updatedAt": "2026-10-09T07:27:47.034Z"
+    },
+    "deployment-checklist": {
+      "source": "core",
+      "version": "4.5.0",
+      "hash": "d408369effc7a6b1c9f38f45c7fef1c3637b17889b9f3d248760a2f974bcbb71",
+      "customized": false,
+      "installedAt": "2026-10-09T07:27:47.035Z",
+      "updatedAt": "2026-10-09T07:27:47.035Z"
+    },
+    "design": {
+      "source": "core",
+      "version": "4.5.0",
+      "hash": "eb95f42e8b4914f3031c5fcc2df08031d712459b24c218583b3afcec55eb905d",
+      "customized": false,
+      "installedAt": "2026-10-09T07:27:47.035Z",
+      "updatedAt": "2026-10-09T07:27:47.035Z"
+    },
+    "design-an-interface": {
+      "source": "core",
+      "version": "4.5.0",
+      "hash": "4fc666d437a181064af770bfd9ce4c8d819170283d7bea6df7920e5a322080cf",
+      "customized": false,
+      "installedAt": "2026-10-09T07:27:47.036Z",
+      "updatedAt": "2026-10-09T07:27:47.036Z"
+    },
+    "eval-harness": {
+      "source": "core",
+      "version": "4.5.0",
+      "hash": "27c598a09465b894789b28cb7ecbfbdf1a3b878086d9209bf8010932ff5c5eeb",
+      "customized": false,
+      "installedAt": "2026-10-09T07:27:47.036Z",
+      "updatedAt": "2026-10-09T07:27:47.036Z"
+    },
+    "expose-localhost": {
+      "source": "core",
+      "version": "4.5.0",
+      "hash": "124b5588d17d4e89c7f835beae731c39ee8e0ca9e55724047a29e2932b4fbdcd",
+      "customized": false,
+      "installedAt": "2026-10-09T07:27:47.037Z",
+      "updatedAt": "2026-10-09T07:27:47.037Z"
+    },
+    "find-skills": {
+      "source": "core",
+      "version": "4.5.0",
+      "hash": "a47c3c60f5dcab4e330347a0e18f502b2b3c47a400ff1fce1e82aa6a0d719ab4",
+      "customized": false,
+      "installedAt": "2026-10-09T07:27:47.038Z",
+      "updatedAt": "2026-10-09T07:27:47.038Z"
+    },
+    "frontend-ui-engineering": {
+      "source": "core",
+      "version": "4.5.0",
+      "hash": "f95d05dfe3fe7e1789f321ab60ce153d6a18121dd87ce65e17080799b12c35c1",
+      "customized": false,
+      "installedAt": "2026-10-09T07:27:47.039Z",
+      "updatedAt": "2026-10-09T07:27:47.039Z"
+    },
+    "git-commit": {
+      "source": "core",
+      "version": "4.5.0",
+      "hash": "6d261bfc0dff20d81f179c40274d4bf162a068fa5c953cae0f407d0a9b3334a8",
+      "customized": false,
+      "installedAt": "2026-10-09T07:27:47.039Z",
+      "updatedAt": "2026-10-09T07:27:47.039Z"
+    },
+    "git-ops": {
+      "source": "core",
+      "version": "4.5.0",
+      "hash": "3dc76e219e5809a9a4091ac16df49b9b148fc46207e8b9372ccd336137e81844",
+      "customized": false,
+      "installedAt": "2026-10-09T07:27:47.040Z",
+      "updatedAt": "2026-10-09T07:27:47.040Z"
+    },
+    "git-workflow": {
+      "source": "core",
+      "version": "4.5.0",
+      "hash": "49279efac7eeffd1522da590c0ce6179d78ccfb4f3cba875bfbac8d20c65151f",
+      "customized": false,
+      "installedAt": "2026-10-09T07:27:47.040Z",
+      "updatedAt": "2026-10-09T07:27:47.040Z"
+    },
+    "google-agents-cli-adk-code": {
+      "source": "core",
+      "version": "4.5.0",
+      "hash": "176164a005e0fa63a32af97a3c6baddb5266e21840f25726d594ddfab819f1ea",
+      "customized": false,
+      "installedAt": "2026-10-09T07:27:47.042Z",
+      "updatedAt": "2026-10-09T07:27:47.042Z"
+    },
+    "google-agents-cli-workflow": {
+      "source": "core",
+      "version": "4.5.0",
+      "hash": "79a7c3c65f9ca7cf5a4b6fc35654c5754f9b36b477d4852adafd5e63bd5d514d",
+      "customized": false,
+      "installedAt": "2026-10-09T07:27:47.044Z",
+      "updatedAt": "2026-10-09T07:27:47.044Z"
+    },
+    "grill-me": {
+      "source": "core",
+      "version": "4.5.0",
+      "hash": "e9c56647697284c2bdf9aeabb8a5a2a5d1d6647607f1e23838c1158bb83ab6fc",
+      "customized": false,
+      "installedAt": "2026-10-09T07:27:47.044Z",
+      "updatedAt": "2026-10-09T07:27:47.044Z"
+    },
+    "grill-with-docs": {
+      "source": "core",
+      "version": "4.5.0",
+      "hash": "bcae2b79ec2f3fcd8e13ee447c7497998a5c7f75da3260b217e4fa73a539ec40",
+      "customized": false,
+      "installedAt": "2026-10-09T07:27:47.045Z",
+      "updatedAt": "2026-10-09T07:27:47.045Z"
+    },
+    "human-checkpoint": {
+      "source": "core",
+      "version": "4.5.0",
+      "hash": "e46321f47abe04c24106a060d0f31a6bc60342d83b7e87bd85f12cff3b77562f",
+      "customized": false,
+      "installedAt": "2026-10-09T07:27:47.045Z",
+      "updatedAt": "2026-10-09T07:27:47.045Z"
+    },
+    "humanizer": {
+      "source": "core",
+      "version": "4.5.0",
+      "hash": "7bcfee91c3c449de48975dfdf5d50df975d4950ac1ec1c6a4f8db0d4645333a4",
+      "customized": false,
+      "installedAt": "2026-10-09T07:27:47.046Z",
+      "updatedAt": "2026-10-09T07:27:47.046Z"
+    },
+    "image": {
+      "source": "core",
+      "version": "4.5.0",
+      "hash": "b73f6c1540e0dc8820012636706b870552bfb7c2076ff9f9eb6d5a5138671595",
+      "customized": false,
+      "installedAt": "2026-10-09T07:27:47.048Z",
+      "updatedAt": "2026-10-09T07:27:47.048Z"
+    },
+    "image-generation": {
+      "source": "core",
+      "version": "4.5.0",
+      "hash": "54eb5f38abb5ae91fd53c26f451740007eb8745c3466046cc63d280266be0500",
+      "customized": false,
+      "installedAt": "2026-10-09T07:27:47.049Z",
+      "updatedAt": "2026-10-09T07:27:47.049Z"
+    },
+    "imagegen": {
+      "source": "core",
+      "version": "4.5.0",
+      "hash": "893e404d88c87d7d614d14856cc174dfcaeb057a22058ee369fb6327c6794560",
+      "customized": false,
+      "installedAt": "2026-10-09T07:27:47.053Z",
+      "updatedAt": "2026-10-09T07:27:47.053Z"
+    },
+    "imagegen-frontend-web": {
+      "source": "core",
+      "version": "4.5.0",
+      "hash": "23adff1d0682455d3358f87e06717ee01a2863086c64e7ab3f07a16c5995085d",
+      "customized": false,
+      "installedAt": "2026-10-09T07:27:47.054Z",
+      "updatedAt": "2026-10-09T07:27:47.054Z"
+    },
+    "laravel-security": {
+      "source": "core",
+      "version": "4.5.0",
+      "hash": "574b551b1a0a441016442c0802e1ae6a1d810cdf9f05b3ea31483d4b2ce5aed2",
+      "customized": false,
+      "installedAt": "2026-10-09T07:27:47.055Z",
+      "updatedAt": "2026-10-09T07:27:47.055Z"
+    },
+    "laravel-specialist": {
+      "source": "core",
+      "version": "4.5.0",
+      "hash": "511d9be231b8b4b91e178784e531b9eae99c3c0aad4cf74df3199422512b1fc7",
+      "customized": false,
+      "installedAt": "2026-10-09T07:27:47.058Z",
+      "updatedAt": "2026-10-09T07:27:47.058Z"
+    },
+    "laravel-tdd": {
+      "source": "core",
+      "version": "4.5.0",
+      "hash": "df2f3d49857f33bc04997c9b6a1bb7992884f4ca97bdfeaf164b1266000a6720",
+      "customized": false,
+      "installedAt": "2026-10-09T07:27:47.058Z",
+      "updatedAt": "2026-10-09T07:27:47.058Z"
+    },
+    "laravel-verification": {
+      "source": "core",
+      "version": "4.5.0",
+      "hash": "3677a0ac07f710234e3d9bcdcc3db306ccc9c735cb6548e673bd42b1c5571ad1",
+      "customized": false,
+      "installedAt": "2026-10-09T07:27:47.059Z",
+      "updatedAt": "2026-10-09T07:27:47.059Z"
+    },
+    "modern-web-guidance": {
+      "source": "core",
+      "version": "4.5.0",
+      "hash": "97d64039251cf8b064a8a37502614486fd13e290c7f8d4a0b0e645cc6b590028",
+      "customized": false,
+      "installedAt": "2026-10-09T07:27:47.095Z",
+      "updatedAt": "2026-10-09T07:27:47.095Z"
+    },
+    "nextjs-app-router-patterns": {
+      "source": "core",
+      "version": "4.5.0",
+      "hash": "cd9f23c2b7ae6ead3f23778d73c68e9f9920dd41c7d07f3110cacd6f15d08fa7",
+      "customized": false,
+      "installedAt": "2026-10-09T07:27:47.097Z",
+      "updatedAt": "2026-10-09T07:27:47.097Z"
+    },
+    "nextjs-developer": {
+      "source": "core",
+      "version": "4.5.0",
+      "hash": "ac0df40b11735f8032747ea2a0484f365f7035adefcb1597a4d8b5afe513413b",
+      "customized": false,
+      "installedAt": "2026-10-09T07:27:47.098Z",
+      "updatedAt": "2026-10-09T07:27:47.098Z"
+    },
+    "nextjs-supabase-auth": {
+      "source": "core",
+      "version": "4.5.0",
+      "hash": "fe57c635024b0ef24c93f64bf62d78bfb682398b5e064508c1001fea26f7edd0",
+      "customized": false,
+      "installedAt": "2026-10-09T07:27:47.099Z",
+      "updatedAt": "2026-10-09T07:27:47.099Z"
+    },
+    "nodejs-backend-patterns": {
+      "source": "core",
+      "version": "4.5.0",
+      "hash": "61c8ffbcdbe455acf54d6561444ade89a07b3135e31fc311fb87b0bb041a3b61",
+      "customized": false,
+      "installedAt": "2026-10-09T07:27:47.100Z",
+      "updatedAt": "2026-10-09T07:27:47.100Z"
+    },
+    "performance-engineer": {
+      "source": "core",
+      "version": "4.5.0",
+      "hash": "d94de463cf58ae5a87860330df39f185178a5c40900c960af443e5c1f65c8207",
+      "customized": false,
+      "installedAt": "2026-10-09T07:27:47.101Z",
+      "updatedAt": "2026-10-09T07:27:47.101Z"
+    },
+    "project-requirements": {
+      "source": "core",
+      "version": "4.5.0",
+      "hash": "c20939aad895ff15bd5131a9af12689ee7e373ece1f8ac4bbc829197650cbd1b",
+      "customized": false,
+      "installedAt": "2026-10-09T07:27:47.101Z",
+      "updatedAt": "2026-10-09T07:27:47.101Z"
+    },
+    "qa": {
+      "source": "core",
+      "version": "4.5.0",
+      "hash": "c94c041d7017de1c489b39625c74a4f79680e2d607cac6162ad1aba42be84a2f",
+      "customized": false,
+      "installedAt": "2026-10-09T07:27:47.101Z",
+      "updatedAt": "2026-10-09T07:27:47.101Z"
+    },
+    "security-review": {
+      "source": "core",
+      "version": "4.5.0",
+      "hash": "f256bd4e4d4a6c5197c76fc9625a81581af3e5720bbf45d9cc5752b3e7bd923e",
+      "customized": false,
+      "installedAt": "2026-10-09T07:27:47.108Z",
+      "updatedAt": "2026-10-09T07:27:47.108Z"
+    },
+    "seo-aeo-best-practices": {
+      "source": "core",
+      "version": "4.5.0",
+      "hash": "1583ebfe56d269dda36b5abd3f6426a478c1ff7d0009d1fb7eae92d1ee4eaa63",
+      "customized": false,
+      "installedAt": "2026-10-09T07:27:47.110Z",
+      "updatedAt": "2026-10-09T07:27:47.110Z"
+    },
+    "seo-geo": {
+      "source": "core",
+      "version": "4.5.0",
+      "hash": "936f9530169d1302535c53c2edcb5801fdf534dedadca276efa19d77ee898332",
+      "customized": false,
+      "installedAt": "2026-10-09T07:27:47.115Z",
+      "updatedAt": "2026-10-09T07:27:47.115Z"
+    },
+    "shadcn-ui": {
+      "source": "core",
+      "version": "4.5.0",
+      "hash": "13225f15f9990037a112da335ff726c6c0a19f8af1236d6aaa653d7409d1ee54",
+      "customized": false,
+      "installedAt": "2026-10-09T07:27:47.119Z",
+      "updatedAt": "2026-10-09T07:27:47.119Z"
+    },
+    "shared-memory": {
+      "source": "core",
+      "version": "4.5.0",
+      "hash": "816d767880dc109dd87ce172324531b90dba15dd328dcd7d3f541100ac5d2a8e",
+      "customized": false,
+      "installedAt": "2026-10-09T07:27:47.119Z",
+      "updatedAt": "2026-10-09T07:27:47.119Z"
+    },
+    "skill-creator": {
+      "source": "core",
+      "version": "4.5.0",
+      "hash": "d4fe48f9d5f7ea055d889e20ea7e867bfd28a61087b928e98012f0059c062fac",
+      "customized": false,
+      "installedAt": "2026-10-09T07:27:47.125Z",
+      "updatedAt": "2026-10-09T07:27:47.125Z"
+    },
+    "stacks": {
+      "source": "core",
+      "version": "4.5.0",
+      "hash": "8e170b207d58e08d2d6f9027eae03d87a1afc2599a15d405fe9a84ca49873a55",
+      "customized": false,
+      "installedAt": "2026-10-09T07:27:47.127Z",
+      "updatedAt": "2026-10-09T07:27:47.127Z"
+    },
+    "supabase": {
+      "source": "core",
+      "version": "4.5.0",
+      "hash": "49a8084707a363e071880daf680d8e9611b08a8d3811c97fb7294d16c465fbae",
+      "customized": false,
+      "installedAt": "2026-10-09T07:27:47.129Z",
+      "updatedAt": "2026-10-09T07:27:47.129Z"
+    },
+    "supabase-postgres-best-practices": {
+      "source": "core",
+      "version": "4.5.0",
+      "hash": "5fc6b53e6d6ca1afb3124cefb52dc45aa41f917d3cb03ce6baa65fa1d77b7c37",
+      "customized": false,
+      "installedAt": "2026-10-09T07:27:47.136Z",
+      "updatedAt": "2026-10-09T07:27:47.136Z"
+    },
+    "task-board": {
+      "source": "core",
+      "version": "4.5.0",
+      "hash": "3c4f4de96f07b2555f87c41f08c222566dd4c6aa57a745fc2d02e334ac29e746",
+      "customized": false,
+      "installedAt": "2026-10-09T07:27:47.137Z",
+      "updatedAt": "2026-10-09T07:27:47.137Z"
+    },
+    "task-contract": {
+      "source": "core",
+      "version": "4.5.0",
+      "hash": "569f4585386d6bd6037f2dbab3805d0f5d9c59e40b37cb02818557f73e354c61",
+      "customized": false,
+      "installedAt": "2026-10-09T07:27:47.137Z",
+      "updatedAt": "2026-10-09T07:27:47.137Z"
+    },
+    "telemetry": {
+      "source": "core",
+      "version": "4.5.0",
+      "hash": "ef51f4497ed44191e6b3925529ecdff717810a114bc69d6a3c877231d8467c0c",
+      "customized": false,
+      "installedAt": "2026-10-09T07:27:47.138Z",
+      "updatedAt": "2026-10-09T07:27:47.138Z"
+    },
+    "testing-guide": {
+      "source": "core",
+      "version": "4.5.0",
+      "hash": "6315ba0ba99107a401f96ebca6b59ba7b65b7a0227ae0db2b0e6c5761eb83a6c",
+      "customized": false,
+      "installedAt": "2026-10-09T07:27:47.138Z",
+      "updatedAt": "2026-10-09T07:27:47.138Z"
+    },
+    "token-optimization": {
+      "source": "core",
+      "version": "4.5.0",
+      "hash": "73e9f7bebd62bde014ff744c0e67d0646f5ad7137be02386466a3d75ae6e5740",
+      "customized": false,
+      "installedAt": "2026-10-09T07:27:47.139Z",
+      "updatedAt": "2026-10-09T07:27:47.139Z"
+    },
+    "ui-designer": {
+      "source": "core",
+      "version": "4.5.0",
+      "hash": "acca09cd6350992e3b32aaf174e32be8ee10bd15b9add6ec512657ce3adaabf0",
+      "customized": false,
+      "installedAt": "2026-10-09T07:27:47.140Z",
+      "updatedAt": "2026-10-09T07:27:47.140Z"
+    },
+    "ui-ux-pro-max": {
+      "source": "core",
+      "version": "4.5.0",
+      "hash": "453446cdd9013f618bfd1a2b15e44f4ba7e05653dd54ec952a004bddcd3f9c79",
+      "customized": false,
+      "installedAt": "2026-10-09T07:27:47.167Z",
+      "updatedAt": "2026-10-09T07:27:47.167Z"
+    },
+    "vercel-cli-with-tokens": {
+      "source": "core",
+      "version": "4.5.0",
+      "hash": "243bb63ba20d301f0798b8e5dd36ce6b3010cb8caf01f60f39dd0a51a131ce20",
+      "customized": false,
+      "installedAt": "2026-10-09T07:27:47.167Z",
+      "updatedAt": "2026-10-09T07:27:47.167Z"
+    },
+    "vercel-composition-patterns": {
+      "source": "core",
+      "version": "4.5.0",
+      "hash": "83d748b80f9b4a7cfb6c3a484315326470319ce7d32aba3bac93718942adbc3a",
+      "customized": false,
+      "installedAt": "2026-10-09T07:27:47.170Z",
+      "updatedAt": "2026-10-09T07:27:47.170Z"
+    },
+    "vercel-optimize": {
+      "source": "core",
+      "version": "4.5.0",
+      "hash": "fe0e470f517daa7bbf6f6a57a11a7af97a694f149fd1de6cc264493c43ee06c0",
+      "customized": false,
+      "installedAt": "2026-10-09T07:27:47.208Z",
+      "updatedAt": "2026-10-09T07:27:47.208Z"
+    },
+    "vercel-react-best-practices": {
+      "source": "core",
+      "version": "4.5.0",
+      "hash": "36dce7a763ad6ac4927a11465d64cd2c8134c500023d320e420cc96d6027dfef",
+      "customized": false,
+      "installedAt": "2026-10-09T07:27:47.224Z",
+      "updatedAt": "2026-10-09T07:27:47.224Z"
+    },
+    "vercel-react-native-skills": {
+      "source": "core",
+      "version": "4.5.0",
+      "hash": "ab992faff36a5a6bc0866696e4d6a74db331c6437297859ec073b69ba3fde9bf",
+      "customized": false,
+      "installedAt": "2026-10-09T07:27:47.233Z",
+      "updatedAt": "2026-10-09T07:27:47.233Z"
+    },
+    "vercel-react-view-transitions": {
+      "source": "core",
+      "version": "4.5.0",
+      "hash": "b5d4c347f6b70025b052f7c422434c128bc9994f3afa7e39fe3cf0cbea46e3cb",
+      "customized": false,
+      "installedAt": "2026-10-09T07:27:47.235Z",
+      "updatedAt": "2026-10-09T07:27:47.235Z"
+    },
+    "web-design-guidelines": {
+      "source": "core",
+      "version": "4.5.0",
+      "hash": "a5f3ca5a1323b732a3b0feb2edfa0778c8218c7069aa52c5004c3bd7d2f883ce",
+      "customized": false,
+      "installedAt": "2026-10-09T07:27:47.235Z",
+      "updatedAt": "2026-10-09T07:27:47.235Z"
+    },
+    "workflow-metrics": {
+      "source": "core",
+      "version": "4.5.0",
+      "hash": "a7e433fd0f197b992f530cfe6ed8bae324a6edc50f68334e42158005159244a7",
+      "customized": false,
+      "installedAt": "2026-10-09T07:27:47.236Z",
+      "updatedAt": "2026-10-09T07:27:47.236Z"
+    },
+    "writing-guidelines": {
+      "source": "core",
+      "version": "4.5.0",
+      "hash": "857fcc4f93a53d2055983051f6283ce2822f8898150982d75988dbb30996bd64",
+      "customized": false,
+      "installedAt": "2026-10-09T07:27:47.236Z",
+      "updatedAt": "2026-10-09T07:27:47.236Z"
+    }
+  }
 }

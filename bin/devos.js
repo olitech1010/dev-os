@@ -119,7 +119,8 @@ function parseArgs(args) {
     title: null,
     branch: null,
     output: null,
-    yes: false
+    yes: false,
+    force: false
   };
 
   const positional = [];
@@ -214,6 +215,8 @@ function parseArgs(args) {
       i++;
     } else if (arg === '--yes' || arg === '-y') {
       flags.yes = true;
+    } else if (arg === '--force' || arg === '-f') {
+      flags.force = true;
     } else if (!arg.startsWith('-')) {
       positional.push(arg);
     }
@@ -265,7 +268,7 @@ function printHelp() {
   console.log(`  ${colors.green}scaffold${colors.reset}            Regenerate missing state scaffolds from templates (CURRENT_STATE, TASK_BOARD, LESSONS, context.json)`);
   console.log(`  ${colors.green}doctor${colors.reset}, ${colors.green}check${colors.reset}      Diagnose setup, hooks, memory vault, task board, and health`);
   console.log(`  ${colors.green}pack${colors.reset}, ${colors.green}packs${colors.reset}        Manage composable capability packs (pack list, pack add <name>)`);
-  console.log(`  ${colors.green}skill${colors.reset}, ${colors.green}skills${colors.reset}       Manage agent skills from skills.sh (skill list, add <repo>, update, find)`);
+  console.log(`  ${colors.green}skill${colors.reset}, ${colors.green}skills${colors.reset}       Manage agent skills from skills.sh (skill list, add, update, sync, check, audit, find)`);
   console.log(`  ${colors.green}memory${colors.reset}             Shared memory vault operations (memory list, memory handoff, memory doctor)`);
   console.log(`  ${colors.green}eval${colors.reset}, ${colors.green}benchmark${colors.reset}       Run capability benchmarks, pass@k evals, and agent scorecards`);
   console.log(`  ${colors.green}design${colors.reset}                   Browse, match, and apply authentic brand design systems (list, match, apply, sync)`);
@@ -333,17 +336,32 @@ function copyRecursiveSync(src, dest) {
   }
 }
 
-// Minimal YAML frontmatter parser (flat key: value pairs only)
+// Minimal YAML frontmatter parser (supports flat key: value and indented multiline values)
 function parseFrontmatter(content) {
   const match = content.match(/^---\r?\n([\s\S]*?)\r?\n---\r?\n?/);
   if (!match) return { data: {}, body: content };
   const data = {};
+  let currentKey = null;
+
   match[1].split(/\r?\n/).forEach((line) => {
+    if (/^\s+/.test(line) && currentKey) {
+      const val = line.trim();
+      if (val) {
+        data[currentKey] = data[currentKey] ? `${data[currentKey]} ${val}` : val;
+      }
+      return;
+    }
+
     const idx = line.indexOf(':');
     if (idx > 0) {
-      data[line.slice(0, idx).trim()] = line.slice(idx + 1).trim().replace(/^["']|["']$/g, '');
+      currentKey = line.slice(0, idx).trim();
+      const val = line.slice(idx + 1).trim().replace(/^["'>|-]|["']$/g, '').trim();
+      data[currentKey] = val;
+    } else {
+      currentKey = null;
     }
   });
+
   return { data, body: content.slice(match[0].length) };
 }
 
@@ -358,6 +376,181 @@ function countSkills(skillsDir) {
     if (f === '_backup') return false;
     return fs.statSync(path.join(skillsDir, f)).isDirectory();
   }).length;
+}
+
+// ---------------------------------------------------------------------------
+// Skill hashing, manifest, backup & audit helpers
+// ---------------------------------------------------------------------------
+
+function computeSkillHash(skillDir) {
+  if (!fs.existsSync(skillDir) || !fs.statSync(skillDir).isDirectory()) {
+    return null;
+  }
+  const crypto = require('crypto');
+  const files = [];
+
+  function collect(dir, prefix = '') {
+    for (const f of fs.readdirSync(dir)) {
+      if (f === '.DS_Store' || f === '_backup') continue;
+      const full = path.join(dir, f);
+      const rel = prefix ? `${prefix}/${f}` : f;
+      const stat = fs.statSync(full);
+      if (stat.isDirectory()) {
+        collect(full, rel);
+      } else if (stat.isFile()) {
+        files.push({ rel, full });
+      }
+    }
+  }
+
+  collect(skillDir);
+  files.sort((a, b) => a.rel.localeCompare(b.rel));
+
+  const hash = crypto.createHash('sha256');
+  for (const item of files) {
+    hash.update(`file:${item.rel}\n`);
+    hash.update(fs.readFileSync(item.full));
+    hash.update('\n');
+  }
+  return hash.digest('hex');
+}
+
+function backupSkill(skillDir, skillName, targetDir = TARGET_DIR) {
+  if (!fs.existsSync(skillDir)) return null;
+  const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+  const backupRoot = path.join(targetDir, '.agents', '_backup', 'skills', `${skillName}-${timestamp}`);
+  copyRecursiveSync(skillDir, backupRoot);
+  return backupRoot;
+}
+
+function getSkillManifest(targetDir = TARGET_DIR) {
+  const manifestPath = path.join(targetDir, '.agents', 'manifest.json');
+  let manifest = {
+    version: PKG.version,
+    installedPacks: [],
+    harnesses: [],
+    skills: {}
+  };
+  if (fs.existsSync(manifestPath)) {
+    try {
+      manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
+    } catch (e) {}
+  }
+  if (!manifest.skills || typeof manifest.skills !== 'object') {
+    manifest.skills = {};
+  }
+  return manifest;
+}
+
+function saveSkillManifest(manifest, targetDir = TARGET_DIR) {
+  const manifestPath = path.join(targetDir, '.agents', 'manifest.json');
+  manifest.updatedAt = new Date().toISOString();
+  fs.writeFileSync(manifestPath, JSON.stringify(manifest, null, 2) + '\n', 'utf8');
+}
+
+function auditSkills(skillsDir) {
+  const result = {
+    total: 0,
+    passed: 0,
+    warnings: 0,
+    errors: 0,
+    skills: []
+  };
+
+  if (!fs.existsSync(skillsDir)) {
+    return result;
+  }
+
+  const secretPatterns = [
+    { name: 'GitHub Token', re: /\b(ghp|gho|ghu|ghs|ghr)_[a-zA-Z0-9]{36,}\b/g },
+    { name: 'GitHub Fine-Grained Token', re: /\bgithub_pat_[a-zA-Z0-9_]{82}\b/g },
+    { name: 'Anthropic API Key', re: /\bsk-ant-[a-zA-Z0-9_\-]{32,}\b/g },
+    { name: 'OpenAI API Key', re: /\bsk-[a-zA-Z0-9]{32,}\b/g },
+    { name: 'Google API Key', re: /\bAIza[0-9A-Za-z\-_]{35}\b/g },
+    { name: 'AWS Key', re: /\b(AKIA|ABIA|ACCA|ASIA)[0-9A-Z]{16}\b/g },
+    { name: 'Private Key', re: /-----BEGIN [A-Z ]+ PRIVATE KEY-----/g },
+    { name: 'Bearer Token', re: /Bearer\s+[a-zA-Z0-9_\-\.]{25,}/gi }
+  ];
+
+  const skillEntries = fs.readdirSync(skillsDir).filter((f) => {
+    if (f === '_backup') return false;
+    return fs.statSync(path.join(skillsDir, f)).isDirectory();
+  });
+
+  result.total = skillEntries.length;
+
+  for (const skillName of skillEntries) {
+    const sPath = path.join(skillsDir, skillName);
+    const skillReport = {
+      name: skillName,
+      valid: true,
+      tokens: 0,
+      warnings: [],
+      errors: []
+    };
+
+    const skillMdPath = path.join(sPath, 'SKILL.md');
+    if (!fs.existsSync(skillMdPath)) {
+      skillReport.valid = false;
+      skillReport.errors.push('Missing SKILL.md');
+    } else {
+      const content = fs.readFileSync(skillMdPath, 'utf8');
+      skillReport.tokens = Math.ceil(content.length / 4);
+
+      const fm = parseFrontmatter(content);
+      if (!fm.data || !fm.data.name) {
+        skillReport.valid = false;
+        skillReport.errors.push('Missing name in frontmatter');
+      }
+      if (!fm.data || !fm.data.description || fm.data.description.trim().length === 0) {
+        skillReport.valid = false;
+        skillReport.errors.push('Missing description in frontmatter');
+      }
+
+      if (skillReport.tokens > 4000) {
+        skillReport.warnings.push(`High prompt token weight (${skillReport.tokens.toLocaleString()} tokens > 4,000 threshold)`);
+      }
+    }
+
+    // Security check across files in the skill directory
+    function scanDir(dir) {
+      for (const item of fs.readdirSync(dir)) {
+        if (item === '.DS_Store' || item === '_backup' || item === 'node_modules') continue;
+        const itemPath = path.join(dir, item);
+        const stat = fs.statSync(itemPath);
+        if (stat.isDirectory()) {
+          scanDir(itemPath);
+        } else if (stat.isFile()) {
+          try {
+            const fileContent = fs.readFileSync(itemPath, 'utf8');
+            for (const pat of secretPatterns) {
+              const matches = fileContent.match(pat.re) || [];
+              for (const m of matches) {
+                if (m.toUpperCase().includes('EXAMPLE') || m.includes('000000') || m.toLowerCase().includes('xxxx')) continue;
+                skillReport.valid = false;
+                skillReport.errors.push(`Hardcoded credential detected (${pat.name}) in ${path.relative(sPath, itemPath)}`);
+              }
+            }
+          } catch (e) {}
+        }
+      }
+    }
+
+    scanDir(sPath);
+
+    if (skillReport.errors.length > 0) {
+      result.errors++;
+    } else {
+      result.passed++;
+    }
+    if (skillReport.warnings.length > 0) {
+      result.warnings++;
+    }
+
+    result.skills.push(skillReport);
+  }
+
+  return result;
 }
 
 function hintFor(err) {
@@ -958,6 +1151,24 @@ function installSkillsAndPacks(srcAgents, destAgents, stack, allSkills, telemetr
 
   const packsData = fs.existsSync(packsPath) ? JSON.parse(fs.readFileSync(packsPath, 'utf8')) : null;
 
+  function buildSkillsMap() {
+    const map = {};
+    if (fs.existsSync(destSkills)) {
+      const installedSkillDirs = fs.readdirSync(destSkills).filter((f) => f !== '_backup' && fs.statSync(path.join(destSkills, f)).isDirectory());
+      for (const sName of installedSkillDirs) {
+        map[sName] = {
+          source: 'core',
+          version: PKG.version,
+          hash: computeSkillHash(path.join(destSkills, sName)),
+          customized: false,
+          installedAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        };
+      }
+    }
+    return map;
+  }
+
   if (allSkills || !packsData) {
     copyRecursiveSync(srcSkills, destSkills);
     const installed = packsData ? Object.keys(packsData.packs) : ['all'];
@@ -969,6 +1180,7 @@ function installSkillsAndPacks(srcAgents, destAgents, stack, allSkills, telemetr
       telemetry: telemetry ? 'on' : 'off',
       mode: mode || 'interactive',
       goal: goal || null,
+      skills: buildSkillsMap(),
       updatedAt: new Date().toISOString()
     };
     fs.writeFileSync(manifestPath, JSON.stringify(manifest, null, 2) + '\n', 'utf8');
@@ -1004,6 +1216,7 @@ function installSkillsAndPacks(srcAgents, destAgents, stack, allSkills, telemetr
     telemetry: telemetry ? 'on' : 'off',
     mode: mode || 'interactive',
     goal: goal || null,
+    skills: buildSkillsMap(),
     updatedAt: new Date().toISOString()
   };
   fs.writeFileSync(manifestPath, JSON.stringify(manifest, null, 2) + '\n', 'utf8');
@@ -1454,7 +1667,30 @@ async function runUpdate(flags) {
       const destSkills = path.join(destAgents, 'skills');
       let msg = 'skipped';
       if (fs.existsSync(srcSkills)) {
+        const manifest = getSkillManifest(TARGET_DIR);
+        if (fs.existsSync(destSkills) && TEMPLATE_DIR !== TARGET_DIR) {
+          const localSkills = fs.readdirSync(destSkills).filter((f) => f !== '_backup' && fs.statSync(path.join(destSkills, f)).isDirectory());
+          for (const sName of localSkills) {
+            const dPath = path.join(destSkills, sName);
+            const dHash = computeSkillHash(dPath);
+            if (manifest.skills && manifest.skills[sName] && manifest.skills[sName].hash && manifest.skills[sName].hash !== dHash) {
+              backupSkill(dPath, sName, TARGET_DIR);
+            }
+          }
+        }
         copyRecursiveSync(srcSkills, destSkills);
+        const localSkills = fs.readdirSync(destSkills).filter((f) => f !== '_backup' && fs.statSync(path.join(destSkills, f)).isDirectory());
+        for (const sName of localSkills) {
+          manifest.skills[sName] = {
+            source: manifest.skills[sName]?.source || 'core',
+            version: PKG.version,
+            hash: computeSkillHash(path.join(destSkills, sName)),
+            customized: false,
+            installedAt: manifest.skills[sName]?.installedAt || new Date().toISOString(),
+            updatedAt: new Date().toISOString()
+          };
+        }
+        saveSkillManifest(manifest, TARGET_DIR);
         msg = `${countSkills(destSkills)} skills synchronized`;
       }
       try {
@@ -1723,12 +1959,309 @@ function runList(flags) {
 // skill / skills
 // ---------------------------------------------------------------------------
 
+function runSkillList(flags) {
+  const destSkills = path.join(TARGET_DIR, '.agents', 'skills');
+  const srcSkills = fs.existsSync(destSkills) ? destSkills : path.join(TEMPLATE_DIR, '.agents', 'skills');
+  const manifest = getSkillManifest(TARGET_DIR);
+
+  const skillsList = [];
+  if (fs.existsSync(srcSkills)) {
+    fs.readdirSync(srcSkills).forEach((file) => {
+      if (file === '_backup') return;
+      const skillPath = path.join(srcSkills, file);
+      if (fs.statSync(skillPath).isDirectory()) {
+        const skillMd = path.join(skillPath, 'SKILL.md');
+        let tokens = 0;
+        if (fs.existsSync(skillMd)) {
+          tokens = Math.ceil(fs.readFileSync(skillMd, 'utf8').length / 4);
+        }
+        const manifestEntry = (manifest.skills && manifest.skills[file]) || {};
+        const isCustomized = Boolean(manifestEntry.customized);
+        const source = manifestEntry.source || (fs.existsSync(path.join(TEMPLATE_DIR, '.agents', 'skills', file)) ? 'core' : 'community');
+        skillsList.push({
+          name: file,
+          tokens,
+          source,
+          customized: isCustomized
+        });
+      }
+    });
+  }
+
+  if (flags.json) {
+    console.log(JSON.stringify(skillsList, null, 2));
+    return;
+  }
+
+  console.log(`${colors.bold}INSTALLED SPECIALIST SKILLS (${skillsList.length})${colors.reset}`);
+  console.log(`${colors.gray}${RULE}${colors.reset}`);
+  skillsList.forEach((s) => {
+    const badge = s.customized ? `${colors.yellow}[customized]${colors.reset}` : `${colors.gray}[${s.source}]${colors.reset}`;
+    const tokenStr = `${colors.cyan}${s.tokens.toLocaleString().padStart(5)} tokens${colors.reset}`;
+    console.log(`  ${colors.green}• ${s.name.padEnd(30)}${colors.reset} ${tokenStr}  ${badge}`);
+  });
+  console.log();
+}
+
 function runSkill(flags, positional) {
   const subCmd = positional[0] || 'list';
   const { spawnSync } = require('child_process');
 
   if (subCmd === 'list') {
-    runList(flags);
+    runSkillList(flags);
+    return;
+  }
+
+  if (subCmd === 'audit') {
+    const destSkills = path.join(TARGET_DIR, '.agents', 'skills');
+    const skillsDir = fs.existsSync(destSkills) ? destSkills : path.join(TEMPLATE_DIR, '.agents', 'skills');
+    const report = auditSkills(skillsDir);
+
+    if (flags.json) {
+      console.log(JSON.stringify(report, null, 2));
+      if (report.errors > 0) process.exit(1);
+      return;
+    }
+
+    console.log(`${colors.bold}DEV-OS SKILLS STANDARDS & TOKEN AUDIT${colors.reset}`);
+    console.log(`${colors.gray}${RULE}${colors.reset}\n`);
+    console.log(`Auditing ${report.total} skills against Agent Skills Standard...\n`);
+
+    report.skills.forEach((s) => {
+      if (s.errors.length > 0) {
+        console.log(`  ${colors.red}✖ ${s.name.padEnd(30)}${colors.reset} ${s.errors.join(', ')}`);
+      } else if (s.warnings.length > 0) {
+        console.log(`  ${colors.yellow}⚠ ${s.name.padEnd(30)}${colors.reset} (${s.tokens.toLocaleString()} tokens) — ${s.warnings.join(', ')}`);
+      } else {
+        console.log(`  ${colors.green}✔ ${s.name.padEnd(30)}${colors.reset} (${s.tokens.toLocaleString()} tokens)`);
+      }
+    });
+
+    console.log(`\n${colors.bold}AUDIT SUMMARY${colors.reset}`);
+    console.log(`${colors.gray}${RULE}${colors.reset}`);
+    console.log(`  Total Skills:    ${report.total}`);
+    console.log(`  Passed:          ${colors.green}${report.passed}${colors.reset}`);
+    console.log(`  Warnings:        ${report.warnings > 0 ? colors.yellow + report.warnings : colors.gray + '0'}${colors.reset}`);
+    console.log(`  Errors:          ${report.errors > 0 ? colors.red + report.errors : colors.green + '0'}${colors.reset}\n`);
+
+    if (report.errors > 0) {
+      process.exit(1);
+    }
+    return;
+  }
+
+  if (subCmd === 'sync') {
+    console.log(`${colors.bold}SYNCHRONIZING AGENT SKILLS REGISTRY${colors.reset}`);
+    console.log(`${colors.gray}${RULE}${colors.reset}\n`);
+
+    const destSkills = path.join(TARGET_DIR, '.agents', 'skills');
+    const srcSkills = path.join(TEMPLATE_DIR, '.agents', 'skills');
+    fs.mkdirSync(destSkills, { recursive: true });
+
+    const manifest = getSkillManifest(TARGET_DIR);
+    const actions = {
+      backedUp: [],
+      synced: [],
+      registered: [],
+      unchanged: []
+    };
+
+    if (fs.existsSync(srcSkills)) {
+      const templateSkills = fs.readdirSync(srcSkills).filter((f) => {
+        if (f === '_backup') return false;
+        return fs.statSync(path.join(srcSkills, f)).isDirectory();
+      });
+
+      for (const skillName of templateSkills) {
+        const srcPath = path.join(srcSkills, skillName);
+        const destPath = path.join(destSkills, skillName);
+        const srcHash = computeSkillHash(srcPath);
+
+        if (!fs.existsSync(destPath)) {
+          if (flags.dryRun) {
+            actions.synced.push(`[ WOULD INSTALL ] ${skillName} from core templates`);
+          } else {
+            copyRecursiveSync(srcPath, destPath);
+            manifest.skills[skillName] = {
+              source: 'core',
+              version: PKG.version,
+              hash: srcHash,
+              customized: false,
+              installedAt: new Date().toISOString(),
+              updatedAt: new Date().toISOString()
+            };
+            actions.synced.push(`[ INSTALLED ] ${skillName}`);
+          }
+        } else {
+          const destHash = computeSkillHash(destPath);
+          const manifestEntry = manifest.skills[skillName];
+
+          const isModified = manifestEntry && manifestEntry.hash
+            ? manifestEntry.hash !== destHash
+            : destHash !== srcHash && TEMPLATE_DIR !== TARGET_DIR;
+
+          if (isModified) {
+            if (flags.dryRun) {
+              actions.backedUp.push(`[ WOULD BACKUP ] ${skillName} (local modifications) -> .agents/_backup/skills/${skillName}-<timestamp>/`);
+              actions.synced.push(`[ WOULD SYNC ] ${skillName} from core templates`);
+            } else {
+              const backupPath = backupSkill(destPath, skillName, TARGET_DIR);
+              actions.backedUp.push(`[ BACKUP ] Preserved local modifications in ${path.relative(TARGET_DIR, backupPath)}`);
+              copyRecursiveSync(srcPath, destPath);
+              manifest.skills[skillName] = {
+                source: 'core',
+                version: PKG.version,
+                hash: srcHash,
+                customized: false,
+                installedAt: (manifestEntry && manifestEntry.installedAt) || new Date().toISOString(),
+                updatedAt: new Date().toISOString()
+              };
+              actions.synced.push(`[ SYNCED ] ${skillName} (overwrote with core template after backup)`);
+            }
+          } else if (destHash !== srcHash) {
+            if (flags.dryRun) {
+              actions.synced.push(`[ WOULD UPDATE ] ${skillName} with upstream core changes`);
+            } else {
+              copyRecursiveSync(srcPath, destPath);
+              manifest.skills[skillName] = {
+                source: 'core',
+                version: PKG.version,
+                hash: srcHash,
+                customized: false,
+                installedAt: (manifestEntry && manifestEntry.installedAt) || new Date().toISOString(),
+                updatedAt: new Date().toISOString()
+              };
+              actions.synced.push(`[ UPDATED ] ${skillName}`);
+            }
+          } else {
+            if (!manifest.skills[skillName]) {
+              manifest.skills[skillName] = {
+                source: 'core',
+                version: PKG.version,
+                hash: srcHash,
+                customized: false,
+                installedAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString()
+              };
+              actions.registered.push(skillName);
+            } else {
+              actions.unchanged.push(skillName);
+            }
+          }
+        }
+      }
+    }
+
+    if (fs.existsSync(destSkills)) {
+      const localSkills = fs.readdirSync(destSkills).filter((f) => {
+        if (f === '_backup') return false;
+        return fs.statSync(path.join(destSkills, f)).isDirectory();
+      });
+      for (const local of localSkills) {
+        if (!manifest.skills[local]) {
+          const lHash = computeSkillHash(path.join(destSkills, local));
+          manifest.skills[local] = {
+            source: 'community',
+            version: '1.0.0',
+            hash: lHash,
+            customized: false,
+            installedAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString()
+          };
+          actions.registered.push(local);
+        }
+      }
+    }
+
+    if (!flags.dryRun) {
+      saveSkillManifest(manifest, TARGET_DIR);
+    }
+
+    if (actions.backedUp.length > 0) {
+      actions.backedUp.forEach((b) => console.log(`${colors.yellow}${b}${colors.reset}`));
+    }
+    if (actions.synced.length > 0) {
+      actions.synced.forEach((s) => console.log(`${colors.green}${s}${colors.reset}`));
+    }
+    if (actions.registered.length > 0) {
+      console.log(`${colors.cyan}[ REGISTERED ] ${actions.registered.length} skills in .agents/manifest.json${colors.reset}`);
+    }
+
+    console.log(`\n${colors.green}[ OK ] Skill synchronization complete (${actions.unchanged.length} unchanged, ${actions.synced.length} synced, ${actions.backedUp.length} backed up).${colors.reset}\n`);
+    return;
+  }
+
+  if (subCmd === 'check') {
+    const destSkills = path.join(TARGET_DIR, '.agents', 'skills');
+    const srcSkills = path.join(TEMPLATE_DIR, '.agents', 'skills');
+    const manifest = getSkillManifest(TARGET_DIR);
+
+    const skillsDir = fs.existsSync(destSkills) ? destSkills : srcSkills;
+    const skillEntries = fs.readdirSync(skillsDir).filter((f) => {
+      if (f === '_backup') return false;
+      return fs.statSync(path.join(skillsDir, f)).isDirectory();
+    });
+
+    const report = {
+      total: skillEntries.length,
+      customizedCount: 0,
+      driftCount: 0,
+      skills: []
+    };
+
+    for (const name of skillEntries) {
+      const currentPath = path.join(skillsDir, name);
+      const currentHash = computeSkillHash(currentPath);
+      const templatePath = path.join(srcSkills, name);
+      const templateHash = fs.existsSync(templatePath) ? computeSkillHash(templatePath) : null;
+      const manifestEntry = (manifest.skills && manifest.skills[name]) || {};
+
+      const isCustomized = Boolean(manifestEntry.hash && manifestEntry.hash !== currentHash) ||
+                           Boolean(manifestEntry.customized);
+      const hasDrift = Boolean(templateHash && templateHash !== currentHash && !isCustomized);
+      const upToDate = !isCustomized && !hasDrift;
+
+      if (isCustomized) report.customizedCount++;
+      if (hasDrift) report.driftCount++;
+
+      report.skills.push({
+        name,
+        source: manifestEntry.source || (templateHash ? 'core' : 'community'),
+        customized: isCustomized,
+        drift: hasDrift,
+        upToDate,
+        hash: currentHash
+      });
+    }
+
+    if (flags.json) {
+      console.log(JSON.stringify(report, null, 2));
+      return;
+    }
+
+    console.log(`${colors.bold}DEV-OS SKILL INTEGRITY & DRIFT CHECK${colors.reset}`);
+    console.log(`${colors.gray}${RULE}${colors.reset}\n`);
+
+    report.skills.forEach((s) => {
+      let statusStr = `${colors.green}[ UP TO DATE ]${colors.reset}`;
+      if (s.customized) {
+        statusStr = `${colors.yellow}[ CUSTOMIZED ]${colors.reset}`;
+      } else if (s.drift) {
+        statusStr = `${colors.cyan}[ UPDATE AVAIL ]${colors.reset}`;
+      }
+      console.log(`  ${s.name.padEnd(32)} ${statusStr}`);
+    });
+
+    console.log(`\n${colors.bold}SUMMARY:${colors.reset} ${report.total} installed, ${report.customizedCount} customized, ${report.driftCount} updates available.\n`);
+
+    try {
+      spawnSync('npx', ['skills', 'check'], {
+        cwd: TARGET_DIR,
+        stdio: 'inherit',
+        env: { ...process.env, CI: '1' }
+      });
+    } catch (e) {}
+
     return;
   }
 
@@ -1753,27 +2286,93 @@ function runSkill(flags, positional) {
       console.error(`\n${colors.red}[ FAIL ] Failed to install skill '${pkg}'. Check package name or network connectivity.${colors.reset}`);
       process.exit(res.status || 1);
     }
-    console.log(`\n${colors.green}[ OK ] Skill '${pkg}' successfully installed into .agents/skills/.${colors.reset}\n`);
+
+    const destSkills = path.join(TARGET_DIR, '.agents', 'skills');
+    const manifest = getSkillManifest(TARGET_DIR);
+    if (fs.existsSync(destSkills)) {
+      const dirs = fs.readdirSync(destSkills).filter((f) => f !== '_backup' && fs.statSync(path.join(destSkills, f)).isDirectory());
+      for (const d of dirs) {
+        if (!manifest.skills[d]) {
+          const h = computeSkillHash(path.join(destSkills, d));
+          manifest.skills[d] = {
+            source: `github:${pkg}`,
+            version: 'community',
+            hash: h,
+            customized: false,
+            installedAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString()
+          };
+        }
+      }
+      saveSkillManifest(manifest, TARGET_DIR);
+    }
+
+    console.log(`\n${colors.green}[ OK ] Skill '${pkg}' successfully installed and registered into .agents/manifest.json.${colors.reset}\n`);
     return;
   }
 
   if (subCmd === 'update' || subCmd === 'upgrade') {
     console.log(`${colors.bold}UPDATING AGENT SKILLS${colors.reset}`);
     console.log(`${colors.gray}${RULE}${colors.reset}\n`);
-    console.log(`Checking upstream repositories (${colors.cyan}npx skills update${colors.reset})...\n`);
-    const res = spawnSync('npx', ['skills', 'update', '-y'], {
-      cwd: TARGET_DIR,
-      stdio: 'inherit',
-      env: { ...process.env, CI: '1' }
-    });
-    if (res.status === 0) {
-      console.log(`\n${colors.green}[ OK ] Upstream skills updated successfully.${colors.reset}`);
+
+    const destSkills = path.join(TARGET_DIR, '.agents', 'skills');
+    const srcSkills = path.join(TEMPLATE_DIR, '.agents', 'skills');
+    const manifest = getSkillManifest(TARGET_DIR);
+
+    if (flags.dryRun) {
+      console.log(`[ DRY RUN ] Checking for modified or upstream skills...`);
+      const report = auditSkills(fs.existsSync(destSkills) ? destSkills : srcSkills);
+      console.log(`[ DRY RUN ] Would inspect ${report.total} skills for updates.`);
+      return;
     }
 
-    const srcSkills = path.join(TEMPLATE_DIR, '.agents', 'skills');
-    const destSkills = path.join(TARGET_DIR, '.agents', 'skills');
+    if (fs.existsSync(destSkills) && TEMPLATE_DIR !== TARGET_DIR) {
+      const localSkills = fs.readdirSync(destSkills).filter((f) => {
+        if (f === '_backup') return false;
+        return fs.statSync(path.join(destSkills, f)).isDirectory();
+      });
+
+      for (const name of localSkills) {
+        const destPath = path.join(destSkills, name);
+        const destHash = computeSkillHash(destPath);
+        const manifestEntry = manifest.skills[name];
+        if (manifestEntry && manifestEntry.hash && manifestEntry.hash !== destHash) {
+          const backupPath = backupSkill(destPath, name, TARGET_DIR);
+          console.log(`${colors.yellow}[ BACKUP ] Preserved local modifications in ${path.relative(TARGET_DIR, backupPath)}${colors.reset}`);
+        }
+      }
+    }
+
+    console.log(`Checking upstream repositories (${colors.cyan}npx skills update${colors.reset})...\n`);
+    try {
+      const res = spawnSync('npx', ['skills', 'update', '-y'], {
+        cwd: TARGET_DIR,
+        stdio: 'inherit',
+        env: { ...process.env, CI: '1' }
+      });
+      if (res.status === 0) {
+        console.log(`\n${colors.green}[ OK ] Upstream skills updated successfully.${colors.reset}`);
+      }
+    } catch (e) {}
+
     if (fs.existsSync(srcSkills)) {
       copyRecursiveSync(srcSkills, destSkills);
+      const updatedDirs = fs.readdirSync(destSkills).filter((f) => {
+        if (f === '_backup') return false;
+        return fs.statSync(path.join(destSkills, f)).isDirectory();
+      });
+      for (const name of updatedDirs) {
+        const h = computeSkillHash(path.join(destSkills, name));
+        manifest.skills[name] = {
+          source: manifest.skills[name]?.source || 'core',
+          version: PKG.version,
+          hash: h,
+          customized: false,
+          installedAt: manifest.skills[name]?.installedAt || new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        };
+      }
+      saveSkillManifest(manifest, TARGET_DIR);
       console.log(`${colors.green}[ OK ] Dev-OS core skills synchronized (${countSkills(destSkills)} total).${colors.reset}\n`);
     }
     return;
@@ -1793,18 +2392,7 @@ function runSkill(flags, positional) {
     return;
   }
 
-  if (subCmd === 'check') {
-    console.log(`${colors.bold}CHECKING SKILL UPDATES${colors.reset}`);
-    console.log(`${colors.gray}${RULE}${colors.reset}\n`);
-    spawnSync('npx', ['skills', 'check'], {
-      cwd: TARGET_DIR,
-      stdio: 'inherit',
-      env: { ...process.env, CI: '1' }
-    });
-    return;
-  }
-
-  console.error(`${colors.red}[ FAIL ] Unknown skill subcommand '${subCmd}'. Use 'list', 'add', 'update', 'check', or 'find'.${colors.reset}`);
+  console.error(`${colors.red}[ FAIL ] Unknown skill subcommand '${subCmd}'. Use 'list', 'audit', 'sync', 'check', 'update', 'add', or 'find'.${colors.reset}`);
   process.exit(1);
 }
 
@@ -2990,11 +3578,7 @@ async function main() {
       break;
     case 'skill':
     case 'skills':
-      if (positional.length > 0 && ['add', 'install', 'update', 'upgrade', 'check', 'find', 'search'].includes(positional[0])) {
-        runSkill(flags, positional);
-      } else {
-        runList(flags);
-      }
+      runSkill(flags, positional);
       break;
     case 'status':
       runStatus(flags);
@@ -3028,6 +3612,12 @@ if (require.main === module) {
 }
 
 module.exports = {
+  computeSkillHash,
+  backupSkill,
+  getSkillManifest,
+  saveSkillManifest,
+  auditSkills,
+  runSkill,
   sanitizeTelemetry,
   analyzeTelemetry,
   detectHarness,

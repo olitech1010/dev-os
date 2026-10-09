@@ -5,6 +5,15 @@ This project follows [Semantic Versioning](https://semver.org/).
 
 ## [4.5.0] — 2026-10-09
 
+### Dynamic Upstream Skills & Registry Ecosystem Synchronization — TASK-005
+
+- **Manifest Skills Registry (`.agents/manifest.json`)**: Persistent tracking of installed skills, upstream sources, versions, SHA-256 hashes, and local customization status.
+- **Diff-Aware Synchronization & Safety Gate (`devos skill sync`, `devos skill update`)**: Computes deterministic SHA-256 hashes for all installed skill directories. When local edits are detected, automatically snapshots the modified skill to `.agents/_backup/skills/<name>-<timestamp>/` before applying upstream updates. Supports `--dry-run` to preview actions without filesystem changes.
+- **Agent Skills Standards & Token Audit (`devos skill audit`)**: Audits installed skills against the Agent Skills Standard. Validates `SKILL.md` frontmatter (`name`, `description`), computes prompt token weight estimates, flags skills exceeding 4,000 prompt tokens, and scans files for hardcoded credentials. Supports `--json` output for automated quality checks.
+- **Integrity & Drift Detection (`devos skill check`)**: Compares installed skills against core template hashes and the manifest registry to detect local modifications and upstream drift.
+- **Enhanced Skills Listing (`devos skill list --json`)**: Returns structured JSON arrays with skill names, token counts, sources, and customization badges.
+- **CLI Subcommand Surface (`devos skill`)**: Added `list`, `audit`, `sync`, `check`, `update`, `add`, and `find` commands with full help text.
+
 ### Observability & Telemetry RCA Auto-PR Engine — TASK-004
 
 - **Privacy-Preserving Sanitization Engine (`sanitizeTelemetry`)**: Multi-layer zero-secret and zero-PII scrubbing engine. Automatically masks GitHub tokens (`ghp_`, `gho_`, `github_pat_`), Anthropic/OpenAI keys (`sk-ant-`, `sk-`), Google API keys, AWS credentials, Bearer/JWT tokens, private keys, system usernames (`os.userInfo().username`), machine hostnames, and repository filesystem paths (`[REPO_ROOT]`, `[HOME]`).

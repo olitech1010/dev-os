@@ -20,15 +20,22 @@
 ## Active Board
 
 ### [ IN_PROGRESS ]
-*(none — ready for TASK-005)*
+*(none)*
 
 ### [ QUEUED ]
 *(none)*
 
 ### [ BACKLOG ]
-- **`TASK-005`**: Dynamic Upstream Skills & Registry Ecosystem Synchronization (`devos skill update` / bi-directional sync with `skills.sh`)
+*(none — all roadmap milestones active or complete)*
 
 ### [ DONE ]
+- **`TASK-005`**: Dynamic Upstream Skills & Registry Ecosystem Synchronization (`devos skill update/sync/check` and bi-directional registry sync with `skills.sh`)
+  - **Assignee:** Orchestrator / DevOps / Researcher / Developer
+  - **DependsOn:** TASK-004
+  - **Triage Level:** STANDARD
+  - **Plan:** `docs/superpowers/plans/2026-10-09-skills-registry-sync.md`
+  - **ParallelGate:** [QA: pass, Tester: pass, Security: pass]
+  - **HumanCheckpoint:** approved
 - **`TASK-004`**: Observability & Telemetry RCA Auto-PR Engine (`devos telemetry pr/report/issue` automated diagnostic feedback loop to `olitech1010/dev-os`)
   - **Assignee:** Orchestrator / Developer / Telemetry Agent
   - **DependsOn:** TASK-007
