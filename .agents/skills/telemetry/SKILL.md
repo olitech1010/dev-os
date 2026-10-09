@@ -60,12 +60,32 @@ Each log entry in `.agents/telemetry/events.jsonl` follows this JSON structure:
 
 The **Telemetry Agent** (`.agents/agents/telemetry.md`):
 1. Reads `.agents/telemetry/events.jsonl` during diagnostic sessions (`devos doctor` or `devos telemetry report`).
-2. Synthesizes an RCA report categorizing failure patterns.
-3. If an upstream Dev-OS bug is identified (e.g., regex edge case in a hook, outdated command syntax), drafts an actionable fix for submission to `https://github.com/olitech1010/dev-os`.
+2. Synthesizes an RCA report categorizing failure patterns (framework defects vs quality gate enforcement).
+3. If an upstream Dev-OS bug is identified (e.g., regex edge case in a hook, outdated command syntax), drafts an actionable fix or pull request for submission to `https://github.com/olitech1010/dev-os`.
 
 ---
 
-## 4. Configuration & Opt-Out
+## 4. Upstream Feedback & Auto-PR Dispatch
+
+```bash
+# Generate comprehensive RCA summary (terminal or JSON)
+devos telemetry report
+devos telemetry report --json
+
+# Prepare sanitized upstream GitHub issue (dry-run or live submission)
+devos telemetry issue --dry-run
+devos telemetry issue --title "Issue title"
+
+# Prepare sanitized diagnostic pull request
+devos telemetry pr --dry-run
+
+# Export sanitized diagnostic bundle
+devos telemetry export
+```
+
+---
+
+## 5. Configuration & Opt-Out
 
 Users can check or modify telemetry preferences at any time:
 ```bash
@@ -77,5 +97,8 @@ devos telemetry disable
 
 # Re-enable telemetry
 devos telemetry enable
+
+# Clear local event buffer
+devos telemetry clear
 ```
 Or set `telemetry: "off"` in `.agents/manifest.json`.

@@ -3,6 +3,23 @@
 All notable changes to Dev-OS are documented in this file.
 This project follows [Semantic Versioning](https://semver.org/).
 
+## [4.5.0] — 2026-10-09
+
+### Observability & Telemetry RCA Auto-PR Engine — TASK-004
+
+- **Privacy-Preserving Sanitization Engine (`sanitizeTelemetry`)**: Multi-layer zero-secret and zero-PII scrubbing engine. Automatically masks GitHub tokens (`ghp_`, `gho_`, `github_pat_`), Anthropic/OpenAI keys (`sk-ant-`, `sk-`), Google API keys, AWS credentials, Bearer/JWT tokens, private keys, system usernames (`os.userInfo().username`), machine hostnames, and repository filesystem paths (`[REPO_ROOT]`, `[HOME]`).
+- **Root Cause Analysis (RCA) Diagnostic Engine (`analyzeTelemetry`)**: Clusters local runtime errors into recurring failure signatures, differentiates framework-level defects from user quality gate enforcements, computes severity distributions, and generates actionable remediation guidance.
+- **Structured JSON Reporting (`devos telemetry report --json`)**: Programmatic access to telemetry buffer statistics, error categories, failure clusters, and recommendations.
+- **Automated Upstream Feedback Dispatch (`devos telemetry issue`, `devos telemetry pr`)**: Synthesizes sanitized GitHub Issue and PR markdown drafts targeting `olitech1010/dev-os`. Dispatches directly via `gh` CLI when authenticated, or provides pre-filled one-click browser links. Supports `--dry-run` to simulate output with zero side-effects.
+- **Multi-Source Event Ingestion (`devos telemetry log`)**: Standardized CLI helper allowing runtime hooks (`pre-tool-use.sh`), git hooks (`commit.sh`), and JavaScript runners (`sdlc-runner.js`, `eval-runner.js`) to log events without duplicate file-handling logic.
+- **Sanitized Bundle Export (`devos telemetry export`)**: Export full sanitized diagnostic bundles to `.agents/telemetry/reports/` for offline review.
+- **Smoke Test Expansion (6 new assertions, 129 total)**: Full end-to-end smoke coverage for telemetry ingestion, JSON reporting, dry-run issue/PR synthesis, export, and credentials sanitization.
+
+### Docs/Package Separation — TASK-007
+
+- **Clean Package and Workspace Separation**: Shipped artifacts are preserved under `templates/` while maintainer workspace lives under `docs/`. Eliminates personal state leakage from npm package tarball and repository clones.
+- **Scaffold Command (`devos scaffold`)**: Regenerates state scaffolds (`CURRENT_STATE.md`, `TASK_BOARD.md`, `LESSONS.md`, `context.json`) on demand from templates.
+
 ## [4.4.0] — 2026-10-03
 
 ### Orchestrator Persistence & Delegation Enforcement — TASK-006

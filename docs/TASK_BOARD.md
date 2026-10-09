@@ -20,16 +20,22 @@
 ## Active Board
 
 ### [ IN_PROGRESS ]
-*(none — awaiting TASK-004/005 selection)*
+*(none — ready for TASK-005)*
 
 ### [ QUEUED ]
-*(Ready for next milestone upon completion of TASK-007)*
+*(none)*
 
 ### [ BACKLOG ]
-- **`TASK-004`**: Observability & Telemetry RCA Auto-PR Engine (`devos telemetry pr/report` automated diagnostic feedback loop to `olitech1010/dev-os`)
 - **`TASK-005`**: Dynamic Upstream Skills & Registry Ecosystem Synchronization (`devos skill update` / bi-directional sync with `skills.sh`)
 
 ### [ DONE ]
+- **`TASK-004`**: Observability & Telemetry RCA Auto-PR Engine (`devos telemetry pr/report/issue` automated diagnostic feedback loop to `olitech1010/dev-os`)
+  - **Assignee:** Orchestrator / Developer / Telemetry Agent
+  - **DependsOn:** TASK-007
+  - **Triage Level:** STANDARD
+  - **Plan:** `docs/superpowers/plans/2026-10-09-telemetry-rca-auto-pr.md`
+  - **ParallelGate:** [QA: pass, Tester: pass, Security: pass]
+  - **HumanCheckpoint:** approved
 - **`TASK-007`**: Docs/Package Separation — templates/ scaffolds, precise npm files, gitignore, scaffold command (TASK-007)
   - **Assignee:** Orchestrator / Developer
   - **DependsOn:** TASK-006

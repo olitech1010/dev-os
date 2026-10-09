@@ -16,6 +16,12 @@ fi
 LOG_TELEMETRY() {
     RULE="$1"
     DETAIL="$2"
+    if [ -f "bin/devos.js" ]; then
+        node bin/devos.js telemetry log --type HOOK_VIOLATION --rule "$RULE" --detail "$DETAIL" --quiet 2>/dev/null && return 0
+    elif command -v devos >/dev/null 2>&1; then
+        devos telemetry log --type HOOK_VIOLATION --rule "$RULE" --detail "$DETAIL" --quiet 2>/dev/null && return 0
+    fi
+
     MANIFEST=".agents/manifest.json"
     TELEMETRY_STATUS="on"
     if [ -f "$MANIFEST" ]; then

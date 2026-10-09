@@ -148,7 +148,7 @@ Use $ARGUMENTS to reference user input after the command.
 - **Target Agent**: Telemetry
 - **Triage Level**: TRIVIAL
 - **Workflow**: direct
-- **Usage**: `/telemetry` or `/telemetry report`
+- **Usage**: `/telemetry`, `/telemetry report`, or `/telemetry issue --dry-run`
 
 ### `/eval`
 - **Description**: Run capability benchmarks, measure pass@k reliability, and generate agent scorecards.

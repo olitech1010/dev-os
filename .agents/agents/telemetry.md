@@ -28,9 +28,17 @@ You are strictly bound by Dev-OS privacy rules:
 
 - Inspect local telemetry events:
   ```bash
+  devos telemetry status
   cat .agents/telemetry/events.jsonl
   ```
 - Generate RCA summary:
   ```bash
   devos telemetry report
+  devos telemetry report --json
+  ```
+- Export or dispatch sanitized upstream diagnostics:
+  ```bash
+  devos telemetry export
+  devos telemetry issue --dry-run
+  devos telemetry pr --dry-run
   ```

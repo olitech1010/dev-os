@@ -3,27 +3,31 @@
 > This file is maintained by the Orchestrator agent. It is updated at each phase transition to preserve context across long sessions.
 
 ## Current Task
-- **Task:** TASK-007: Docs/Package Separation — **COMPLETE** (committed, pushed to origin)
+- **Task:** TASK-004: Observability & Telemetry RCA Auto-PR Engine — **COMPLETE**
 - **Branch:** main
 - **Triage Level:** STANDARD
-- **Status:** DONE — ready for next milestone (TASK-004 or TASK-005)
+- **Status:** DONE — ready for next milestone (TASK-005)
+- **Plan:** `docs/superpowers/plans/2026-10-09-telemetry-rca-auto-pr.md`
 
 ## Active Agents
 | Agent | Status | Current Assignment |
 |---|---|---|
-| Orchestrator | ACTIVE | Ready to scope TASK-004 or TASK-005 |
-| Eval Engineer | DONE | All 38 eval cases verified (100% reliability) |
-| Orchestrator | ACTIVE | Ready to scope TASK-004 or TASK-005 |
-| Memory Manager | ACTIVE | Updated context.json, task board, changelog v4.5.0 |
+| Orchestrator | ACTIVE | Ready to scope TASK-005 (Skills Registry Sync) |
+| Telemetry Agent | DONE | RCA categorization & sanitization pipeline designed & verified |
+| Developer | DONE | Implemented telemetry log, report --json, issue, pr, export, sanitize |
+| Eval Engineer | DONE | Verified 38/38 benchmark evals (100% pass@1 reliability) |
+| QA | APPROVED | Verified all standards and zero external runtime dependencies |
+| Security | APPROVED | Verified zero-secret sanitization against mock credentials |
 
 ## Recent Decisions
-- **TASK-007 — Docs/Package Separation**: Separated shipped artifacts (`templates/`) from maintainer workspace (`docs/`) to eliminate personal-state leakage from npm package and GitHub clones.
-  - **npm package hygiene**: Precise `files` allowlist drops `docs/` and bulk `.agents/`; ships only `templates/`, curated `.agents/` subpaths. Verified: 0 personal artifacts in tarball.
-  - **Install-time scaffolding**: `devos init` installs public docs from `templates/docs/`, state scaffolds (`CURRENT_STATE`, `TASK_BOARD`, `LESSONS`, `context.json`) from `templates/scaffolds/`.
-  - **Maintainer workspace**: `docs/` now holds personal live state + research/plans, all gitignored. Clones get clean scaffolds via `devos scaffold`.
-  - **Git hygiene**: Personal files `git rm --cached` + gitignored.
-- **Version bump**: 4.4.0 → 4.5.0 (includes TASK-006 + TASK-007).
-- **All gates green**: 123/123 smoke, 38/38 eval (100%).
+- **TASK-004 — Observability & Telemetry RCA Auto-PR Engine**:
+  - Implemented `sanitizeTelemetry()`: zero-secret and zero-PII scrubbing for tokens, credentials, usernames, and repository paths.
+  - Implemented `analyzeTelemetry()`: failure clustering, categorization (framework defect vs rule violation), and actionable advice.
+  - Extended CLI: `devos telemetry log`, `report --json`, `issue [--dry-run]`, `pr [--dry-run]`, `export`.
+  - Upstream dispatch: uses `gh` CLI when authenticated; falls back to structured Markdown files + pre-populated one-click browser links.
+  - All gates green: 129/129 smoke tests pass, 38/38 eval benchmark cases pass (100%).
+- **TASK-007 — Docs/Package Separation**: Separated shipped artifacts (`templates/`) from maintainer workspace (`docs/`).
+- **All gates green**: 129/129 smoke, 38/38 eval (100%).
 
 ## Blockers
 - None. Ready to proceed to TASK-004 (Telemetry RCA Auto-PR) or TASK-005 (Skills Registry Sync).

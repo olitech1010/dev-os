@@ -161,7 +161,7 @@ The **Executive Proxy Agent** oversees all 10 stages:
 | `devos update` | `upgrade` | Refreshes agent personas, skills, commands, harnesses, and memory templates safely. |
 | `devos run <goal>` | `auto` | Autonomous SDLC runner for hands-off MVP builds. |
 | `devos doctor` | `check` | Verifies agent files, scripts, permissions, memory vault, and harness configurations. |
-| `devos telemetry` | — | Manages anonymous failure telemetry buffer (`status`, `report`, `enable`, `disable`, `clear`). |
+| `devos telemetry` | — | Manages anonymous failure telemetry buffer (`status`, `report`, `issue`, `pr`, `export`, `enable`, `disable`, `clear`). |
 | `devos pack` | `packs` | Inspects and installs stack capability packs (`pack list`, `pack add <name>`). |
 | `devos skill` | `skills` | Discovers and installs individual skills (`skill list`, `skill add <name>`, `skill find <query>`). |
 | `devos memory` | — | Inspects persistent memory vault (`memory list`, `memory doctor`, `memory handoff`). |

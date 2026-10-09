@@ -255,6 +255,33 @@ try {
   const telemReport = runCli(['telemetry', 'report', '--quiet'], proj);
   check('devos telemetry report exits 0', telemReport.status === 0);
 
+  // Telemetry Ingestion & Auto-PR Feedback Loop verification (TASK-004)
+  const mockGhToken = ['ghp', '111122223333444455556666777788889999'].join('_');
+  const mockAntKey = ['sk-ant-api03', '12345678901234567890123456789012'].join('-');
+  const telemLog = runCli(['telemetry', 'log', '--type', 'HOOK_VIOLATION', '--rule', 'ORCHESTRATION_GATE', '--detail', 'Blocked write to src/app.ts with token ' + mockGhToken, '--quiet'], proj);
+  check('devos telemetry log exits 0', telemLog.status === 0);
+
+  const telemReportJson = runCli(['telemetry', 'report', '--json'], proj);
+  check('devos telemetry report --json outputs valid RCA schema', (() => {
+    try {
+      const rep = JSON.parse(telemReportJson.stdout);
+      return rep.status === 'enabled' && rep.total > 0 && Array.isArray(rep.clusters) && rep.clusters.length > 0;
+    } catch { return false; }
+  })());
+
+  const telemIssueDry = runCli(['telemetry', 'issue', '--dry-run', '--quiet'], proj);
+  check('devos telemetry issue --dry-run exits 0 and sanitizes output', telemIssueDry.status === 0 && !telemIssueDry.stdout.includes(mockGhToken) && fs.existsSync(path.join(proj, '.agents', 'telemetry', 'reports')));
+
+  const telemPrDry = runCli(['telemetry', 'pr', '--dry-run', '--quiet'], proj);
+  check('devos telemetry pr --dry-run exits 0', telemPrDry.status === 0 && telemPrDry.stdout.includes('UPSTREAM DIAGNOSTIC PR (DRY-RUN)'));
+
+  const telemExport = runCli(['telemetry', 'export', '--quiet'], proj);
+  check('devos telemetry export exits 0', telemExport.status === 0);
+
+  const { sanitizeTelemetry } = require(CLI);
+  const testSanitized = sanitizeTelemetry('Found key ' + mockAntKey + ' and token ' + mockGhToken + ' in ' + proj + '/src/auth.ts', { targetDir: proj });
+  check('sanitizeTelemetry masks credentials and repo paths', testSanitized.includes('[REDACTED_ANTHROPIC_KEY]') && testSanitized.includes('[REDACTED_GITHUB_TOKEN]') && !testSanitized.includes(proj));
+
   // Evaluation Runner & Benchmarks verification
   check('eval suites installed (.agents/evals/suites/)', fs.existsSync(path.join(proj, '.agents', 'evals', 'suites', 'gates.eval.json')));
   const evalList = runCli(['eval', 'list', '--quiet'], proj);
