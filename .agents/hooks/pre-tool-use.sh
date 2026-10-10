@@ -46,12 +46,13 @@ has_active_task() {
     echo "$ACTIVE_BLOCK" | grep -Eq 'Assignee:'
 }
 
-# 1. Block destructive file-system and git commands (Hard Rule #1)
-if echo "$INPUT_CMD" | grep -Eq 'rm -rf\s+[/~*]|rm -rf\s+\.\./|git reset --hard\s+origin|DROP\s+(TABLE|DATABASE)|TRUNCATE\s+TABLE'; then
+# 1. Block destructive file-system, git, and cloud commands (Hard Rule #1)
+if [ "$DEVOS_DESTRUCTIVE_APPROVED" != "true" ] && echo "$INPUT_CMD" | grep -Eq 'rm -rf\s+[/~*]|rm -rf\s+\.\./|git reset --hard\s+origin|aws s3 rm|gcloud projects delete|DROP\s+(TABLE|DATABASE)|TRUNCATE\s+TABLE'; then
     echo ""
     echo "[ FAIL ] Dev-OS Policy Violation (Hard Rule #1: Zero Destructive Actions)"
     echo "         Destructive command blocked: $INPUT_CMD"
     echo "         You MUST formulate and present a dry-run plan to the human before executing."
+    echo "         To execute after human approval, export DEVOS_DESTRUCTIVE_APPROVED=true."
     echo ""
     LOG_TELEMETRY "RULE_1_ZERO_DESTRUCTIVE" "$INPUT_CMD"
     exit 1

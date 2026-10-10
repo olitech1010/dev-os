@@ -1,11 +1,11 @@
 {
-  "timestamp": "2026-10-09T07:32:23.270Z",
+  "timestamp": "2026-10-10T20:04:45.263Z",
   "verdict": "EVAL_PASSED",
   "score": 100,
-  "durationMs": 31045,
+  "durationMs": 3,
   "kSampling": 1,
-  "totalCases": 38,
-  "passedCases": 38,
+  "totalCases": 5,
+  "passedCases": 5,
   "failedCases": 0,
   "criticalFailures": 0,
   "passAtK": {
@@ -14,39 +14,11 @@
     "k5": 1
   },
   "suites": {
-    "agent-authority": {
-      "name": "Agent Specialization & Authority Boundaries",
-      "category": "governance",
-      "total": 8,
-      "passed": 8,
-      "failed": 0
-    },
-    "gates": {
-      "name": "5-Layer Quality Gate Architecture",
-      "category": "safety",
-      "total": 11,
-      "passed": 11,
-      "failed": 0
-    },
-    "harness-parity": {
-      "name": "Multi-Platform AI Harness Parity",
-      "category": "compatibility",
-      "total": 6,
-      "passed": 6,
-      "failed": 0
-    },
     "memory-preservation": {
       "name": "Shared Memory Vault & State Preservation",
       "category": "state",
       "total": 5,
       "passed": 5,
-      "failed": 0
-    },
-    "workflow-integrity": {
-      "name": "Autonomous SDLC Workflow Integrity",
-      "category": "workflow",
-      "total": 8,
-      "passed": 8,
       "failed": 0
     }
   },

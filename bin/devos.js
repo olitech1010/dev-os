@@ -1846,9 +1846,11 @@ function runMemory(flags, positional) {
     let branch = 'unknown';
     let gitStatus = 'clean';
     try {
-      const { execSync } = require('child_process');
-      branch = execSync('git branch --show-current', { encoding: 'utf8', cwd: TARGET_DIR }).trim();
-      gitStatus = execSync('git status -s', { encoding: 'utf8', cwd: TARGET_DIR }).trim() || 'clean';
+      const { spawnSync } = require('child_process');
+      const branchRes = spawnSync('git', ['branch', '--show-current'], { encoding: 'utf8', cwd: TARGET_DIR });
+      branch = branchRes.stdout ? branchRes.stdout.trim() : 'unknown';
+      const statusRes = spawnSync('git', ['status', '-s'], { encoding: 'utf8', cwd: TARGET_DIR });
+      gitStatus = statusRes.stdout ? statusRes.stdout.trim() || 'clean' : 'clean';
     } catch (e) {}
 
     const template = [

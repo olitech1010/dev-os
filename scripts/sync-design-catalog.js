@@ -10,7 +10,7 @@
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
-const { execSync } = require('child_process');
+const { spawnSync } = require('child_process');
 
 const REPO_URL = 'https://github.com/VoltAgent/awesome-design-md.git';
 const ROOT_DIR = path.resolve(__dirname, '..');
@@ -257,7 +257,7 @@ function sync() {
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'devos-design-sync-'));
   try {
     console.log(`📥 Fetching latest catalog into temporary cache...`);
-    execSync(`git clone --depth 1 ${REPO_URL} ${tmpDir}`, { stdio: 'ignore' });
+    spawnSync('git', ['clone', '--depth', '1', REPO_URL, tmpDir], { stdio: 'ignore' });
 
     const sourceDesignDir = path.join(tmpDir, 'design-md');
     if (!fs.existsSync(sourceDesignDir)) {
