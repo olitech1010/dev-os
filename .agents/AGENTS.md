@@ -232,6 +232,50 @@ Quality benchmark and regression prevention engineer inspired by ECC and DeepSee
 
 ---
 
+### Product Manager (PM) Agent
+**File:** `agents/pm.md`
+
+Product strategist and user advocate. Sits alongside the Architect during inception and translates requirements into user stories and acceptance criteria.
+
+- Authors Given-When-Then User Acceptance Criteria (UAC)
+- Defends MVP boundaries against scope creep
+- Does NOT write code or execute deployments
+
+---
+
+### Technical Writer Agent
+**File:** `agents/tech-writer.md`
+
+Documentation architect. Owns developer manuals, OpenAPI/Swagger references, and architecture decision records.
+
+- Maintains `docs/` and Architecture Decision Records (ADRs)
+- Ensures all prose passes `.agents/scripts/humanize-check.sh`
+- Does NOT write application production code
+
+---
+
+### Site Reliability Engineer (SRE) Agent
+**File:** `agents/sre.md`
+
+Reliability and observability specialist. Works alongside DevOps to manage infrastructure-as-code and monitoring pipelines.
+
+- Authors Terraform, Docker, and Kubernetes deployment descriptors
+- Designs SLOs/SLIs and incident response runbooks
+- Produces dry-run plans for all infrastructure changes
+
+---
+
+### Senior Tech Lead Agent
+**File:** `agents/tech-lead.md`
+
+Senior staff engineer and circuit breaker arbitrator. Automatically intervenes to break deadlocks when multi-agent loops reach an impasse.
+
+- Resolves Developer ↔ QA/Tester loops that reach 3 iterations
+- Issues binding, authoritative patches and architectural decisions
+- Escalates to the Human only when business requirements are fundamentally ambiguous
+
+---
+
 ## Workflow Protocols
 
 ### Project Inception (Grill-Me)
@@ -386,7 +430,7 @@ All agents can reference these skills from `skills/`. Each skill is a directory 
 7. **All documentation goes in `/docs`.** Any reports, implementation plans, PRDs, requirements, or other documentation must be saved into the `/docs/` folder in the project root.
 8. **Mechanical Commit Gate.** Raw `git commit` commands without routing through `.agents/scripts/commit.sh` or setting `DEVOS_COMMIT_APPROVED=true` are strictly forbidden and blocked by Git pre-commit hooks.
 9. **Never hardcode secrets.** API keys, credentials, or access tokens must never be written into code or config files; always reference `process.env.*`.
-10. **Circuit Breaker.** If any agent loop (e.g., Developer ↔ QA, Developer ↔ Tester) exceeds 3 iterations on the same task without resolution, the Orchestrator MUST halt the loop, compile a diagnostic summary of all attempts, and escalate to the Human for guidance.
+10. **Circuit Breaker.** If any agent loop (e.g., Developer ↔ QA, Developer ↔ Tester) exceeds 3 iterations on the same task without resolution, the Orchestrator MUST halt the loop, compile a diagnostic summary of all attempts, and invoke the **Senior Tech Lead Agent** for an authoritative tie-breaking resolution. If the Tech Lead cannot resolve the issue or identifies an ambiguous business requirement, escalate immediately to the Human for guidance.
 11. **Verify Before Implementing.** Agents must confirm library APIs, version compatibility, and patterns via the Researcher agent or official documentation before using unfamiliar features. No hallucinated API usage.
 12. **No Heavy Dependencies Without Approval.** Adding new dependencies with >5MB install size or >50 transitive dependencies requires explicit Human approval.
 13. **Session-End State Obligation.** Before concluding any working session that modifies code, dependencies, or configuration, the active agent MUST update `docs/CURRENT_STATE.md` with the completed/in-progress task, current status, and active branch. If an incident or notable failure was resolved, log it in `docs/LESSONS.md`.

@@ -728,7 +728,11 @@ const AGENT_DESCRIPTIONS = {
   'ui-designer': 'Dev-OS UI/UX design specialist. Formulates design systems, extracts tokens from ui-ux-pro-max, and authors DESIGN.md to satisfy the Mandatory Design Gate.',
   'executive-proxy': 'Dev-OS autonomous tech lead proxy. Oversees hands-off MVP delivery from idea to working software across all 10 SDLC stages.',
   telemetry: 'Dev-OS observability specialist. Tracks runtime errors, failure logs in .agents/telemetry/, and drafts RCA reports.',
-  'eval-engineer': 'Dev-OS evaluation engineer. Measures capability benchmarks, pass@k, and prevents workflow regressions.'
+  'eval-engineer': 'Dev-OS evaluation engineer. Measures capability benchmarks, pass@k, and prevents workflow regressions.',
+  pm: 'Dev-OS product strategist. Defines user personas, maps user stories, and authors Given-When-Then acceptance criteria.',
+  'tech-writer': 'Dev-OS technical writer. Authors API documentation, developer onboarding guides, and architecture decision records.',
+  sre: 'Dev-OS reliability engineer. Designs infrastructure-as-code (Terraform), observability pipelines, and disaster recovery runbooks.',
+  'tech-lead': 'Dev-OS senior staff engineer. Resolves circuit-breaker deadlocks between Developer and QA/Tester before human escalation.'
 };
 
 function generateClaudeCommands(destAgents, destClaude) {
