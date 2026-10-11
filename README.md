@@ -63,10 +63,10 @@ npx @olives/devos init
 ### Why Dev-OS?
 
 - **Zero Direct Commit Bypass:** AI agents cannot execute raw `git commit` or `git push`. All code changes route through QA verification, human inspection, and mechanical pre-commit gates.
-- **Specialized Agent Roster:** 15 dedicated agent personas (Developer, QA, Tester, Security, DBA, DevOps, Architect, Researcher, Memory Manager, Release Manager, Orchestrator, UI Designer, Executive Proxy, Telemetry, and Eval Engineer) handle distinct stages of delivery.
+- **Specialized Agent Roster:** 19 dedicated agent personas (Developer, QA, Tester, Security, DBA, DevOps, Architect, Researcher, Memory Manager, Release Manager, Orchestrator, UI Designer, Executive Proxy, Telemetry, Eval Engineer, PM, Technical Writer, SRE, and Senior Tech Lead) handle distinct stages of delivery.
 - **Parallel Quality Gates:** QA (standards & anti-AI UI), Tester (unit/integration tests), and Security (vulnerabilities) evaluate code concurrently.
 - **Persistent Memory & State:** Prevents agent "amnesia" through state tracking (`CURRENT_STATE.md`), lessons learned (`LESSONS.md`), and pinned safety rules.
-- **Slash Command Interface:** 15 pre-configured commands (`/review`, `/commit`, `/test`, `/secure`, `/research`, `/design`, `/auto`, `/telemetry`, etc.) for zero-friction task execution.
+- **Slash Command Interface:** 19 pre-configured commands (`/review`, `/commit`, `/test`, `/secure`, `/research`, `/design`, `/auto`, `/pm`, `/tech-writer`, `/sre`, `/tech-lead`, etc.) for zero-friction task execution.
 
 ---
 
@@ -209,6 +209,10 @@ Dev-OS organizes AI capabilities into 15 distinct specialist roles. Every agent 
 | **Executive Proxy** | `agents/executive-proxy.md` | Autonomous SDLC coordinator for startup founders & CEOs. | Coordinates all 10 SDLC stages during autonomous runs (`devos run` / `/auto`). |
 | **Telemetry** | `agents/telemetry.md` | Observability and RCA failure diagnosis. | Analyzes local failure logs in `.agents/telemetry/events.jsonl` with zero secret exposure. |
 | **Eval Engineer** | `agents/eval-engineer.md` | Quality benchmark and regression testing. | Maintains capability evals, measures `pass@k` rates, and verifies cross-harness parity. |
+| **Product Manager** | `agents/pm.md` | Product strategy, personas & user stories. | Formulates Given-When-Then acceptance criteria and defends MVP boundaries. |
+| **Technical Writer** | `agents/tech-writer.md` | Documentation architecture & ADRs. | Synchronizes API specs and ensures docs pass the humanizer scanner. |
+| **SRE** | `agents/sre.md` | Site reliability & cloud infrastructure. | Authors Terraform/IaC, sets SLOs/alerts, and manages disaster recovery runbooks. |
+| **Senior Tech Lead** | `agents/tech-lead.md` | Circuit breaker deadlock arbitrator. | Resolves 3-iteration failures with authoritative patches before human escalation. |
 
 ---
 
@@ -270,6 +274,10 @@ Slash commands provide pre-configured, metadata-driven shortcuts for common agen
 | `/architect` | **Architect** | `STANDARD` | Run `grill-me` inception interview to produce `PROJECT_REQUIREMENTS.md`.<br>`/architect Build real-time analytics dashboard` |
 | `/refactor` | **Developer** | `STANDARD` | Refactor the specified code scope through the standard delivery workflow.<br>`/refactor Rewrite database client to use Drizzle ORM` |
 | `/deploy` | **DevOps** | `CRITICAL` | Execute pre-deployment checklist and present deployment plan.<br>`/deploy staging` |
+| `/pm` | **PM** | `STANDARD` | Generate user personas, Given-When-Then stories, and MVP bounds.<br>`/pm Design checkout flow for mobile` |
+| `/tech-writer` | **Tech Writer** | `TRIVIAL` | Author developer documentation, API specs, and ADRs.<br>`/tech-writer Document auth middleware` |
+| `/sre` | **SRE** | `CRITICAL` | Formulate Terraform IaC configs, alerting thresholds, and SLOs.<br>`/sre Configure Datadog alerting for ECS` |
+| `/tech-lead` | **Tech Lead** | `CRITICAL` | Arbitrate failing test/QA loops and provide definitive patch.<br>`/tech-lead Resolve JWT expiry loop` |
 
 ### Creating Custom Slash Commands
 
@@ -458,7 +466,8 @@ The following hard rules are pinned in agent system prompts and can **never** be
 > If any agent loop (e.g., Developer ↔ QA, Developer ↔ Tester) exceeds **3 iterations** on the same task without resolution:
 > 1. Orchestrator **HALTS** the loop immediately.
 > 2. Compiles a diagnostic summary of all failed attempts and logs.
-> 3. Escalates to the **Human** for guidance.
+> 3. Invokes the **Senior Tech Lead Agent** for an authoritative tie-breaking resolution and definitive patch.
+> 4. Only escalates to the **Human** if the Tech Lead identifies fundamentally ambiguous business requirements.
 
 ---
 
