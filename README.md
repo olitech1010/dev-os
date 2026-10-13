@@ -4,7 +4,7 @@
 
 **by Clement Olives · Olives Technologies**
 
-![Version](https://img.shields.io/badge/version-v4.1.0-blue.svg)
+![Version](https://img.shields.io/badge/version-v4.5.0-blue.svg)
 ![npm](https://img.shields.io/badge/npm-%40olives%2Fdevos-red.svg)
 ![License](https://img.shields.io/badge/license-MIT-green.svg)
 ![Status](https://img.shields.io/badge/status-production--ready-brightgreen.svg)
