@@ -1,9 +1,11 @@
 ---
 name: backend-dev-guidelines
-description: "You are a senior backend engineer operating production-grade services under strict architectural and reliability constraints. Use when routes, controllers, services, repositories, express middleware, or prisma database access."
+description: "Use when writing or reviewing server-side code: routes, controllers, services, repositories, middleware, validation, error handling, database access (Prisma), API design, or backend architecture. Primary guidance is Node.js/Express/TypeScript with a layered architecture; references cover general API and schema design, microservices, caching, and Express/Fastify patterns."
 risk: unknown
 source: community
 date_added: "2026-02-27"
+metadata:
+  source: https://github.com/sickn33/antigravity-awesome-skills
 ---
 
 # Backend Development Guidelines
@@ -315,11 +317,9 @@ No tests → no merge.
 
 ## 11. Integration With Other Skills
 
-* **frontend-dev-guidelines** → API contract alignment
-* **error-tracking** → Sentry standards
-* **database-verification** → Schema correctness
-* **analytics-tracking** → Event pipelines
-* **skill-developer** → Skill governance
+Shipped with Dev-OS: **testing-guide** (test walkthroughs), **security-review** (vulnerability review), **supabase-postgres-best-practices** (Postgres schema and query tuning, nextjs pack).
+
+Upstream also names frontend-dev-guidelines, error-tracking, database-verification, analytics-tracking, and skill-developer. These are not shipped with Dev-OS.
 
 ---
 
@@ -350,3 +350,10 @@ This skill is applicable to execute the workflow or actions described in the ove
 - Use this skill only when the task clearly matches the scope described above.
 - Do not treat the output as a substitute for environment-specific validation, testing, or expert review.
 - Stop and ask for clarification if required inputs, permissions, safety boundaries, or success criteria are missing.
+
+## References
+
+- `resources/*.md`: detail for each doctrine section above (routing, services, validation, errors, Sentry, configuration, database, middleware, testing, complete examples). Read the file matching the layer being written.
+- `references/backend-development/GUIDE.md`: stack-neutral API design, database architecture, microservices, and test-driven backend work. Read when designing a new API or schema, or when the project is not Node/Express. Formerly the `backend-development` skill.
+- `references/backend-patterns/GUIDE.md`: repository and service patterns, caching, query optimization, rate limiting, background jobs, and Next.js API route examples. Read when implementing a specific backend pattern. Formerly the `backend-patterns` skill.
+- `references/nodejs-backend-patterns/GUIDE.md`: Express and Fastify server setup, middleware, authentication, and database integration, with detail in its own `references/`. Read when bootstrapping a Node.js service. Formerly the `nodejs-backend-patterns` skill.

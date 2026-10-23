@@ -12,7 +12,6 @@
 | Agent | Status | Current Assignment |
 |---|---|---|
 | Orchestrator | IDLE | Awaiting task assignment |
-| Eval Engineer | IDLE | Ready to run capability benchmarks |
 
 ## Blockers
 - None

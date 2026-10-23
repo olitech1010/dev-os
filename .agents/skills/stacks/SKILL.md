@@ -1,6 +1,6 @@
 ---
 name: stacks
-description: Stack-specific coding standards. Contains standards for Next.js, Laravel, Django, Express, FastAPI, and React Native. Copy the relevant stack file into your project root.
+description: "Use when starting work in a project to load the stack-specific coding standards for Next.js, Laravel, Django, Express, FastAPI, or React Native, or when copying the matching standards file into the project root."
 ---
 
 # Stack-Specific Coding Standards

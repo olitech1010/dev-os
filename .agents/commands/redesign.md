@@ -4,6 +4,7 @@ description: Orchestrate multi-agent UI redesign refactoring existing frontend c
 agent: orchestrator
 triage_level: STANDARD
 workflow: standard
+argument-hint: "[component paths or scope]"
 ---
 
 Execute the Multi-Agent UI Redesign Workflow:
@@ -32,3 +33,7 @@ When the project root `DESIGN.md` is updated or replaced with a new brand design
 5. **Human Checkpoint & Staged Review:**
    - Present a concise diff summary of refactored components to the human.
    - User verifies in browser and triggers commit via `.agents/scripts/commit.sh`.
+
+Scope: $ARGUMENTS
+
+If no scope is given, list the frontend files that will be refactored and confirm the scope with the human first.

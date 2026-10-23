@@ -42,25 +42,21 @@ const RULE = '─'.repeat(BANNER_WIDTH);
 
 // Core Rules and Protocols
 const DEVOS_RULES_DIGEST = [
-  '1. Zero Destructive Actions: Never delete, drop, or truncate without an approved dry-run plan.',
-  '2. Zero Secrets Stored or Logged: API keys & credentials must NEVER be hardcoded. Use `process.env.*`.',
-  '3. Mechanical Commit Gate: Raw `git commit` is BLOCKED. Always commit via `.agents/scripts/commit.sh`.',
-  '4. Staged Review: Agents write code but NEVER auto-commit. Present summaries for human review first.',
-  '5. Circuit Breaker: Halt after 3 failed agent loop iterations and escalate to the human.',
-  '6. Verify Before Implementing: Confirm actual library APIs and patterns before authoring code.',
-  '7. No Heavy Dependencies: Packages >5MB or >50 dependencies require explicit human approval.',
-  '8. Documentation in /docs: All plans, PRDs, architecture notes, and reports belong in `/docs/`.',
-  '9. Session-Start Freshness: Run `git fetch --all --prune` and check `git status -sb` before scoping work.',
-  '10. Session-End State Obligation: Update `docs/CURRENT_STATE.md` before concluding any session modifying code.',
-  '11. Shared Memory Synchronization: Maintain architectural records in `.agents/memory/` (ADRs & handoffs).',
-  '12. Task Board Governance: Keep task states in `docs/TASK_BOARD.md` aligned with current execution.',
-  '13. Mandatory Design Gate: Modifying frontend UI files without an approved `DESIGN.md` at project root is strictly blocked.',
-  '14. Mechanical Humanizer Gate: Documentation in `docs/` must pass `.agents/scripts/humanize-check.sh`.',
-  '15. Universal Test Credentials: Seed data and testing accounts must use `devos123`.',
-  '16. Distinctive Craft & Anti-AI UI Gate: All frontend UI code must pass `.agents/scripts/ui-taste-check.sh` (zero raw emojis, zero sparkles, contextual navigation, tactile affordances, authentic entities).',
-  '17. Environment & Config Parity Gate: All environment variables in code must be documented in `.env.example` with zero committed secrets (`.agents/scripts/env-check.sh`).',
-  '18. Database & Migration Safety Gate: SQL migrations must enable RLS on all tables and avoid unapproved destructive operations (`.agents/scripts/db-check.sh`).',
-  '19. Orchestrator Persistence: Orchestrator mode is locked in `.agents/memory/session.json`; declare active tasks in `docs/TASK_BOARD.md` and delegate to specialist subagents. Change modes only via `devos mode <mode>`.'
+  'This is a digest. `.agents/AGENTS.md` is canonical; numbers in brackets are its Hard Rule numbers.',
+  '- [R1] Zero Destructive Actions: Never delete, drop, or truncate without an approved dry-run plan.',
+  '- [R2] Zero Secrets Stored, Logged, or Hardcoded: Use `process.env.*`; ask the human for secrets at runtime.',
+  '- [R8] Mechanical Commit Gate: Raw `git commit` is BLOCKED. Commits go only through `.agents/scripts/commit.sh`.',
+  '- [R6] Staged Review: Agents write code but NEVER auto-commit. Present summaries for human review; the human commits.',
+  '- [R10] Circuit Breaker: After 3 failed fix iterations (one Developer fix attempt plus the failing gate run each), halt; the Tech Lead gets exactly one arbitration attempt; then halt and escalate to the human. See "Circuit Breaker (canonical)" in AGENTS.md.',
+  '- [R11] Verify Before Implementing: Confirm actual library APIs and patterns before authoring code.',
+  '- [R12] No Heavy Dependencies: Packages >5MB or >50 dependencies require explicit human approval.',
+  '- [R7] Documentation in /docs: All plans (`docs/plans/`), specs (`docs/specs/`), PRDs, architecture notes, and reports belong in `/docs/`.',
+  '- [R14] Session-Start Freshness: Run `git fetch --all --prune` and check `git status -sb` before scoping work.',
+  '- [R13] Session-End State Obligation: Update `docs/CURRENT_STATE.md` before concluding any session modifying code.',
+  '- [R22] Implementation Plan Gate: No production code without an approved plan in `docs/plans/` (an approved spec `docs/specs/<slug>/tasks.md` counts as the plan), except on the TRIVIAL Fast Path (under ~30 changed lines, no new dependency, schema, auth, or public API change).',
+  '- [R15] Mandatory Design Gate: Creating or editing frontend UI files (`*.tsx`, `*.jsx`, `*.vue`, `*.svelte`, `*.html`, `*.css`) is blocked until an approved `DESIGN.md` exists at the project root. The UI Designer produces it with the `anti-ai-ui` skill.',
+  '- [R16] Humanizer Gate: Documentation, PR summaries, and PRDs in `/docs/` must pass `.agents/scripts/humanize-check.sh`. The Tech Writer owns this gate.',
+  '- [R23] Task Board Declaration: In guided/auto mode, declare an `[ IN_PROGRESS ]` task with an `Assignee:` in `docs/TASK_BOARD.md` before writing production code. Change modes only via `devos mode <mode>`.'
 ];
 
 const SOLO_SESSION_PROTOCOL = [
@@ -81,7 +77,62 @@ const SESSION_MODE_DIRECTIVE = [
 ];
 
 // Flags parser helper
-function parseArgs(args) {
+//
+// Boolean flags map a CLI spelling to [flagKey, value]. Value flags map a CLI
+// spelling to [flagKey, coerce]. Both '--key value' and '--key=value' are
+// accepted for value flags. A value that begins with '-' is rejected (pass it
+// as '--key=-value' if that is really intended). Unknown flags print a WARN.
+// flags.passed records which flag keys were given explicitly on the command
+// line, so interactive prompts can tell "default" apart from "user said so".
+const BOOL_FLAGS = {
+  '-v': ['version', true], '--version': ['version', true],
+  '-h': ['help', true], '--help': ['help', true],
+  '--fresh': ['fresh', true],
+  '--existing': ['existing', true],
+  '--json': ['json', true],
+  '-q': ['quiet', true], '--quiet': ['quiet', true],
+  '--no-claude': ['claude', false],
+  '--no-hooks': ['hooks', false],
+  '--hooks': ['hooks', true],
+  '--all-skills': ['allSkills', true],
+  '--all-harnesses': ['allHarnesses', true],
+  '--no-telemetry': ['telemetry', false],
+  '--telemetry': ['telemetry', true],
+  '--skills': ['skills', true],
+  '--scorecard': ['scorecard', true],
+  '-l': ['list', true], '--list': ['list', true],
+  '--status': ['status', true],
+  '--dry-run': ['dryRun', true],
+  '--resume': ['resume', true],
+  '--reset': ['reset', true],
+  '-y': ['yes', true], '--yes': ['yes', true],
+  '-f': ['force', true], '--force': ['force', true],
+  '--install-gitleaks': ['installGitleaks', true],
+  '--print-path': ['printPath', true]
+};
+
+const VALUE_FLAGS = {
+  '-S': ['suite', String], '--suite': ['suite', String],
+  '-k': ['k', (v) => parseInt(v, 10)], '--k': ['k', (v) => parseInt(v, 10)],
+  '-m': ['mode', String], '--mode': ['mode', String],
+  '-p': ['platform', String], '--platform': ['platform', String],
+  '--harness': ['harness', String],
+  '-s': ['stack', String], '--stack': ['stack', String],
+  '--pick': ['pick', String],
+  '--top': ['top', String],
+  '--category': ['category', String],
+  '--step': ['step', String],
+  '--type': ['type', String],
+  '--rule': ['rule', String],
+  '--detail': ['detail', String],
+  '--title': ['title', String],
+  '--branch': ['branch', String],
+  '-o': ['output', String], '--output': ['output', String],
+  '--out': ['out', String]
+};
+
+function parseArgs(args, options = {}) {
+  const warn = options.warn || ((msg) => console.error(`${colors.yellow}[ WARN ] ${msg}${colors.reset}`));
   const flags = {
     stack: null,
     platform: null,
@@ -120,105 +171,53 @@ function parseArgs(args) {
     branch: null,
     output: null,
     yes: false,
-    force: false
+    force: false,
+    installGitleaks: false,
+    out: null,
+    printPath: false,
+    passed: {}
   };
 
   const positional = [];
+  let afterTerminator = false;
 
   for (let i = 0; i < args.length; i++) {
     const arg = args[i];
-    if (arg === '-v' || arg === '--version') {
-      flags.version = true;
-    } else if (arg === '-h' || arg === '--help') {
-      flags.help = true;
-    } else if (arg === '--fresh') {
-      flags.fresh = true;
-    } else if (arg === '--existing') {
-      flags.existing = true;
-    } else if (arg === '--json') {
-      flags.json = true;
-    } else if (arg === '--quiet' || arg === '-q') {
-      flags.quiet = true;
-    } else if (arg === '--no-claude') {
-      flags.claude = false;
-    } else if (arg === '--no-hooks') {
-      flags.hooks = false;
-    } else if (arg === '--all-skills') {
-      flags.allSkills = true;
-    } else if (arg === '--all-harnesses') {
-      flags.allHarnesses = true;
-    } else if (arg === '--no-telemetry') {
-      flags.telemetry = false;
-    } else if (arg === '--telemetry') {
-      flags.telemetry = true;
-    } else if (arg === '--skills') {
-      flags.skills = true;
-    } else if (arg === '--scorecard') {
-      flags.scorecard = true;
-    } else if (arg === '--list' || arg === '-l') {
-      flags.list = true;
-    } else if (arg === '--suite' || arg === '-S') {
-      flags.suite = args[i + 1] || null;
-      i++;
-    } else if (arg === '--k' || arg === '-k') {
-      flags.k = parseInt(args[i + 1] || '1', 10);
-      i++;
-    } else if (arg === '--mode' || arg === '-m') {
-      flags.mode = args[i + 1] || null;
-      i++;
-    } else if (arg === '--platform' || arg === '-p') {
-      flags.platform = args[i + 1] || null;
-      i++;
-    } else if (arg === '--harness') {
-      flags.harness = args[i + 1] || null;
-      i++;
-    } else if (arg === '--stack' || arg === '-s') {
-      flags.stack = args[i + 1] || null;
-      i++;
-    } else if (arg === '--pick') {
-      flags.pick = args[i + 1] || null;
-      i++;
-    } else if (arg === '--top') {
-      flags.top = args[i + 1] || null;
-      i++;
-    } else if (arg === '--category') {
-      flags.category = args[i + 1] || null;
-      i++;
-    } else if (arg === '--status') {
-      flags.status = true;
-    } else if (arg === '--dry-run') {
-      flags.dryRun = true;
-    } else if (arg === '--resume') {
-      flags.resume = true;
-    } else if (arg === '--reset') {
-      flags.reset = true;
-    } else if (arg === '--step') {
-      flags.step = args[i + 1] || null;
-      i++;
-    } else if (arg === '--type') {
-      flags.type = args[i + 1] || null;
-      i++;
-    } else if (arg === '--rule') {
-      flags.rule = args[i + 1] || null;
-      i++;
-    } else if (arg === '--detail') {
-      flags.detail = args[i + 1] || null;
-      i++;
-    } else if (arg === '--title') {
-      flags.title = args[i + 1] || null;
-      i++;
-    } else if (arg === '--branch') {
-      flags.branch = args[i + 1] || null;
-      i++;
-    } else if (arg === '--output' || arg === '-o') {
-      flags.output = args[i + 1] || null;
-      i++;
-    } else if (arg === '--yes' || arg === '-y') {
-      flags.yes = true;
-    } else if (arg === '--force' || arg === '-f') {
-      flags.force = true;
-    } else if (!arg.startsWith('-')) {
+    if (afterTerminator || !arg.startsWith('-') || arg === '-') {
       positional.push(arg);
+      continue;
+    }
+    if (arg === '--') {
+      afterTerminator = true;
+      continue;
+    }
+
+    const eq = arg.startsWith('--') ? arg.indexOf('=') : -1;
+    const name = eq > 0 ? arg.slice(0, eq) : arg;
+    const inlineValue = eq > 0 ? arg.slice(eq + 1) : undefined;
+
+    if (BOOL_FLAGS[name]) {
+      const [key, value] = BOOL_FLAGS[name];
+      if (inlineValue !== undefined) {
+        throw new Error(`Flag '${name}' does not take a value (got '${arg}').`);
+      }
+      flags[key] = value;
+      flags.passed[key] = true;
+    } else if (VALUE_FLAGS[name]) {
+      const [key, coerce] = VALUE_FLAGS[name];
+      let value = inlineValue;
+      if (value === undefined) {
+        const next = args[i + 1];
+        if (next === undefined || (next.startsWith('-') && next !== '-')) {
+          throw new Error(`Flag '${name}' requires a value${next !== undefined ? ` (got flag '${next}'; use ${name}=<value> if the value really starts with '-')` : ''}.`);
+        }
+        value = next;
+        i++;
+      }
+      flags[key] = coerce(value);
+      flags.passed[key] = true;
+    } else {
+      warn(`Unknown flag '${name}' ignored. Run 'devos --help' for supported flags.`);
     }
   }
 
@@ -267,11 +266,14 @@ function printHelp() {
   console.log(`  ${colors.green}mode${colors.reset}                 Inspect or switch the locked session mode (status, <mode>, lock, unlock)`);
   console.log(`  ${colors.green}scaffold${colors.reset}            Regenerate missing state scaffolds from templates (CURRENT_STATE, TASK_BOARD, LESSONS, context.json)`);
   console.log(`  ${colors.green}doctor${colors.reset}, ${colors.green}check${colors.reset}      Diagnose setup, hooks, memory vault, task board, and health`);
-  console.log(`  ${colors.green}pack${colors.reset}, ${colors.green}packs${colors.reset}        Manage composable capability packs (pack list, pack add <name>)`);
+  console.log(`  ${colors.green}pack${colors.reset}, ${colors.green}packs${colors.reset}        Manage capability packs: skills, agents, commands (pack list, pack add <name>)`);
   console.log(`  ${colors.green}skill${colors.reset}, ${colors.green}skills${colors.reset}       Manage agent skills from skills.sh (skill list, add, update, sync, check, audit, find)`);
   console.log(`  ${colors.green}memory${colors.reset}             Shared memory vault operations (memory list, memory handoff, memory doctor)`);
   console.log(`  ${colors.green}eval${colors.reset}, ${colors.green}benchmark${colors.reset}       Run capability benchmarks, pass@k evals, and agent scorecards`);
   console.log(`  ${colors.green}design${colors.reset}                   Browse, match, and apply authentic brand design systems (list, match, apply, sync)`);
+  console.log(`  ${colors.green}spec${colors.reset} waves <slug>        Order docs/specs/<slug>/tasks.md into parallel waves (topological layers over depends:)`);
+  console.log(`  ${colors.green}spec${colors.reset} check <slug>        Verify every requirement is covered, every task cites real ids and has a verify: line (exit 1 on gaps)`);
+  console.log(`  ${colors.green}build-plugin${colors.reset}             Build the Dev-OS Claude Code plugin (default --out dist/claude-plugin/)`);
   console.log(`  ${colors.green}list${colors.reset}, ${colors.green}agents${colors.reset}       Display active agent personas and installed specialist skills`);
   console.log(`  ${colors.green}status${colors.reset}             Show active project configuration, detected stack, and health summary`);
   console.log(`  ${colors.green}version${colors.reset}            Print Dev-OS CLI version, Node runtime, and environment information`);
@@ -286,14 +288,20 @@ function printHelp() {
   console.log(`  ${colors.cyan}--all-harnesses${colors.reset}       Generate configurations for all supported AI harnesses`);
   console.log(`  ${colors.cyan}--all-skills${colors.reset}          Install all skills instead of lean stack pack`);
   console.log(`  ${colors.cyan}--skills${colors.reset}              Update or sync installed skills from upstream registry`);
-  console.log(`  ${colors.cyan}--no-hooks${colors.reset}            Skip wiring runtime lifecycle hooks (.claude/hooks.json)`);
+  console.log(`  ${colors.cyan}--no-hooks${colors.reset}            Skip wiring runtime lifecycle hooks (.claude/settings.json) and the pre-commit gate`);
+  console.log(`  ${colors.cyan}--install-gitleaks${colors.reset}    Install/upgrade Gitleaks via .agents/scripts/install-hooks.sh (default: detect only)`);
+  console.log(`  ${colors.cyan}-y, --yes${colors.reset}            Confirm overwrites non-interactively (design match). Never approves telemetry publishing.`);
+  console.log(`  ${colors.cyan}-f, --force${colors.reset}          Overwrite customized skills during update (backed up first)`);
   console.log(`  ${colors.cyan}--fresh${colors.reset}             Non-interactive fresh project initialization`);
   console.log(`  ${colors.cyan}--existing${colors.reset}          Non-interactive existing project initialization`);
   console.log(`  ${colors.cyan}--no-claude${colors.reset}         Skip generating .claude/ (Claude Code commands & agents)`);
   console.log(`  ${colors.cyan}--json${colors.reset}              Output diagnostic and listing results as JSON`);
+  console.log(`  ${colors.cyan}--out <dir>${colors.reset}         Output directory for build-plugin (default: dist/claude-plugin/)`);
+  console.log(`  ${colors.cyan}--print-path${colors.reset}        build-plugin: print only the absolute output path (for a marketplace command source)`);
   console.log(`  ${colors.cyan}-q, --quiet${colors.reset}         Suppress header banners and non-essential log messages`);
   console.log(`  ${colors.cyan}-v, --version${colors.reset}       Print CLI version`);
-  console.log(`  ${colors.cyan}-h, --help${colors.reset}          Show command options\n`);
+  console.log(`  ${colors.cyan}-h, --help${colors.reset}          Show command options`);
+  console.log(`  ${colors.gray}Value flags accept '--flag value' or '--flag=value'. Set DEVOS_OFFLINE=1 to skip all network calls.${colors.reset}\n`);
 
   console.log(`${colors.bold}EXAMPLES${colors.reset}`);
   console.log(`  $ ${colors.cyan}npx @olives/devos init${colors.reset}`);
@@ -302,6 +310,8 @@ function printHelp() {
   console.log(`  $ ${colors.cyan}npx @olives/devos memory handoff${colors.reset}`);
   console.log(`  $ ${colors.cyan}npx @olives/devos design match "issue tracker dark mode"${colors.reset}`);
   console.log(`  $ ${colors.cyan}npx @olives/devos design apply linear${colors.reset}`);
+  console.log(`  $ ${colors.cyan}npx @olives/devos spec check password-reset${colors.reset}`);
+  console.log(`  $ ${colors.cyan}npx @olives/devos build-plugin --out dist/claude-plugin${colors.reset}`);
   console.log(`  $ ${colors.cyan}npx @olives/devos doctor${colors.reset}\n`);
 
   console.log(`${colors.gray}Documentation & Guides: https://github.com/olitech1010/dev-os${colors.reset}\n`);
@@ -314,6 +324,11 @@ function printVersion() {
   console.log(`Install Path: ${TEMPLATE_DIR}`);
 }
 
+// Entries never copied, hashed, or scanned inside a skill or asset tree. One
+// list for copyRecursiveSync and computeSkillHash, so a copy hashes the same as
+// its source (a source __pycache__ must not make every copy look stale).
+const TREE_SKIP_NAMES = new Set(['.git', 'node_modules', '__pycache__', '_backup', '.DS_Store']);
+
 // Recursive file copy helper
 function copyRecursiveSync(src, dest) {
   const exists = fs.existsSync(src);
@@ -324,7 +339,7 @@ function copyRecursiveSync(src, dest) {
       fs.mkdirSync(dest, { recursive: true });
     }
     fs.readdirSync(src).forEach((childItemName) => {
-      if (childItemName === '.git' || childItemName === 'node_modules' || childItemName === '__pycache__' || childItemName === '_backup') return;
+      if (TREE_SKIP_NAMES.has(childItemName)) return;
       copyRecursiveSync(path.join(src, childItemName), path.join(dest, childItemName));
     });
   } else if (exists) {
@@ -336,33 +351,107 @@ function copyRecursiveSync(src, dest) {
   }
 }
 
-// Minimal YAML frontmatter parser (supports flat key: value and indented multiline values)
+// Minimal YAML frontmatter parser. Supports flat `key: value` pairs, quoted
+// scalars (quotes stripped only when they form a matching pair), indented plain
+// continuation lines (folded with spaces), block scalars (`|`, `|-`, `|+`,
+// `>`, `>-`, `>+`) and simple `- item` sequences (returned as arrays).
+function unquoteYamlScalar(val) {
+  if (val.length >= 2) {
+    const first = val[0];
+    const last = val[val.length - 1];
+    if (first === '"' && last === '"') {
+      return val.slice(1, -1).replace(/\\(["\\nt])/g, (m, c) => (c === 'n' ? '\n' : c === 't' ? '\t' : c));
+    }
+    if (first === "'" && last === "'") {
+      return val.slice(1, -1).replace(/''/g, "'");
+    }
+  }
+  return val;
+}
+
 function parseFrontmatter(content) {
-  const match = content.match(/^---\r?\n([\s\S]*?)\r?\n---\r?\n?/);
+  const match = content.match(/^---\r?\n([\s\S]*?)\r?\n---(?:\r?\n|$)/);
   if (!match) return { data: {}, body: content };
   const data = {};
-  let currentKey = null;
+  const lines = match[1].split(/\r?\n/);
 
-  match[1].split(/\r?\n/).forEach((line) => {
-    if (/^\s+/.test(line) && currentKey) {
-      const val = line.trim();
-      if (val) {
-        data[currentKey] = data[currentKey] ? `${data[currentKey]} ${val}` : val;
-      }
-      return;
-    }
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    if (!line.trim() || /^\s*#/.test(line)) continue;
+    if (/^\s/.test(line)) continue; // stray indented line without a key
 
     const idx = line.indexOf(':');
-    if (idx > 0) {
-      currentKey = line.slice(0, idx).trim();
-      const val = line.slice(idx + 1).trim().replace(/^["'>|-]|["']$/g, '').trim();
-      data[currentKey] = val;
-    } else {
-      currentKey = null;
+    if (idx <= 0) continue;
+    const key = line.slice(0, idx).trim();
+    const rawVal = line.slice(idx + 1).trim();
+
+    // Gather the indented (or blank) lines that belong to this key
+    const block = [];
+    while (i + 1 < lines.length && (/^\s/.test(lines[i + 1]) || lines[i + 1] === '')) {
+      block.push(lines[i + 1]);
+      i++;
     }
-  });
+
+    const blockMatch = rawVal.match(/^([|>])([+-]?)\s*(?:#.*)?$/);
+    if (blockMatch) {
+      const style = blockMatch[1];
+      const chomp = blockMatch[2];
+      const nonBlank = block.filter((l) => l.trim());
+      const indent = nonBlank.length ? Math.min(...nonBlank.map((l) => l.match(/^\s*/)[0].length)) : 0;
+      const bodyLines = block.map((l) => l.slice(Math.min(indent, l.match(/^\s*/)[0].length)));
+      let text;
+      if (style === '|') {
+        text = bodyLines.join('\n');
+      } else {
+        // Folded: consecutive non-empty lines join with a space, blank lines become newlines
+        text = '';
+        let prevBlank = true;
+        for (const l of bodyLines) {
+          if (!l.trim()) {
+            text += '\n';
+            prevBlank = true;
+          } else {
+            text += (prevBlank ? '' : ' ') + l;
+            prevBlank = false;
+          }
+        }
+      }
+      const stripped = text.replace(/\n+$/, '');
+      if (chomp === '-') data[key] = stripped;
+      else if (chomp === '+') data[key] = text.endsWith('\n') ? text : `${text}\n`;
+      else data[key] = stripped ? `${stripped}\n` : '';
+      continue;
+    }
+
+    const nonBlank = block.map((l) => l.trim()).filter(Boolean);
+    if (!rawVal && nonBlank.length && nonBlank.every((l) => l.startsWith('- ') || l === '-')) {
+      data[key] = nonBlank.map((l) => unquoteYamlScalar(l.replace(/^-\s*/, '').trim()));
+      continue;
+    }
+
+    const parts = [rawVal, ...nonBlank].filter(Boolean);
+    data[key] = unquoteYamlScalar(parts.join(' '));
+  }
 
   return { data, body: content.slice(match[0].length) };
+}
+
+// Emit a YAML-safe single-line scalar. Plain output when unambiguous,
+// otherwise a JSON double-quoted string (valid YAML 1.2 double-quoted scalar).
+function yamlScalar(value) {
+  const str = String(value == null ? '' : value).replace(/\s+/g, ' ').trim();
+  const plainSafe = /^[A-Za-z0-9_./()][A-Za-z0-9 _.,/()'+=-]*$/.test(str) &&
+    !/:\s|\s#/.test(str) &&
+    !/^(true|false|yes|no|on|off|null|~)$/i.test(str) &&
+    !/^[-+]?(\d|\.\d)/.test(str);
+  return plainSafe ? str : JSON.stringify(str);
+}
+
+// Output filenames derived from frontmatter must stay inside the output dir
+function safeFileStem(candidate, fallback) {
+  const str = typeof candidate === 'string' ? candidate.trim() : '';
+  if (str && /^[A-Za-z0-9][A-Za-z0-9._-]*$/.test(str) && !str.includes('..')) return str;
+  return fallback;
 }
 
 function countAgents(agentsDir) {
@@ -391,7 +480,7 @@ function computeSkillHash(skillDir) {
 
   function collect(dir, prefix = '') {
     for (const f of fs.readdirSync(dir)) {
-      if (f === '.DS_Store' || f === '_backup') continue;
+      if (TREE_SKIP_NAMES.has(f)) continue;
       const full = path.join(dir, f);
       const rel = prefix ? `${prefix}/${f}` : f;
       const stat = fs.statSync(full);
@@ -432,9 +521,7 @@ function getSkillManifest(targetDir = TARGET_DIR) {
     skills: {}
   };
   if (fs.existsSync(manifestPath)) {
-    try {
-      manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
-    } catch (e) {}
+    manifest = readJsonFile(manifestPath, '.agents/manifest.json');
   }
   if (!manifest.skills || typeof manifest.skills !== 'object') {
     manifest.skills = {};
@@ -448,7 +535,123 @@ function saveSkillManifest(manifest, targetDir = TARGET_DIR) {
   fs.writeFileSync(manifestPath, JSON.stringify(manifest, null, 2) + '\n', 'utf8');
 }
 
+// '@latest' is the documented invocation of these first-party scaffolding CLIs
+const AUDIT_LATEST_ALLOW = ['shadcn@latest', 'create-next-app@latest', 'create-expo-app@latest', 'create-vite@latest'];
+
+// Runtime paths that only exist after Dev-OS runs; references to them are not broken
+const AUDIT_RUNTIME_PATHS = ['.agents/_backup', '.agents/bin', '.agents/manifest.json', '.agents/telemetry',
+  '.agents/evals/reports', '.agents/memory/session.json', '.agents/memory/sdlc-state.json', '.agents/memory/context.json',
+  '.agents/memory/decisions', '.agents/memory/handoffs',
+  '.agents/product-marketing.md' /* user-authored context file the marketing skills create */];
+
+function listCommandNames(srcAgents) {
+  const names = new Set();
+  [path.join(srcAgents, 'commands'), path.join(srcAgents, 'maintainer', 'commands')].forEach((dir) => {
+    if (!fs.existsSync(dir)) return;
+    fs.readdirSync(dir).filter((f) => f.endsWith('.md')).forEach((f) => names.add(f.replace(/\.md$/, '')));
+  });
+  return names;
+}
+
+// Reference and hygiene checks over every text file of one skill. Pushes
+// { level, code, message } issues; all are warnings except a nested SKILL.md
+// in a skill Dev-OS ships (ctx.devosSkill).
+function auditSkillReferences(sPath, ctx, issues) {
+  const add = (level, code, message) => {
+    if (!issues.some((i) => i.code === code && i.message === message)) issues.push({ level, code, message });
+  };
+
+  function walk(dir) {
+    for (const item of fs.readdirSync(dir)) {
+      if (TREE_SKIP_NAMES.has(item)) continue;
+      const full = path.join(dir, item);
+      const stat = fs.statSync(full);
+      if (stat.isDirectory()) { walk(full); continue; }
+      if (!stat.isFile() || stat.size > 1024 * 1024) continue;
+      const rel = path.relative(sPath, full).split(path.sep).join('/');
+      if (item === 'SKILL.md' && rel.startsWith('references/')) {
+        // An error only for skills Dev-OS ships; third-party skills may nest them
+        add(ctx.devosSkill ? 'error' : 'warn', 'nested-skill-md', `Nested SKILL.md under references/ (${rel}); rename it to GUIDE.md`);
+      }
+      // Prose and scripts only; data files (CSV, JSON) are never scanned
+      if (!/\.(md|sh|js|py)$/i.test(item)) continue;
+      let text;
+      try { text = fs.readFileSync(full, 'utf8'); } catch (e) { continue; }
+
+      if (/\bnpx\s+(-y|--yes)\b/.test(text)) add('warn', 'npx-yes', `unpinned 'npx -y' in ${rel}`);
+      const latest = (text.match(/[\w@/.-]*@latest\b/g) || []).filter((t) => !AUDIT_LATEST_ALLOW.some((a) => t.endsWith(a)));
+      if (latest.length) add('warn', 'at-latest', `'@latest' version (${latest[0]}) in ${rel}`);
+
+      if (!/\.md$/i.test(item)) continue;
+      // Strip fenced code blocks (examples are not references) and lines that
+      // mark a path as optional ("if present", "if it exists", "optional").
+      const prose = text.replace(/```[\s\S]*?```/g, '')
+        .split(/\r?\n/).filter((l) => !/if (present|it exists|available)|\boptional\b/i.test(l)).join('\n');
+
+      const linkRe = /\]\(([^)\s]+)(?:\s+"[^"]*")?\)/g;
+      let m;
+      while ((m = linkRe.exec(prose)) !== null) {
+        const target = m[1].split('#')[0];
+        if (!target || /[<>{}*$]/.test(target)) continue;
+        if (/^(\.\/)?\.agents\//.test(target)) continue; // project-root paths: handled below
+        // Only paths that are clearly relative to the skill dir are checked;
+        // anything else (placeholders, target-project files) is left alone.
+        if (!/^(\.\/|\.\.\/|references\/|scripts\/|resources\/)/.test(target)) continue;
+        let decoded = target;
+        try { decoded = decodeURIComponent(target); } catch (e) {}
+        if (!fs.existsSync(path.resolve(path.dirname(full), decoded))) add('warn', 'broken-ref', `broken relative link '${target}' in ${rel}`);
+      }
+
+      const agentsRe = /(^|[^\w./-]|(?:^|[^\w./-])\.\/)(\.agents\/[A-Za-z0-9._\/-]*[A-Za-z0-9_-])/g;
+      while ((m = agentsRe.exec(prose)) !== null) {
+        const ref = m[2];
+        if (AUDIT_RUNTIME_PATHS.some((r) => ref === r || ref.startsWith(`${r}/`) || ref.startsWith(`${r}.`))) continue;
+        const skillMatch = ref.match(/^\.agents\/skills\/([^/]+)/);
+        if (skillMatch && ctx.aliases[skillMatch[1]]) {
+          add('warn', 'merged-skill-ref', `references merged skill '${skillMatch[1]}' (now '${ctx.aliases[skillMatch[1]]}') in ${rel}`);
+          continue;
+        }
+        if (fs.existsSync(path.join(ctx.projectRoot, ref))) continue;
+        // Shipped in an optional pack that is not installed here: expected
+        if (skillMatch && ctx.shippedSkills.has(skillMatch[1]) && !fs.existsSync(path.join(ctx.projectRoot, '.agents', 'skills', skillMatch[1]))) continue;
+        if (fs.existsSync(path.join(ctx.sourceRoot, ref))) continue;
+        add('warn', 'broken-ref', `broken path '${ref}' in ${rel}`);
+      }
+
+      const slashRe = /(^|[\s(`'"])\/([a-z][a-z0-9-]{2,})(?![\w./-])(?=[^\n]{0,40}?\bskills?\b)/g;
+      while ((m = slashRe.exec(prose)) !== null) {
+        const name = m[2];
+        if (ctx.shippedSkills.has(name) || ctx.commandNames.has(name)) continue;
+        if (ctx.aliases[name]) add('warn', 'merged-skill-ref', `'/${name}' was merged into '${ctx.aliases[name]}' (${rel})`);
+        else add('warn', 'unshipped-skill-ref', `'/${name}' names a skill Dev-OS does not ship (${rel})`);
+      }
+    }
+  }
+  walk(sPath);
+}
+
 function auditSkills(skillsDir) {
+  const projectRoot = path.resolve(skillsDir, '..', '..');
+  const srcAgents = path.join(TEMPLATE_DIR, '.agents');
+  const shippedSkills = new Set();
+  [path.join(srcAgents, 'skills'), skillsDir].forEach((dir) => {
+    if (fs.existsSync(dir)) fs.readdirSync(dir).forEach((f) => { if (f !== '_backup') shippedSkills.add(f); });
+  });
+  let packsData = null;
+  try { packsData = JSON.parse(fs.readFileSync(path.join(srcAgents, 'packs.json'), 'utf8')); } catch (e) {}
+  const ctx = {
+    projectRoot,
+    sourceRoot: TEMPLATE_DIR,
+    shippedSkills,
+    commandNames: listCommandNames(srcAgents),
+    aliases: skillAliases(packsData)
+  };
+  // Skills Dev-OS ships: listed in packs.json, or recorded with source core
+  let projectManifest = null;
+  try { projectManifest = JSON.parse(fs.readFileSync(path.join(projectRoot, '.agents', 'manifest.json'), 'utf8')); } catch (e) {}
+  const devosSkill = (name) => isShippedSkill(packsData, name) ||
+    Boolean(projectManifest && projectManifest.skills && projectManifest.skills[name] && projectManifest.skills[name].source === 'core');
+
   const result = {
     total: 0,
     passed: 0,
@@ -486,7 +689,8 @@ function auditSkills(skillsDir) {
       valid: true,
       tokens: 0,
       warnings: [],
-      errors: []
+      errors: [],
+      issues: []
     };
 
     const skillMdPath = path.join(sPath, 'SKILL.md');
@@ -510,7 +714,26 @@ function auditSkills(skillsDir) {
       if (skillReport.tokens > 4000) {
         skillReport.warnings.push(`High prompt token weight (${skillReport.tokens.toLocaleString()} tokens > 4,000 threshold)`);
       }
+
+      const desc = fm.data && typeof fm.data.description === 'string' ? fm.data.description.trim() : '';
+      if (desc && (!/use when/i.test(desc) || desc.length < 80)) {
+        skillReport.issues.push({ level: 'warn', code: 'weak-description', message: `description should be a 'Use when ...' trigger of at least 80 chars (${desc.length} chars)` });
+      }
+      const lineCount = content.split(/\r?\n/).length;
+      if (lineCount > 500 && !fs.existsSync(path.join(sPath, 'references'))) {
+        skillReport.issues.push({ level: 'warn', code: 'long-skill', message: `SKILL.md has ${lineCount} lines (> 500) and no references/ dir; move detail into references/` });
+      }
     }
+
+    auditSkillReferences(sPath, { ...ctx, devosSkill: devosSkill(skillName) }, skillReport.issues);
+    skillReport.issues.forEach((i) => {
+      if (i.level === 'error') {
+        skillReport.valid = false;
+        skillReport.errors.push(i.message);
+      } else {
+        skillReport.warnings.push(i.message);
+      }
+    });
 
     // Security check across files in the skill directory
     function scanDir(dir) {
@@ -553,6 +776,18 @@ function auditSkills(skillsDir) {
   return result;
 }
 
+// Parse a JSON file from the target project; exit with a clear FAIL on bad JSON
+function readJsonFile(filePath, label) {
+  const raw = fs.readFileSync(filePath, 'utf8');
+  try {
+    return JSON.parse(raw);
+  } catch (e) {
+    console.error(`${colors.red}[ FAIL ] Could not parse ${label || path.relative(TARGET_DIR, filePath) || filePath}: ${e.message}${colors.reset}`);
+    console.error(`${colors.yellow}         Fix or remove the file (a backup may exist under .agents/_backup/), then re-run.${colors.reset}`);
+    process.exit(1);
+  }
+}
+
 function hintFor(err) {
   if (err && err.code === 'EACCES') return 'Permission denied — check write access to the target directory.';
   if (err && err.code === 'ENOSPC') return 'Disk full — free up space and retry.';
@@ -569,6 +804,7 @@ async function promptInitOptions(flags) {
   let allSkillsSelected = Boolean(flags.allSkills);
   let telemetry = flags.telemetry !== false;
   let hooksSelected = flags.hooks !== false;
+  let hooksPrompted = false;
 
   if (flags.stack && !STACKS.includes(flags.stack.toLowerCase())) {
     throw new Error(`Unknown stack '${flags.stack}'. Valid stacks: ${STACKS.join(', ')}`);
@@ -585,17 +821,39 @@ async function promptInitOptions(flags) {
     }
   }
 
+  const passed = flags.passed || {};
+
   if (flags.fresh) {
     isFresh = true;
   } else if (flags.existing) {
     isFresh = false;
+  } else if (!process.stdin.isTTY) {
+    // Non-interactive shell (CI, pipes): never block on a prompt, never exit 0 having done nothing
+    throw new Error("Non-interactive terminal detected and no project type given. Re-run with '--existing' (inject into an existing project) or '--fresh' (new project), e.g. 'devos init --existing --stack universal --platform claude'.");
   } else {
     const rl = readline.createInterface({
       input: process.stdin,
       output: process.stdout
     });
 
-    const ask = (query) => new Promise((resolve) => rl.question(query, resolve));
+    // Reject pending prompts if stdin closes (Ctrl-D / EOF) instead of hanging or exiting silently
+    let closed = false;
+    let rejectPending = null;
+    rl.on('close', () => {
+      closed = true;
+      if (rejectPending) rejectPending(new Error('Input closed before setup finished; nothing was written. Re-run devos init, or pass --existing/--fresh for non-interactive setup.'));
+    });
+    const ask = (query) => new Promise((resolve, reject) => {
+      if (closed) {
+        reject(new Error('Input closed before setup finished; nothing was written.'));
+        return;
+      }
+      rejectPending = reject;
+      rl.question(query, (answer) => {
+        rejectPending = null;
+        resolve(answer);
+      });
+    });
 
     console.log(`${colors.bold}Step 1 · Environment Type${colors.reset}`);
     console.log(`  1) Fresh Project (Initialize clean workspace with docs and default standards)`);
@@ -631,7 +889,7 @@ async function promptInitOptions(flags) {
       console.log(`  2) Claude Code (Anthropic Claude CLI, .claude/ commands, agents, hooks)`);
       console.log(`  3) Cursor (.cursor/rules/devos.mdc, .cursorrules)`);
       console.log(`  4) OpenCode (.opencode/rules/, OPENCODE.md)`);
-      console.log(`  5) Codex / Windsurf (.codex/instructions.md, .windsurfrules)`);
+      console.log(`  5) Codex / Windsurf (AGENTS.md, .windsurfrules)`);
       console.log(`  6) All Platforms (Universal Multi-Platform Setup) [Default]`);
 
       const platAns = await ask(`\n${colors.cyan}Select option [1-6, or comma-separated e.g. 1,2] (default 6): ${colors.reset}`);
@@ -670,15 +928,15 @@ async function promptInitOptions(flags) {
       autoGoal = goalAns.trim();
     }
 
-    if (!flags.allSkills) {
+    if (!passed.allSkills) {
       console.log(`\n${colors.bold}Step 6 · Capability Scope & Specialist Skills${colors.reset}`);
       console.log(`  1) Lean Stack Pack (Core + target stack skills — token-optimized) [Recommended]`);
-      console.log(`  2) Full Skills Arsenal (Install all 66 specialist skills across design, backend, devops)`);
+      console.log(`  2) Full Skills Arsenal (Install all ${countSkills(path.join(TEMPLATE_DIR, '.agents', 'skills'))} specialist skills across design, backend, devops)`);
       const skillScopeAns = await ask(`\n${colors.cyan}Select option [1-2] (default 1): ${colors.reset}`);
       allSkillsSelected = skillScopeAns.trim() === '2';
     }
 
-    if (flags.telemetry === undefined || flags.telemetry === null) {
+    if (!passed.telemetry) {
       console.log(`\n${colors.bold}Step 7 · Anonymous Failure Telemetry & Local RCA Buffer${colors.reset}`);
       console.log(`  1) On (Recommended) — Anonymously captures execution errors & RCA reports in .agents/telemetry/`);
       console.log(`  2) Off — Completely disable anonymous failure logging`);
@@ -686,12 +944,13 @@ async function promptInitOptions(flags) {
       telemetry = telemAns.trim() !== '2';
     }
 
-    if (flags.hooks !== false) {
+    if (!passed.hooks) {
       console.log(`\n${colors.bold}Step 8 · Automated Verification & Secret Scanner Gate${colors.reset}`);
-      console.log(`  1) Enable (Auto-install/update Gitleaks, pre-commit hook & lifecycle hooks) [Recommended]`);
+      console.log(`  1) Enable (Pre-commit hook, Claude Code lifecycle hooks & Gitleaks detection) [Recommended]`);
       console.log(`  2) Disable (Bypass mechanical gates — not recommended for production)`);
       const hookAns = await ask(`\n${colors.cyan}Select option [1-2] (default 1): ${colors.reset}`);
       hooksSelected = hookAns.trim() !== '2';
+      hooksPrompted = true;
     }
 
     rl.close();
@@ -705,6 +964,8 @@ async function promptInitOptions(flags) {
     mode: (mode || 'interactive').toLowerCase(),
     allSkills: allSkillsSelected || false,
     hooks: hooksSelected !== false,
+    // false when the hooks choice is only the default (no flag, no prompt answer)
+    hooksExplicit: Boolean(flags.passed && flags.passed.hooks) || hooksPrompted,
     autoGoal: autoGoal || ''
   };
 }
@@ -720,22 +981,397 @@ const AGENT_DESCRIPTIONS = {
   tester: 'Dev-OS test engineer. Writes and executes automated tests, reproduces bugs, and reports coverage gaps.',
   security: 'Dev-OS security auditor. Scans code and dependencies for vulnerabilities, secret leaks, and forbidden patterns.',
   dba: 'Dev-OS database specialist. Designs and reviews schemas, migrations, queries, and RLS policies; requires human approval for CRITICAL changes.',
-  devops: 'Dev-OS infrastructure specialist. Handles CI/CD, deployment, environment configuration, and rollback protocols.',
+  devops: 'Dev-OS infrastructure and reliability specialist. Handles CI/CD, deployment, environment configuration, rollback, SLOs, incidents, and runbooks.',
   architect: 'Dev-OS system architect. Runs project inception (grill-me), designs architecture, and produces requirements documents.',
   researcher: 'Dev-OS research specialist. Investigates libraries, APIs, compatibility, and best practices; returns concise verdicts.',
-  'memory-manager': 'Dev-OS memory custodian. Maintains docs/CURRENT_STATE.md and docs/LESSONS.md, compacts context, and manages session handoffs.',
-  'release-manager': 'Dev-OS release specialist. Owns semantic versioning, changelog entries, and release notes.',
-  'ui-designer': 'Dev-OS UI/UX design specialist. Formulates design systems, extracts tokens from ui-ux-pro-max, and authors DESIGN.md to satisfy the Mandatory Design Gate.',
-  'executive-proxy': 'Dev-OS autonomous tech lead proxy. Oversees hands-off MVP delivery from idea to working software across all 10 SDLC stages.',
+  'ui-designer': 'Dev-OS UI/UX design specialist. Applies the anti-ai-ui skill and a matched design system to author DESIGN.md to satisfy the Mandatory Design Gate.',
   telemetry: 'Dev-OS observability specialist. Tracks runtime errors, failure logs in .agents/telemetry/, and drafts RCA reports.',
   'eval-engineer': 'Dev-OS evaluation engineer. Measures capability benchmarks, pass@k, and prevents workflow regressions.',
   pm: 'Dev-OS product strategist. Defines user personas, maps user stories, and authors Given-When-Then acceptance criteria.',
-  'tech-writer': 'Dev-OS technical writer. Authors API documentation, developer onboarding guides, and architecture decision records.',
-  sre: 'Dev-OS reliability engineer. Designs infrastructure-as-code (Terraform), observability pipelines, and disaster recovery runbooks.',
+  'tech-writer': 'Dev-OS docs and release owner. Authors API docs, onboarding guides, ADRs, changelogs, and release notes; sole owner of the Humanizer gate.',
   'tech-lead': 'Dev-OS senior staff engineer. Resolves circuit-breaker deadlocks between Developer and QA/Tester before human escalation.'
 };
 
-function generateClaudeCommands(destAgents, destClaude) {
+// ---------------------------------------------------------------------------
+// 5.0 roster consolidation: aliases and 4.x migration data
+// ---------------------------------------------------------------------------
+
+// Merged agent -> the default-roster agent that absorbed its duties
+const AGENT_ALIASES = {
+  'executive-proxy': 'orchestrator',
+  sre: 'devops',
+  'release-manager': 'tech-writer',
+  'memory-manager': 'orchestrator'
+};
+
+// Agents and commands a 4.x install may still carry under their old location.
+// Merged names are always retired; moved names (now in the maintainer pack)
+// are retired only when that pack is not installed.
+const RETIRED_AGENTS = Object.keys(AGENT_ALIASES);
+const MOVED_AGENTS = ['telemetry', 'eval-engineer'];
+const MOVED_COMMANDS = ['eval', 'telemetry'];
+
+// Whole-file hashes (first 16 hex chars of sha256) of every file a released
+// Dev-OS generator wrote, keyed by project path: the .agents/ source copies and
+// the exact .claude/ output of each tag's generateClaudeCommands/Agents
+// (v2.1.0 through v4.5.0, rebuilt from git history by running each tag's own
+// generator over that tag's sources). Installs that predate
+// manifest.generatedFiles are matched against these; any byte of difference,
+// frontmatter and the "## Dev-OS Routing" footer included, counts as an edit.
+const LEGACY_FILE_HASHES = {
+  '.agents/agents/architect.md': ['f82e15b8c051d56b', '02db49f93da4fa61'],
+  '.agents/agents/dba.md': ['c502d3eb2087239f', '33f89187cce69855', '24708306244a43e5'],
+  '.agents/agents/developer.md': ['0643d7fab5422173', 'f4cd4d210eb08568', '7aee1e6d73aebb09', 'd1086a293f809f26', '54a55bfbd2d41295'],
+  '.agents/agents/devops.md': ['720c37f4d0358997', 'caf4b8d1c6b78da2'],
+  '.agents/agents/eval-engineer.md': ['d1f2fe2f27c6140a', 'fcffbfe99b27396c'],
+  '.agents/agents/executive-proxy.md': ['44e5b887b2b883e9', '6dd79edbb0a1c98c'],
+  '.agents/agents/memory-manager.md': ['7208337e5c303412', '9a8588609ad74515'],
+  '.agents/agents/orchestrator.md': ['2745c9525204a8e3', 'cafbcc170b92a677', '0f129e2d69a170b5', 'a9c53d618f54cfdd'],
+  '.agents/agents/pm.md': ['00487502f7df9e26'],
+  '.agents/agents/qa.md': ['19e2a88b012051b3', '794d488820c74c75', '3803d777fbce1fb3', '2a3e64751f05eced', '9e3d3445e5fb90b8'],
+  '.agents/agents/release-manager.md': ['2a49be3be9cd1dd4', '49c8d0a9b8c55bdf'],
+  '.agents/agents/researcher.md': ['edda361bbcbd8b45', '7c124dd512cf703a'],
+  '.agents/agents/security.md': ['740780393dadfaed', 'f0b3d345bf09d492'],
+  '.agents/agents/sre.md': ['db9a35a70acdb194'],
+  '.agents/agents/tech-lead.md': ['baac802e6438d2de'],
+  '.agents/agents/tech-writer.md': ['a02c61f40a7f7dbd'],
+  '.agents/agents/telemetry.md': ['693873506fae9470', '739606059e2635b8'],
+  '.agents/agents/tester.md': ['fac0a8b0f9702161', 'f8ce23670f64de5c', 'f785f03010d45580'],
+  '.agents/agents/ui-designer.md': ['79f12f5a7b32cdf3', '1f8d9a9ed4c455f7', '2f435849bd1b5e82', 'a3edc4e2fa5d238d'],
+  '.agents/commands/README.md': ['ae9e3c4d805abfb2'],
+  '.agents/commands/architect.md': ['fc76f50b8d99f054'],
+  '.agents/commands/auto.md': ['1f837afe49f1dec9', '04c4853c755eea19'],
+  '.agents/commands/commit.md': ['07faad83f220d65c'],
+  '.agents/commands/deploy.md': ['968d27056376c7d4'],
+  '.agents/commands/design.md': ['b8a9665768a9e8ab', 'e48f6d5152741fe5', '243ec1dd2e5b74b1', '1ca528af1531fc4d'],
+  '.agents/commands/eval.md': ['5cce36ef28377d8e'],
+  '.agents/commands/fix.md': ['35fbe92067044cb5'],
+  '.agents/commands/humanize.md': ['fd0a94385279be2f'],
+  '.agents/commands/mode.md': ['50d9be8ac41e9c76'],
+  '.agents/commands/pm.md': ['6aaabaf8ae36b3eb'],
+  '.agents/commands/redesign.md': ['f482bd1025d5366e'],
+  '.agents/commands/refactor.md': ['920ca7f18e76f78a'],
+  '.agents/commands/research.md': ['bb8fb423283bcb4f'],
+  '.agents/commands/review.md': ['d2cb5c55a2b1074c'],
+  '.agents/commands/secure.md': ['9cb8777dc533b11e'],
+  '.agents/commands/skill.md': ['49e4490a94a7b71a'],
+  '.agents/commands/sre.md': ['f7ae8e6b8718ab29'],
+  '.agents/commands/status.md': ['dc61a866d481e23c'],
+  '.agents/commands/task.md': ['7fba9773dfa9dadb'],
+  '.agents/commands/tech-lead.md': ['57d90e4863a015df'],
+  '.agents/commands/tech-writer.md': ['223a784e6a8ea0b6'],
+  '.agents/commands/telemetry.md': ['83b78398c54b4748', '73ce38434e26ab84'],
+  '.agents/commands/test.md': ['1d0cbbb8d657e98f'],
+  '.claude/agents/architect.md': ['556c2b6a30f66b33', '28e11c83d562cf86'],
+  '.claude/agents/dba.md': ['d945892f5680647f', '1463795aba46d210', 'f9b80499be294dcf'],
+  '.claude/agents/developer.md': ['2f4c270986e9ae16', '89813a003e9aed8a', 'c3df935250b97afe', '187f9f068a03a9ae', '79132c302b171737'],
+  '.claude/agents/devops.md': ['805b03f8483a484d', '380a2d5b9f26edc7'],
+  '.claude/agents/eval-engineer.md': ['5536b06b56f3ce61', 'e89f15114cfaa9dd'],
+  '.claude/agents/executive-proxy.md': ['381cda5ce5c8bbf0', '1260ff33f0a1fcca'],
+  '.claude/agents/memory-manager.md': ['8b4527eb7e2cf35f', '1e32c8d11f61649a'],
+  '.claude/agents/orchestrator.md': ['b1d6ae8d9e829837', '13768a3cbd5276b2', '21002eea687c5b74', '6669f2b5b66c6706'],
+  '.claude/agents/pm.md': ['a014ed75f5a9f44c'],
+  '.claude/agents/qa.md': ['c29a773d7b19fcbe', '9318bc0eaf48c02b', 'bdc300f3393e7a7e', 'ecf09345d78ea712', '5a4bb81abb7bbcf2'],
+  '.claude/agents/release-manager.md': ['607fe77e06552b63', '4fad58df0ded4dd9'],
+  '.claude/agents/researcher.md': ['80f4910d0899dd4f', 'cbcaf818f121e26c'],
+  '.claude/agents/security.md': ['aadaabae1c3d4d83', '2582538e82b1435e'],
+  '.claude/agents/sre.md': ['d233dae4c59eac99'],
+  '.claude/agents/tech-lead.md': ['4e6ac2b2c9c9f3e6'],
+  '.claude/agents/tech-writer.md': ['9824dd588713ca1d'],
+  '.claude/agents/telemetry.md': ['e5f7f61975f46174', '1a596609975e8ef8'],
+  '.claude/agents/tester.md': ['38e5b46c5116238c', '3469930bd611c8da', '650bbaa07407a5db'],
+  '.claude/agents/ui-designer.md': ['d4d3620e6f405f9e', '1758186dd427184a', '0e1ffedcac9041cc', '31454690199eaf79'],
+  '.claude/commands/architect.md': ['6f516ebe919ad4a8'],
+  '.claude/commands/auto.md': ['141cfb03093c0a6b', '338ffca702f92e20'],
+  '.claude/commands/commit.md': ['412ef2d2b8c7f828'],
+  '.claude/commands/deploy.md': ['ff47ae9a22434f5f'],
+  '.claude/commands/design.md': ['c76e992f5715e0ac', '39755f68c88b7d54', '7929c06d210ac1dd', '8899e14aa3e08698'],
+  '.claude/commands/eval.md': ['b348fb5045663c38'],
+  '.claude/commands/fix.md': ['44467aea52061ebb'],
+  '.claude/commands/humanize.md': ['ff0730cf87c01699'],
+  '.claude/commands/mode.md': ['52abb6267bc3df50'],
+  '.claude/commands/pm.md': ['c84edc387dc38301'],
+  '.claude/commands/redesign.md': ['8a3f6993caa735b3'],
+  '.claude/commands/refactor.md': ['38a0d6ed8d1d514e'],
+  '.claude/commands/research.md': ['b21a9759a3c8435f'],
+  '.claude/commands/review.md': ['adb109f9e837334a'],
+  '.claude/commands/secure.md': ['7882e8474fc012b3'],
+  '.claude/commands/skill.md': ['cb432184648ec97e'],
+  '.claude/commands/sre.md': ['e37c32f85a83293d'],
+  '.claude/commands/status.md': ['9cbfbbf43ac89591'],
+  '.claude/commands/task.md': ['a4883193e0c793b1'],
+  '.claude/commands/tech-lead.md': ['8b09d65ea9531920'],
+  '.claude/commands/tech-writer.md': ['40764f5a52790a88'],
+  '.claude/commands/telemetry.md': ['24b3e0cf1afff651', '6825a91acd89d568'],
+  '.claude/commands/test.md': ['38372b7aa9d798fe']
+};
+
+function sha256(content) {
+  return require('crypto').createHash('sha256').update(content).digest('hex');
+}
+
+function legacyFileHash(content) {
+  return sha256(content).slice(0, 16);
+}
+
+function relToTarget(targetDir, filePath) {
+  return path.relative(targetDir, filePath).split(path.sep).join('/');
+}
+
+// Record the sha256 of files Dev-OS just wrote, keyed by project-relative path.
+// A later update treats a file as "generated, unedited" only while it still
+// matches this hash.
+function recordGeneratedFiles(manifest, targetDir, filePaths) {
+  if (!manifest.generatedFiles || typeof manifest.generatedFiles !== 'object') manifest.generatedFiles = {};
+  filePaths.forEach((p) => {
+    if (fs.existsSync(p)) manifest.generatedFiles[relToTarget(targetDir, p)] = sha256(fs.readFileSync(p));
+  });
+}
+
+function loadPacks(srcAgents) {
+  const packsPath = path.join(srcAgents, 'packs.json');
+  if (!fs.existsSync(packsPath)) return null;
+  return readJsonFile(packsPath, 'Dev-OS packs registry (.agents/packs.json)');
+}
+
+function skillAliases(packsData) {
+  return packsData && packsData.aliases && typeof packsData.aliases === 'object' ? packsData.aliases : {};
+}
+
+// Source file for a pack-declared agent or command stem: maintainer dir first
+// (R3), then the default dir.
+function resolvePackAssetSource(srcAgents, kind, stem) {
+  const safe = safeFileStem(stem, null);
+  if (!safe) return null;
+  const candidates = [path.join(srcAgents, 'maintainer', kind, `${safe}.md`), path.join(srcAgents, kind, `${safe}.md`)];
+  return candidates.find((c) => fs.existsSync(c)) || null;
+}
+
+// Agents and commands contributed by the given packs: { agents: [stem], commands: [stem] }
+function packAssetNames(packsData, packIds) {
+  const out = { agents: new Set(), commands: new Set() };
+  if (!packsData || !packsData.packs) return { agents: [], commands: [] };
+  packIds.forEach((id) => {
+    const p = packsData.packs[id];
+    if (!p) return;
+    (Array.isArray(p.agents) ? p.agents : []).forEach((a) => out.agents.add(a));
+    (Array.isArray(p.commands) ? p.commands : []).forEach((c) => out.commands.add(c));
+  });
+  return { agents: Array.from(out.agents), commands: Array.from(out.commands) };
+}
+
+function packHasAssets(pack) {
+  return Boolean(pack && ((Array.isArray(pack.agents) && pack.agents.length) || (Array.isArray(pack.commands) && pack.commands.length)));
+}
+
+// Copy pack agents/commands into the target's flat .agents/agents and
+// .agents/commands so the harness generators and routing pick them up.
+// Returns the destination paths written.
+function installPackAssets(srcAgents, destAgents, packsData, packIds, guard) {
+  const written = [];
+  const names = packAssetNames(packsData, packIds);
+  [['agents', names.agents], ['commands', names.commands]].forEach(([kind, stems]) => {
+    stems.forEach((stem) => {
+      const src = resolvePackAssetSource(srcAgents, kind, stem);
+      if (!src) {
+        console.error(`${colors.yellow}[ WARN ] Pack ${kind.slice(0, -1)} '${stem}' not found in the Dev-OS sources; skipped.${colors.reset}`);
+        return;
+      }
+      const dest = path.join(destAgents, kind, path.basename(src));
+      if (guard && !guard.allow(dest, fs.readFileSync(src, 'utf8'))) return; // user copy kept
+      fs.mkdirSync(path.dirname(dest), { recursive: true });
+      fs.copyFileSync(src, dest);
+      written.push(dest);
+    });
+  });
+  return written;
+}
+
+// Default-roster agent/command files copied from the sources into the target
+function defaultAssetPaths(srcAgents, destAgents) {
+  const out = [];
+  ['agents', 'commands'].forEach((kind) => {
+    const dir = path.join(srcAgents, kind);
+    if (!fs.existsSync(dir)) return;
+    fs.readdirSync(dir).filter((f) => f.endsWith('.md') && f !== 'README.md').forEach((f) => out.push(path.join(destAgents, kind, f)));
+  });
+  return out;
+}
+
+// True when `filePath` is a Dev-OS-written file nobody edited. 5.x installs
+// compare against the sha256 recorded in manifest.generatedFiles; files with
+// no record compare the WHOLE file against the exact output of every released
+// generator (LEGACY_FILE_HASHES) plus any `extraHashes` (legacyFileHash form).
+function isDevosGeneratedUnedited(filePath, targetDir, manifest, extraHashes) {
+  const content = fs.readFileSync(filePath);
+  const rel = relToTarget(targetDir, filePath);
+  const recorded = manifest && manifest.generatedFiles && manifest.generatedFiles[rel];
+  if (recorded) return sha256(content) === recorded;
+  const short = legacyFileHash(content);
+  if ((LEGACY_FILE_HASHES[rel] || []).includes(short)) return true;
+  return Boolean(extraHashes && extraHashes.has(short));
+}
+
+// One backup directory per CLI run, created only when something is backed up
+const RUN_STAMP = new Date().toISOString().replace(/[:.]/g, '-');
+
+function backupForMigration(filePath, targetDir, stamp = RUN_STAMP) {
+  const dest = path.join(targetDir, '.agents', '_backup', `migration-${stamp}`, path.relative(targetDir, filePath));
+  fs.mkdirSync(path.dirname(dest), { recursive: true });
+  fs.copyFileSync(filePath, dest);
+  return relToTarget(targetDir, dest);
+}
+
+// Gate for every regenerated .claude/{agents,commands} file. A file may be
+// overwritten only when it is missing, already identical, or Dev-OS-generated
+// and unedited. Anything else (a user edit, or a user-authored file that shares
+// a Dev-OS name) is kept in place; with `force` it is backed up, then
+// overwritten. Call report() after the generators to print the outcome.
+function createGeneratedWriteGuard({ targetDir, manifest, force }) {
+  const guard = {
+    kept: [],
+    backedUp: [],
+    refreshed: [],
+    // Like allow(), plus: a file with no recorded hash that `looksLegacy`
+    // recognises as a pre-5.0 Dev-OS copy is backed up, then refreshed.
+    allowOwned(outPath, content, looksLegacy) {
+      if (typeof looksLegacy === 'function' && fs.existsSync(outPath)) {
+        const rel = relToTarget(targetDir, outPath);
+        const recorded = manifest && manifest.generatedFiles && manifest.generatedFiles[rel];
+        const current = fs.readFileSync(outPath);
+        if (!recorded && !current.equals(Buffer.from(content, 'utf8')) && looksLegacy(current.toString('utf8'))) {
+          guard.refreshed.push(`${rel} (backup: ${backupForMigration(outPath, targetDir)})`);
+          return true;
+        }
+      }
+      return guard.allow(outPath, content);
+    },
+    allow(outPath, content) {
+      if (!fs.existsSync(outPath)) return true;
+      if (fs.readFileSync(outPath).equals(Buffer.from(content, 'utf8'))) return true;
+      if (isDevosGeneratedUnedited(outPath, targetDir, manifest)) return true;
+      const rel = relToTarget(targetDir, outPath);
+      if (force) {
+        guard.backedUp.push(`${rel} -> ${backupForMigration(outPath, targetDir)}`);
+        return true;
+      }
+      if (!guard.kept.includes(rel)) guard.kept.push(rel);
+      return false;
+    },
+    report() {
+      guard.kept.forEach((rel) => console.log(`${colors.yellow}[ WARN ] kept your edited ${rel}; run 'devos update --force' to regenerate (a backup is taken)${colors.reset}`));
+      guard.backedUp.forEach((b) => console.log(`${colors.yellow}[ WARN ] regenerated your edited ${b.replace(' -> ', ' (backup: ')})${colors.reset}`));
+      guard.refreshed.forEach((r) => console.log(`${colors.gray}         refreshed pre-5.0 Dev-OS file ${r}${colors.reset}`));
+      guard.kept.length = 0; guard.backedUp.length = 0; guard.refreshed.length = 0;
+    }
+  };
+  return guard;
+}
+
+// 4.x -> 5.0 migration. Retires merged/moved agents and commands and merged
+// skills. A file Dev-OS generated and nobody edited is backed up to
+// .agents/_backup/migration-<stamp>/ and removed; an edited one stays in place
+// untouched (nothing is lost, so nothing is copied) with a [ WARN ].
+// Mutates `manifest` (generatedFiles, skills).
+function migrateLegacyInstall(srcAgents, targetDir, manifest, packsData, options = {}) {
+  const destAgents = path.join(targetDir, '.agents');
+  const destClaude = path.join(targetDir, '.claude');
+  const stamp = options.stamp || RUN_STAMP;
+  const report = { removed: [], kept: [], backedUp: [], skillsRemoved: [], skillsBackedUp: [], primariesInstalled: [] };
+
+  const installedPacks = Array.isArray(manifest.installedPacks) ? manifest.installedPacks : [];
+  const packAssets = packAssetNames(packsData, installedPacks);
+  const retired = [
+    ...RETIRED_AGENTS.map((n) => ['agents', n]),
+    ...MOVED_AGENTS.filter((n) => !packAssets.agents.includes(n)).map((n) => ['agents', n]),
+    ...MOVED_COMMANDS.filter((n) => !packAssets.commands.includes(n)).map((n) => ['commands', n])
+  ];
+
+  retired.forEach(([kind, name]) => {
+    // The current source of a moved item counts as Dev-OS content for the .agents/ copy
+    const current = resolvePackAssetSource(srcAgents, kind, name);
+    const currentHashes = new Set(current ? [legacyFileHash(fs.readFileSync(current))] : []);
+    const sourceCopy = path.join(destAgents, kind, `${name}.md`);
+    const generated = path.join(destClaude, kind, `${name}.md`);
+
+    [[sourceCopy, currentHashes], [generated, null]].forEach(([file, extra]) => {
+      if (!fs.existsSync(file)) return;
+      const rel = relToTarget(targetDir, file);
+      if (isDevosGeneratedUnedited(file, targetDir, manifest, extra)) {
+        report.backedUp.push(backupForMigration(file, targetDir, stamp));
+        fs.unlinkSync(file);
+        report.removed.push(rel);
+        if (manifest.generatedFiles) delete manifest.generatedFiles[rel];
+      } else {
+        report.kept.push(rel);
+      }
+    });
+  });
+
+  // Merged skills: packs.json aliases { old: new }
+  const aliases = skillAliases(packsData);
+  const destSkills = path.join(destAgents, 'skills');
+  const srcSkills = path.join(srcAgents, 'skills');
+  if (!manifest.skills || typeof manifest.skills !== 'object') manifest.skills = {};
+  Object.keys(aliases).forEach((oldName) => {
+    const newName = aliases[oldName];
+    const oldDir = path.join(destSkills, oldName);
+    if (!safeFileStem(oldName, null) || !fs.existsSync(oldDir) || !fs.statSync(oldDir).isDirectory()) return;
+    // The old name may still ship (e.g. not yet consolidated); leave it alone then
+    if (fs.existsSync(path.join(srcSkills, oldName))) return;
+
+    const entry = manifest.skills[oldName];
+    const hash = computeSkillHash(oldDir);
+    const customized = !entry || !entry.hash || entry.hash !== hash;
+    if (customized) {
+      const backup = backupSkill(oldDir, oldName, targetDir);
+      report.skillsBackedUp.push(`${oldName} -> ${relToTarget(targetDir, backup)}`);
+    }
+    fs.rmSync(oldDir, { recursive: true, force: true });
+    delete manifest.skills[oldName];
+    report.skillsRemoved.push(`${oldName} -> ${newName}`);
+
+    const newSrc = path.join(srcSkills, newName);
+    const newDest = path.join(destSkills, newName);
+    if (fs.existsSync(newSrc)) {
+      const newEntry = manifest.skills[newName];
+      const destHash = fs.existsSync(newDest) ? computeSkillHash(newDest) : null;
+      const primaryCustomized = destHash && (!newEntry || !newEntry.hash || newEntry.hash !== destHash);
+      if (!destHash || (!primaryCustomized && destHash !== computeSkillHash(newSrc))) {
+        copyRecursiveSync(newSrc, newDest);
+        manifest.skills[newName] = {
+          source: (newEntry && newEntry.source) || 'core',
+          version: PKG.version,
+          hash: computeSkillHash(newDest),
+          customized: false,
+          installedAt: (newEntry && newEntry.installedAt) || new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        };
+        if (!report.primariesInstalled.includes(newName)) report.primariesInstalled.push(newName);
+      }
+    }
+  });
+
+  return report;
+}
+
+function describeMigration(r) {
+  const parts = [];
+  if (r.removed.length) parts.push(`${r.removed.length} retired file(s) removed`);
+  if (r.kept.length) parts.push(`${r.kept.length} edited file(s) kept`);
+  if (r.skillsRemoved.length) parts.push(`${r.skillsRemoved.length} merged skill(s) retired`);
+  if (r.primariesInstalled.length) parts.push(`primaries refreshed: ${r.primariesInstalled.join(', ')}`);
+  return parts.length ? parts.join(', ') : 'nothing to migrate';
+}
+
+function printMigrationDetails(r) {
+  r.removed.forEach((f) => console.log(`${colors.gray}         removed ${f} (Dev-OS generated, unedited)${colors.reset}`));
+  r.kept.forEach((f) => console.log(`${colors.yellow}[ WARN ] kept ${f}: it differs from what Dev-OS generated, so it was left untouched. Merge it into the new roster and delete it when ready.${colors.reset}`));
+  r.skillsRemoved.forEach((s) => console.log(`${colors.gray}         skill ${s.replace(' -> ', ' merged into ')}${colors.reset}`));
+  r.skillsBackedUp.forEach((s) => console.log(`${colors.yellow}[ WARN ] customized skill backed up before retiring: ${s}${colors.reset}`));
+}
+
+function generateClaudeCommands(destAgents, destClaude, written, guard) {
   const srcCommands = path.join(destAgents, 'commands');
   const outDir = path.join(destClaude, 'commands');
   if (!fs.existsSync(srcCommands)) return 0;
@@ -746,15 +1382,27 @@ function generateClaudeCommands(destAgents, destClaude) {
     if (!file.endsWith('.md') || file === 'README.md') return;
     const raw = fs.readFileSync(path.join(srcCommands, file), 'utf8');
     const { data, body } = parseFrontmatter(raw);
-    const name = data.name || file.replace('.md', '');
-    const agent = data.agent || 'orchestrator';
+    const fileStem = file.replace(/\.md$/, '');
+    const name = safeFileStem(data.name, fileStem);
+    if (data.name && name !== String(data.name).trim()) {
+      console.error(`${colors.yellow}[ WARN ] Command '${file}' has an unsafe frontmatter name; using '${fileStem}'.${colors.reset}`);
+    }
+    const declared = safeFileStem(data.agent, 'orchestrator');
+    // Commands written for a merged 4.x agent route to the agent that absorbed it
+    const agent = AGENT_ALIASES[declared] || declared;
     const triage = data.triage_level || 'STANDARD';
     const workflow = data.workflow || 'standard';
+    const description = typeof data.description === 'string' && data.description.trim()
+      ? data.description
+      : `Dev-OS /${name} command`;
+
+    const header = ['---', `description: ${yamlScalar(description)}`];
+    const argHint = typeof data['argument-hint'] === 'string' ? data['argument-hint'].trim() : '';
+    if (argHint) header.push(`argument-hint: ${yamlScalar(argHint)}`);
+    header.push('---');
 
     const out = [
-      '---',
-      `description: ${data.description || `Dev-OS /${name} command`}`,
-      '---',
+      ...header,
       '',
       body.trim(),
       '',
@@ -766,13 +1414,19 @@ function generateClaudeCommands(destAgents, destClaude) {
       ''
     ].join('\n');
 
-    fs.writeFileSync(path.join(outDir, `${name}.md`), out, 'utf8');
+    const outPath = path.join(outDir, `${name}.md`);
+    if (guard && !guard.allow(outPath, out)) return; // user content kept in place
+    fs.writeFileSync(outPath, out, 'utf8');
+    if (Array.isArray(written)) written.push(outPath);
     count++;
   });
   return count;
 }
 
-function generateClaudeAgents(destAgents, destClaude) {
+// Claude Code subagent frontmatter keys passed through from .agents/agents/*.md
+const AGENT_MODELS = ['sonnet', 'opus', 'haiku', 'inherit'];
+
+function generateClaudeAgents(destAgents, destClaude, written, guard) {
   const srcAgents = path.join(destAgents, 'agents');
   const outDir = path.join(destClaude, 'agents');
   if (!fs.existsSync(srcAgents)) return 0;
@@ -780,37 +1434,74 @@ function generateClaudeAgents(destAgents, destClaude) {
 
   let count = 0;
   fs.readdirSync(srcAgents).forEach((file) => {
-    if (!file.endsWith('.md')) return;
-    const name = file.replace('.md', '');
-    const body = fs.readFileSync(path.join(srcAgents, file), 'utf8');
-    const description = AGENT_DESCRIPTIONS[name] ||
+    if (!file.endsWith('.md') || file === 'README.md') return;
+    const fileStem = file.replace(/\.md$/, '');
+    const raw = fs.readFileSync(path.join(srcAgents, file), 'utf8');
+    const { data, body } = parseFrontmatter(raw);
+
+    // Subagent names must be lowercase letters, digits and hyphens
+    const fmName = typeof data.name === 'string' ? data.name.trim() : '';
+    const name = /^[a-z0-9][a-z0-9-]*$/.test(fmName) ? fmName : fileStem;
+    const description = (typeof data.description === 'string' && data.description.trim()) ||
+      AGENT_DESCRIPTIONS[name] || AGENT_DESCRIPTIONS[fileStem] ||
       `Dev-OS ${name} agent persona. Use for tasks assigned to the ${name} role in .agents/AGENTS.md.`;
 
-    const out = [
-      '---',
-      `name: ${name}`,
-      `description: ${description}`,
-      '---',
-      '',
-      body.trim(),
-      ''
-    ].join('\n');
+    const lines = ['---', `name: ${name}`, `description: ${yamlScalar(description)}`];
 
-    fs.writeFileSync(path.join(outDir, file), out, 'utf8');
+    let tools = data.tools;
+    if (Array.isArray(tools)) tools = tools.join(', ');
+    if (typeof tools === 'string' && tools.trim()) {
+      const list = tools.split(',').map((t) => t.trim()).filter(Boolean);
+      if (list.length) lines.push(`tools: ${yamlScalar(list.join(', '))}`);
+    }
+
+    const model = typeof data.model === 'string' ? data.model.trim().toLowerCase() : '';
+    if (model) {
+      if (AGENT_MODELS.includes(model)) {
+        lines.push(`model: ${model}`);
+      } else {
+        console.error(`${colors.yellow}[ WARN ] Agent '${file}' declares unknown model '${data.model}'; omitted (inherits).${colors.reset}`);
+      }
+    }
+
+    lines.push('---', '', body.trim(), '');
+    const out = lines.join('\n');
+    const outPath = path.join(outDir, `${safeFileStem(fileStem, 'agent')}.md`);
+    if (guard && !guard.allow(outPath, out)) return; // user content kept in place
+    fs.writeFileSync(outPath, out, 'utf8');
+    if (Array.isArray(written)) written.push(outPath);
     count++;
   });
   return count;
 }
 
-function bootstrapClaudeMd(targetDir) {
-  const claudeMdPath = path.join(targetDir, 'CLAUDE.md');
-  const startMarker = '<!-- BEGIN DEV-OS -->';
-  const endMarker = '<!-- END DEV-OS -->';
-  const block = [
-    startMarker,
+// ---------------------------------------------------------------------------
+// Cross-harness instruction files (wave 3, W3)
+// ---------------------------------------------------------------------------
+// Formats verified against the official docs on 2026-10-22:
+// - Claude Code reads CLAUDE.md, and reads AGENTS.md only when no CLAUDE.md
+//   exists; a CLAUDE.md pulls AGENTS.md in with an `@AGENTS.md` import.
+//   https://code.claude.com/docs/en/memory
+// - Codex reads AGENTS.md from the project root down to the cwd, up to
+//   project_doc_max_bytes (32 KiB by default). .codex/instructions.md is not a
+//   documented source. https://developers.openai.com/codex/guides/agents-md
+//   (redirects to https://learn.chatgpt.com/docs/agent-configuration/agents-md)
+// - OpenCode reads AGENTS.md. Project config is opencode.json at the project
+//   root ($schema https://opencode.ai/config.json, additionalProperties: false);
+//   `instructions` is an array of paths or globs. OPENCODE.md is not read.
+//   https://opencode.ai/docs/config/ and https://opencode.ai/docs/rules/
+// - Cursor reads AGENTS.md. A .mdc rule with `alwaysApply: true` is always
+//   included and its globs are ignored. https://cursor.com/docs/context/rules
+// - Gemini CLI reads GEMINI.md and expands `@./file.md` imports.
+//   https://geminicli.com/docs/cli/gemini-md/
+
+const AGENTS_MD_BUDGET = 32 * 1024; // Codex project_doc_max_bytes default
+
+function rootAgentsMdContent() {
+  return [
     '## Dev-OS — Multi-Agent Engineering OS',
     '',
-    'This project uses Dev-OS by Olives Technologies.',
+    'This project uses Dev-OS by Olives Technologies. This block is the canonical cross-harness instruction set for Claude Code, Codex, Cursor, OpenCode, and Gemini. `devos update` regenerates everything between the Dev-OS markers; keep your own notes outside them.',
     '',
     '### Hard Rules Digest (Must be strictly obeyed at all times)',
     ...DEVOS_RULES_DIGEST,
@@ -821,203 +1512,656 @@ function bootstrapClaudeMd(targetDir) {
     '### Session Mode Lock (Orchestrator Persistence)',
     ...SESSION_MODE_DIRECTIVE,
     '',
-    '### Tooling & Personas',
-    '- Slash commands: `.claude/commands/` (generated from `.agents/commands/` — refresh with `devos update`).',
-    '- Agent personas: `.claude/agents/` (generated from `.agents/agents/`).',
-    '- Task Board: `docs/TASK_BOARD.md` (active DAG state).',
-    '- Memory Vault: `.agents/memory/` (ADRs in `decisions/`, handoffs in `handoffs/`).',
-    '- Coding standards: `CODING_STANDARDS.md`.',
-    '- Master roster & full rules: `.agents/AGENTS.md`.',
-    endMarker,
-    ''
+    '### Roster and Protocols',
+    '- Full roster, workflows, triage levels, and the Hard Rules in full: `.agents/AGENTS.md`. Read it before scoping work.',
+    '- Agent personas: `.agents/agents/`. Skills: `.agents/skills/<name>/SKILL.md`.',
+    '- Spec-driven features: `docs/specs/<slug>/` holds `requirements.md`, `design.md`, and `tasks.md`. Validate with `devos spec check <slug>`; list parallel waves with `devos spec waves <slug>`.',
+    '- Plans: `docs/plans/`. Task Board: `docs/TASK_BOARD.md`. Memory Vault: `.agents/memory/` (ADRs in `decisions/`, handoffs in `handoffs/`).',
+    '- Coding standards: `CODING_STANDARDS.md`. Agents never commit; humans commit with `.agents/scripts/commit.sh`.'
   ].join('\n');
-
-  if (fs.existsSync(claudeMdPath)) {
-    const current = fs.readFileSync(claudeMdPath, 'utf8');
-    if (current.includes(startMarker) && current.includes(endMarker)) {
-      const regex = new RegExp(`${startMarker}[\\s\\S]*?${endMarker}`, 'g');
-      const updated = current.replace(regex, block.trim());
-      fs.writeFileSync(claudeMdPath, updated.trimEnd() + '\n', 'utf8');
-      return 'updated';
-    }
-    fs.writeFileSync(claudeMdPath, current.trimEnd() + '\n\n' + block, 'utf8');
-    return 'appended';
-  }
-  fs.writeFileSync(claudeMdPath, block, 'utf8');
-  return 'created';
 }
 
-function generateCursorConfig(targetDir) {
-  const cursorDir = path.join(targetDir, '.cursor', 'rules');
-  fs.mkdirSync(cursorDir, { recursive: true });
-  const mdcPath = path.join(cursorDir, 'devos.mdc');
+// A short pointer to AGENTS.md plus the critical rules digest. `importLine`
+// pulls AGENTS.md into harnesses that support imports (Claude Code, Gemini CLI).
+function thinPointerContent(title, importLine, extra) {
+  return [
+    `## Dev-OS — ${title}`,
+    '',
+    'The canonical Dev-OS instructions are the Dev-OS block in `AGENTS.md` at the project root; the full rules are in `.agents/AGENTS.md`.',
+    ...(importLine ? ['', importLine] : []),
+    '',
+    '### Hard Rules Digest (Must be strictly obeyed at all times)',
+    ...DEVOS_RULES_DIGEST,
+    ...(extra && extra.length ? ['', ...extra] : [])
+  ].join('\n');
+}
+
+function generateRootAgentsMd(targetDir, ctx) {
+  const filePath = path.join(targetDir, 'AGENTS.md');
+  // 4.x never wrote a root AGENTS.md: a '# Dev-OS' heading there is the user's
+  const status = upsertManagedBlock(filePath, rootAgentsMdContent(), { targetDir, ctx, legacyReplace: false });
+  const size = fs.statSync(filePath).size;
+  if (size > AGENTS_MD_BUDGET) {
+    return `[ WARN ] AGENTS.md ${status}, but it is ${size} bytes; Codex reads only the first ${AGENTS_MD_BUDGET}`;
+  }
+  return `AGENTS.md ${status}`;
+}
+
+function bootstrapClaudeMd(targetDir, ctx) {
+  const content = thinPointerContent('Claude Code', '@AGENTS.md', [
+    '### Claude Code Tooling',
+    '- Slash commands: `.claude/commands/`; subagents: `.claude/agents/` (generated from `.agents/`; refresh with `devos update`).',
+    '- Skills: `.claude/skills/<name>` links to `.agents/skills/<name>`.'
+  ]);
+  // CLAUDE.md is the user's file; a marker-less one is never replaced wholesale
+  return upsertManagedBlock(path.join(targetDir, 'CLAUDE.md'), content, { targetDir, ctx, legacyReplace: false });
+}
+
+// Write Dev-OS content into a file the user may also own (GEMINI.md,
+// .cursorrules, .windsurfrules, ...) without clobbering user-authored text.
+// - missing file             -> created with a marker-delimited Dev-OS block
+// - file with one BEGIN/END  -> only the block between the markers is replaced
+// - damaged markers          -> (BEGIN without END, END without BEGIN, duplicated
+//                               or out-of-order markers) backed up, left untouched,
+//                               and reported with a [ WARN ]
+// - legacy Dev-OS file       -> (first line starts with '# Dev-OS', only where
+//                               opts.legacyReplace allows it) backed up, then
+//                               replaced by the block
+// - user-authored file       -> Dev-OS block appended after the user's content
+const DEVOS_BLOCK_START = '<!-- BEGIN DEV-OS -->';
+const DEVOS_BLOCK_END = '<!-- END DEV-OS -->';
+
+function indexesOf(text, needle) {
+  const out = [];
+  let i = text.indexOf(needle);
+  while (i !== -1) { out.push(i); i = text.indexOf(needle, i + needle.length); }
+  return out;
+}
+
+// { state: 'none' } | { state: 'ok', start, end } | { state: 'damaged', why }
+function devosBlockBounds(text) {
+  const starts = indexesOf(text, DEVOS_BLOCK_START);
+  const ends = indexesOf(text, DEVOS_BLOCK_END);
+  if (!starts.length && !ends.length) return { state: 'none' };
+  if (starts.length === 1 && ends.length === 1 && ends[0] > starts[0]) return { state: 'ok', start: starts[0], end: ends[0] };
+  let why = 'markers out of order';
+  if (starts.length > 1 || ends.length > 1) why = 'duplicated markers';
+  else if (!ends.length) why = 'BEGIN without END';
+  else if (!starts.length) why = 'END without BEGIN';
+  return { state: 'damaged', why };
+}
+
+// Copy a user-owned file aside before Dev-OS changes (or refuses to change) it.
+// Inside the project: .agents/_backup/migration-<stamp>/<rel>. Elsewhere: a
+// sibling <file>.devos-backup-<stamp>.
+function backupUserFile(filePath, targetDir) {
+  const rel = path.relative(targetDir, filePath);
+  if (rel && !rel.startsWith('..') && !path.isAbsolute(rel)) return backupForMigration(filePath, targetDir);
+  const dest = `${filePath}.devos-backup-${RUN_STAMP}`;
+  fs.copyFileSync(filePath, dest);
+  return dest;
+}
+
+function upsertManagedBlock(filePath, content, opts = {}) {
+  const targetDir = opts.targetDir || TARGET_DIR;
+  const legacyReplace = opts.legacyReplace !== false;
+  const note = (level, msg) => {
+    if (opts.ctx && Array.isArray(opts.ctx.notes)) opts.ctx.notes.push({ level, msg });
+    else if (level === 'warn') console.log(`${colors.yellow}[ WARN ] ${msg}${colors.reset}`);
+    else console.log(`${colors.gray}         ${msg}${colors.reset}`);
+  };
+  const block = `${DEVOS_BLOCK_START}\n${content.trim()}\n${DEVOS_BLOCK_END}`;
+  fs.mkdirSync(path.dirname(filePath), { recursive: true });
+  if (!fs.existsSync(filePath)) {
+    fs.writeFileSync(filePath, block + '\n', 'utf8');
+    return 'created';
+  }
+  const current = fs.readFileSync(filePath, 'utf8');
+  const rel = relToTarget(targetDir, filePath);
+  const bounds = devosBlockBounds(current);
+  if (bounds.state === 'damaged') {
+    const backup = backupUserFile(filePath, targetDir);
+    note('warn', `${rel} has a damaged Dev-OS block (${bounds.why}); left unchanged, fix the markers and re-run (backup: ${backup})`);
+    return 'left unchanged (damaged Dev-OS block)';
+  }
+  if (bounds.state === 'ok') {
+    const updated = current.slice(0, bounds.start) + block + current.slice(bounds.end + DEVOS_BLOCK_END.length);
+    fs.writeFileSync(filePath, updated.trimEnd() + '\n', 'utf8');
+    return 'updated';
+  }
+  if (legacyReplace && /^# Dev-OS\b/.test(current.trimStart())) {
+    const backup = backupUserFile(filePath, targetDir);
+    fs.writeFileSync(filePath, block + '\n', 'utf8');
+    note('info', `replaced the pre-marker Dev-OS ${rel} (backup: ${backup})`);
+    return 'replaced legacy';
+  }
+  fs.writeFileSync(filePath, current.trimEnd() + '\n\n' + block + '\n', 'utf8');
+  return 'appended';
+}
+
+// Context shared by the harness generators: a write guard for whole files
+// Dev-OS owns, the list of files written (hashes recorded in the manifest),
+// and notes printed after the step line.
+function harnessContext(targetDir, manifest, options = {}) {
+  const m = manifest || readManifestLenient(path.join(targetDir, '.agents'));
+  return {
+    targetDir,
+    manifest: m,
+    guard: options.guard || createGeneratedWriteGuard({ targetDir, manifest: m, force: options.force }),
+    written: options.written || [],
+    notes: []
+  };
+}
+
+function printHarnessNotes(ctx) {
+  ctx.notes.forEach((n) => {
+    if (n.level === 'warn') console.log(`${colors.yellow}[ WARN ] ${n.msg}${colors.reset}`);
+    else console.log(`${colors.gray}         ${n.msg}${colors.reset}`);
+  });
+  ctx.notes = [];
+}
+
+// Whole-file write through the guard. `looksLegacy(text)` recognises a
+// pre-5.0 copy of this Dev-OS file that has no recorded hash; it is backed
+// up, then refreshed. Returns false when a user-edited file was kept.
+function writeGeneratedFile(filePath, content, ctx, looksLegacy) {
+  if (!ctx.guard.allowOwned(filePath, content, looksLegacy)) return false;
+  fs.mkdirSync(path.dirname(filePath), { recursive: true });
+  fs.writeFileSync(filePath, content, 'utf8');
+  ctx.written.push(filePath);
+  return true;
+}
+
+function forgetGeneratedFile(ctx, filePath) {
+  const gf = ctx.manifest && ctx.manifest.generatedFiles;
+  if (gf) delete gf[relToTarget(ctx.targetDir, filePath)];
+}
+
+function removeDirIfEmpty(dir) {
+  try {
+    if (fs.existsSync(dir) && fs.statSync(dir).isDirectory() && fs.readdirSync(dir).length === 0) fs.rmdirSync(dir);
+  } catch (e) {}
+}
+
+// Retire a file Dev-OS used to write as a marker-delimited block. The block is
+// Dev-OS content; anything outside the markers is the user's. A backup is
+// always taken. Nothing outside the markers -> file removed. User content
+// outside -> only the block is removed. No markers -> file left untouched.
+function retireManagedBlockFile(filePath, ctx, why) {
+  if (!fs.existsSync(filePath)) return null;
+  const rel = relToTarget(ctx.targetDir, filePath);
+  const current = fs.readFileSync(filePath, 'utf8');
+  const startIdx = current.indexOf(DEVOS_BLOCK_START);
+  const endIdx = startIdx === -1 ? -1 : current.indexOf(DEVOS_BLOCK_END, startIdx + 1);
+  if (startIdx === -1 || endIdx === -1) {
+    // No markers: the user's own file (say nothing), or a pre-marker Dev-OS copy
+    if (/^# Dev-OS\b/.test(current.trimStart())) {
+      ctx.notes.push({ level: 'warn', msg: `kept ${rel}: Dev-OS no longer writes it (${why}), and it has no Dev-OS markers, so it was left untouched. Delete it when ready.` });
+    }
+    return 'kept';
+  }
+  const before = current.slice(0, startIdx).replace(/\s+$/, '');
+  const after = current.slice(endIdx + DEVOS_BLOCK_END.length).replace(/^\s+/, '');
+  const backup = backupForMigration(filePath, ctx.targetDir);
+  forgetGeneratedFile(ctx, filePath);
+  if (!before && !after) {
+    fs.unlinkSync(filePath);
+    ctx.notes.push({ level: 'info', msg: `removed ${rel} (${why}; backup: ${backup})` });
+    return 'removed';
+  }
+  fs.writeFileSync(filePath, [before, after].filter(Boolean).join('\n\n') + '\n', 'utf8');
+  ctx.notes.push({ level: 'warn', msg: `removed the Dev-OS block from ${rel} (${why}) and kept your own content (backup: ${backup})` });
+  return 'stripped';
+}
+
+// Retire a whole file Dev-OS wrote. Removed (after a backup) when it matches
+// its recorded hash, or has no record and `looksLegacy` recognises it.
+function retireGeneratedFile(filePath, ctx, why, looksLegacy) {
+  if (!fs.existsSync(filePath)) return null;
+  const rel = relToTarget(ctx.targetDir, filePath);
+  const recorded = ctx.manifest && ctx.manifest.generatedFiles && ctx.manifest.generatedFiles[rel];
+  const text = fs.readFileSync(filePath, 'utf8');
+  const ours = recorded ? sha256(fs.readFileSync(filePath)) === recorded : Boolean(looksLegacy && looksLegacy(text));
+  if (!ours) {
+    ctx.notes.push({ level: 'warn', msg: `kept ${rel}: Dev-OS no longer writes it (${why}), but it was edited, so it was left untouched. Delete it when ready.` });
+    return 'kept';
+  }
+  const backup = backupForMigration(filePath, ctx.targetDir);
+  fs.unlinkSync(filePath);
+  forgetGeneratedFile(ctx, filePath);
+  ctx.notes.push({ level: 'info', msg: `removed ${rel} (${why}; backup: ${backup})` });
+  return 'removed';
+}
+
+function generateCursorConfig(targetDir, ctx = harnessContext(targetDir)) {
+  const mdcPath = path.join(targetDir, '.cursor', 'rules', 'devos.mdc');
+  // alwaysApply: true -> always included, globs ignored, so none is written
   const mdcContent = [
     '---',
-    'description: Dev-OS Autonomous Multi-Agent Engineering rules, Hard Rules, and solo session protocols',
-    'globs: *',
+    `description: ${yamlScalar('Dev-OS Hard Rules digest. The canonical Dev-OS instructions are the Dev-OS block in AGENTS.md.')}`,
     'alwaysApply: true',
     '---',
     '',
-    '# Dev-OS — Multi-Agent Engineering OS (Cursor Rules)',
-    '',
-    'This project uses Dev-OS by Olives Technologies.',
-    '',
-    '### Hard Rules Digest (Must be strictly obeyed at all times)',
-    ...DEVOS_RULES_DIGEST,
-    '',
-    '### Solo Session Protocol',
-    ...SOLO_SESSION_PROTOCOL,
-    '',
-    '### Session Mode Lock (Orchestrator Persistence)',
-    ...SESSION_MODE_DIRECTIVE,
-    '',
-    '### Mechanical Commit Gate',
-    'Raw `git commit` is strictly blocked. Always commit through `.agents/scripts/commit.sh`.',
+    thinPointerContent('Cursor', null, [
+      '### Mechanical Commit Gate',
+      'Agents never commit. Humans commit through `.agents/scripts/commit.sh`.'
+    ]),
     ''
   ].join('\n');
-  fs.writeFileSync(mdcPath, mdcContent, 'utf8');
+  const wrote = writeGeneratedFile(mdcPath, mdcContent, ctx,
+    (old) => /^---\r?\ndescription: Dev-OS /.test(old) && old.includes('(Cursor Rules)'));
 
-  const cursorrulesPath = path.join(targetDir, '.cursorrules');
-  const cursorrulesContent = [
+  upsertManagedBlock(path.join(targetDir, '.cursorrules'), [
     '# Dev-OS Cursor Rules',
-    'Follow all Hard Rules defined in .agents/AGENTS.md and .cursor/rules/devos.mdc.',
-    'Always use .agents/scripts/commit.sh for committing changes.',
+    'Follow the Dev-OS block in AGENTS.md and the full rules in .agents/AGENTS.md.',
+    'Agents never commit. Humans commit through .agents/scripts/commit.sh.',
     ''
-  ].join('\n');
-  fs.writeFileSync(cursorrulesPath, cursorrulesContent, 'utf8');
+  ].join('\n'), { targetDir, ctx });
 
-  return 'rules/devos.mdc + .cursorrules';
+  return wrote ? '.cursor/rules/devos.mdc + .cursorrules' : '.cursorrules (kept your edited .cursor/rules/devos.mdc)';
 }
 
-function generateOpenCodeConfig(targetDir) {
+const OPENCODE_SCHEMA = 'https://opencode.ai/config.json';
+const OPENCODE_INSTRUCTIONS = ['.agents/AGENTS.md'];
+const LEGACY_OPENCODE_KEYS = ['name', 'version', 'rules', 'manifest'];
+
+// Merge Dev-OS into the project-root opencode.json: add `$schema` when absent
+// and union OPENCODE_INSTRUCTIONS into `instructions`. Every user key is kept.
+// A file that is not plain JSON (JSONC with comments) is never rewritten.
+function mergeOpenCodeJson(configPath, ctx) {
+  let config = {};
+  if (fs.existsSync(configPath)) {
+    try {
+      config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+    } catch (e) {
+      config = null;
+    }
+    if (!config || typeof config !== 'object' || Array.isArray(config) ||
+      (config.instructions !== undefined && !Array.isArray(config.instructions))) {
+      ctx.notes.push({ level: 'warn', msg: `kept opencode.json untouched (not plain JSON or "instructions" is not an array); add ${JSON.stringify(OPENCODE_INSTRUCTIONS)} to "instructions" yourself` });
+      return 'kept';
+    }
+  }
+  const instructions = Array.isArray(config.instructions) ? config.instructions.slice() : [];
+  OPENCODE_INSTRUCTIONS.forEach((i) => { if (!instructions.includes(i)) instructions.push(i); });
+  const { $schema, ...rest } = config;
+  const next = { $schema: $schema || OPENCODE_SCHEMA, ...rest, instructions };
+  const out = JSON.stringify(next, null, 2) + '\n';
+  const existed = fs.existsSync(configPath);
+  if (existed && fs.readFileSync(configPath, 'utf8') === out) return 'unchanged';
+  fs.writeFileSync(configPath, out, 'utf8');
+  return existed ? 'merged' : 'created';
+}
+
+// The 4.x/5.0 .opencode/opencode.json carried keys OpenCode's strict schema
+// rejects, in a location OpenCode does not read as config.
+function retireLegacyOpenCodeJson(filePath, ctx) {
+  if (!fs.existsSync(filePath)) return null;
+  let parsed = null;
+  try { parsed = JSON.parse(fs.readFileSync(filePath, 'utf8')); } catch (e) {}
+  if (!parsed || parsed.name !== 'Dev-OS') return null; // not ours
+  const keys = Object.keys(parsed);
+  const pristine = keys.every((k) => LEGACY_OPENCODE_KEYS.includes(k)) &&
+    JSON.stringify(parsed.rules) === JSON.stringify(['.opencode/rules/devos-rules.md']) &&
+    parsed.manifest === '.agents/manifest.json';
+  return retireGeneratedFile(filePath, ctx, 'OpenCode reads opencode.json at the project root', () => pristine);
+}
+
+function generateOpenCodeConfig(targetDir, ctx = harnessContext(targetDir)) {
+  const status = mergeOpenCodeJson(path.join(targetDir, 'opencode.json'), ctx);
   const opencodeDir = path.join(targetDir, '.opencode');
-  const rulesDir = path.join(opencodeDir, 'rules');
-  fs.mkdirSync(rulesDir, { recursive: true });
-
-  const rulesPath = path.join(rulesDir, 'devos-rules.md');
-  const rulesContent = [
-    '# OpenCode Dev-OS Rules',
-    '',
-    '## Hard Rules Digest',
-    ...DEVOS_RULES_DIGEST,
-    '',
-    '## Solo Session Protocol',
-    ...SOLO_SESSION_PROTOCOL,
-    '',
-    '## Session Mode Lock (Orchestrator Persistence)',
-    ...SESSION_MODE_DIRECTIVE,
-    '',
-    '## Team Roster & Routing',
-    'Read `.agents/AGENTS.md` for agent roles (Orchestrator, Developer, QA, Tester, Security, DevOps, etc.).',
-    'Route all git commits through `.agents/scripts/commit.sh`.',
-    ''
-  ].join('\n');
-  fs.writeFileSync(rulesPath, rulesContent, 'utf8');
-
-  const openCodeMdPath = path.join(targetDir, 'OPENCODE.md');
-  const openCodeMdContent = [
-    '# Dev-OS — OpenCode Instructions',
-    '',
-    'This project uses Dev-OS by Olives Technologies.',
-    '',
-    '### Hard Rules Digest',
-    ...DEVOS_RULES_DIGEST,
-    '',
-    '### Solo Session Protocol',
-    ...SOLO_SESSION_PROTOCOL,
-    '',
-    '### Session Mode Lock (Orchestrator Persistence)',
-    ...SESSION_MODE_DIRECTIVE,
-    '',
-    '### Core Resources',
-    '- Personas: `.agents/agents/`',
-    '- Skills: `.agents/skills/`',
-    '- Task Board: `docs/TASK_BOARD.md`',
-    '- Memory Vault: `.agents/memory/`',
-    '- Commit Gate: `.agents/scripts/commit.sh`',
-    ''
-  ].join('\n');
-  fs.writeFileSync(openCodeMdPath, openCodeMdContent, 'utf8');
-
-  const configPath = path.join(opencodeDir, 'opencode.json');
-  const configContent = JSON.stringify({
-    name: 'Dev-OS',
-    version: PKG.version,
-    rules: ['.opencode/rules/devos-rules.md'],
-    manifest: '.agents/manifest.json'
-  }, null, 2) + '\n';
-  fs.writeFileSync(configPath, configContent, 'utf8');
-
-  return 'OPENCODE.md + .opencode/rules/devos-rules.md';
+  retireLegacyOpenCodeJson(path.join(opencodeDir, 'opencode.json'), ctx);
+  retireManagedBlockFile(path.join(targetDir, 'OPENCODE.md'), ctx, 'OpenCode reads AGENTS.md, not OPENCODE.md');
+  retireGeneratedFile(path.join(opencodeDir, 'rules', 'devos-rules.md'), ctx, 'opencode.json "instructions" now points at .agents/AGENTS.md',
+    (text) => text.startsWith('# OpenCode Dev-OS Rules'));
+  removeDirIfEmpty(path.join(opencodeDir, 'rules'));
+  removeDirIfEmpty(opencodeDir);
+  return `opencode.json (${status})`;
 }
 
-function generateAntigravityConfig(targetDir) {
-  const antigravityMdPath = path.join(targetDir, 'ANTIGRAVITY.md');
-  const geminiMdPath = path.join(targetDir, 'GEMINI.md');
-  const content = [
-    '# Dev-OS — Google Antigravity & Gemini Instructions',
-    '',
-    'This project uses Dev-OS by Olives Technologies.',
-    '',
-    '### Hard Rules Digest (Must be strictly obeyed at all times)',
-    ...DEVOS_RULES_DIGEST,
-    '',
-    '### Solo Session Protocol',
-    ...SOLO_SESSION_PROTOCOL,
-    '',
-    '### Session Mode Lock (Orchestrator Persistence)',
-    ...SESSION_MODE_DIRECTIVE,
-    '',
-    '### Core Resources & SDLC Governance',
-    '- Personas: `.agents/agents/`',
-    '- Specialist Skills: `.agents/skills/` (adheres to open Agent Skills Standard)',
-    '- Mandatory Design Gate: `.agents/hooks/pre-tool-use.sh` blocks UI edits until `DESIGN.md` exists',
-    '- Humanizer Quality Gate: Documentation in `docs/` must pass `.agents/scripts/humanize-check.sh`',
-    '- Distinctive Craft & Anti-AI UI Gate: Frontend code must pass `.agents/scripts/ui-taste-check.sh`',
-    '- Environment Parity Gate: `.env.example` sync enforced via `.agents/scripts/env-check.sh`',
-    '- Database Safety Gate: SQL migrations & RLS enforced via `.agents/scripts/db-check.sh`',
-    '- Universal Test Credentials: Seed data and testing accounts must use `devos123`',
-    '- Task Board: `docs/TASK_BOARD.md`',
-    '- Shared Memory Vault: `.agents/memory/`',
-    '- Telemetry Buffer: `.agents/telemetry/events.jsonl`',
-    '',
-    '### Mechanical Commit Gate',
-    'Never execute raw `git commit`. Always commit through `.agents/scripts/commit.sh`.',
-    ''
-  ].join('\n');
-  fs.writeFileSync(antigravityMdPath, content, 'utf8');
-  fs.writeFileSync(geminiMdPath, content, 'utf8');
+function generateAntigravityConfig(targetDir, ctx) {
+  upsertManagedBlock(path.join(targetDir, 'GEMINI.md'), thinPointerContent('Gemini CLI', '@./AGENTS.md'), { targetDir, ctx });
+  upsertManagedBlock(path.join(targetDir, 'ANTIGRAVITY.md'), thinPointerContent('Google Antigravity', null), { targetDir, ctx });
   return 'ANTIGRAVITY.md + GEMINI.md';
 }
 
-function generateGeminiConfig(targetDir) {
-  return generateAntigravityConfig(targetDir);
+function generateGeminiConfig(targetDir, ctx) {
+  return generateAntigravityConfig(targetDir, ctx);
 }
 
-function generateCodexConfig(targetDir) {
+function generateCodexConfig(targetDir, ctx = harnessContext(targetDir)) {
   const codexDir = path.join(targetDir, '.codex');
-  fs.mkdirSync(codexDir, { recursive: true });
-  const instructionsPath = path.join(codexDir, 'instructions.md');
-  const content = [
-    '# Dev-OS — Codex Instructions',
-    '',
-    '### Hard Rules Digest',
-    ...DEVOS_RULES_DIGEST,
-    '',
-    '### Solo Session Protocol',
-    ...SOLO_SESSION_PROTOCOL,
-    '',
-    '### Session Mode Lock (Orchestrator Persistence)',
-    ...SESSION_MODE_DIRECTIVE,
-    '',
-    'Always use `.agents/scripts/commit.sh` for commits.',
-    ''
-  ].join('\n');
-  fs.writeFileSync(instructionsPath, content, 'utf8');
+  retireManagedBlockFile(path.join(codexDir, 'instructions.md'), ctx, 'Codex reads AGENTS.md');
+  removeDirIfEmpty(codexDir);
+  upsertManagedBlock(path.join(targetDir, '.windsurfrules'),
+    '# Dev-OS Windsurf Rules\nFollow the Dev-OS block in AGENTS.md and the full rules in .agents/AGENTS.md.\n', { targetDir, ctx });
+  return '.windsurfrules';
+}
 
-  const windsurfPath = path.join(targetDir, '.windsurfrules');
-  fs.writeFileSync(windsurfPath, '# Dev-OS Windsurf Rules\nFollow rules in .agents/AGENTS.md and .codex/instructions.md.\n', 'utf8');
-  return '.codex/instructions.md + .windsurfrules';
+// Write every selected harness's files. AGENTS.md is written for every
+// install: it is the canonical cross-harness file.
+function generateHarnessConfigs(targetDir, harnesses, ctx) {
+  const done = [generateRootAgentsMd(targetDir, ctx)];
+  if (harnesses.has('cursor')) done.push(`Cursor: ${generateCursorConfig(targetDir, ctx)}`);
+  if (harnesses.has('opencode')) done.push(`OpenCode: ${generateOpenCodeConfig(targetDir, ctx)}`);
+  if (harnesses.has('antigravity') || harnesses.has('gemini')) done.push(`Antigravity/Gemini: ${generateAntigravityConfig(targetDir, ctx)}`);
+  if (harnesses.has('codex')) done.push(`Codex/Windsurf: ${generateCodexConfig(targetDir, ctx)}`);
+  return done;
+}
+
+// ---------------------------------------------------------------------------
+// Claude Code skills (.claude/skills/<name>)
+// ---------------------------------------------------------------------------
+// Claude Code discovers project skills at .claude/skills/<name>/SKILL.md and
+// follows a symlinked <name> folder (https://code.claude.com/docs/en/skills,
+// "Symlinked folders"). Each installed skill gets a relative link to
+// ../../.agents/skills/<name>. On Windows, when symlink() fails, or with
+// DEVOS_SKILL_LINKS=copy, the skill is copied instead and the copy's tree hash
+// is recorded in manifest.generatedFiles under '.claude/skills/<name>/'.
+// A user's own directory, file, or symlink at that path is never replaced.
+
+function claudeSkillLinkTarget(name) {
+  return `../../.agents/skills/${name}`;
+}
+
+function realpathOr(p, fallback) {
+  try { return fs.realpathSync(p); } catch (e) { return fallback; }
+}
+
+// Where .claude/skills really lives, and the skill source root under the
+// real project path.
+// When .claude or .claude/skills is itself a symlink, a link's relative target
+// resolves against the real directory, not the project path, so link targets
+// are computed from there. `redirected` is true in that case.
+function claudeSkillsLayout(targetDir) {
+  const realTarget = realpathOr(targetDir, path.resolve(targetDir));
+  const plainDir = path.join(realTarget, '.claude', 'skills');
+  const skillsDir = path.join(targetDir, '.claude', 'skills');
+  let realDir = realpathOr(skillsDir, null);
+  if (!realDir) {
+    const realClaude = realpathOr(path.join(targetDir, '.claude'), null);
+    realDir = realClaude ? path.join(realClaude, 'skills') : plainDir;
+  }
+  // Not realpath'd: a symlinked .agents/skills keeps working through the project path
+  const srcRoot = path.join(realTarget, '.agents', 'skills');
+  return { skillsDir, realDir, srcRoot, redirected: realDir !== plainDir };
+}
+
+// The symlink target for .claude/skills/<name>: ../../.agents/skills/<name> in
+// a normal project, otherwise relative to the real .claude/skills location
+function claudeSkillLinkTargetFor(layout, name) {
+  return path.relative(layout.realDir, path.join(layout.srcRoot, name)).split(path.sep).join('/');
+}
+
+// Our link, judged by where it resolves from the real directory. A broken
+// link with the 5.0 relative target also counts as ours, so it gets repaired.
+function isOurSkillLink(layout, name, target) {
+  if (path.resolve(layout.realDir, target) === path.join(layout.srcRoot, name)) return true;
+  return target === claudeSkillLinkTarget(name) && !fs.existsSync(path.join(layout.skillsDir, name));
+}
+
+function claudeSkillCopyKey(name) {
+  return `.claude/skills/${name}/`;
+}
+
+function installedSkillNames(targetDir) {
+  const dir = path.join(targetDir, '.agents', 'skills');
+  if (!fs.existsSync(dir)) return [];
+  return fs.readdirSync(dir).filter((f) => f !== '_backup' && !f.startsWith('.') && safeFileStem(f, null) &&
+    fs.statSync(path.join(dir, f)).isDirectory()).sort();
+}
+
+// State of .claude/skills/<name>: missing | linked | dangling | foreign-link |
+// copy-fresh | copy-stale | copy-edited | user-dir | user-file
+function inspectClaudeSkill(targetDir, name, manifest, layout = claudeSkillsLayout(targetDir)) {
+  const p = path.join(targetDir, '.claude', 'skills', name);
+  let st;
+  try { st = fs.lstatSync(p); } catch (e) { return 'missing'; }
+  if (st.isSymbolicLink()) {
+    if (!isOurSkillLink(layout, name, fs.readlinkSync(p))) return 'foreign-link';
+    return fs.existsSync(p) ? 'linked' : 'dangling';
+  }
+  if (!st.isDirectory()) return 'user-file';
+  const recorded = manifest && manifest.generatedFiles && manifest.generatedFiles[claudeSkillCopyKey(name)];
+  if (!recorded) return 'user-dir';
+  const hash = computeSkillHash(p);
+  if (hash !== recorded) return 'copy-edited';
+  const src = path.join(targetDir, '.agents', 'skills', name);
+  return fs.existsSync(src) && computeSkillHash(src) === hash ? 'copy-fresh' : 'copy-stale';
+}
+
+function claudeSkillsUseCopy() {
+  return process.platform === 'win32' || process.env.DEVOS_SKILL_LINKS === 'copy';
+}
+
+// Create, refresh and prune .claude/skills/ entries. Mutates
+// manifest.generatedFiles (copy hashes). Returns a report.
+function syncClaudeSkills(targetDir, manifest) {
+  const report = { linked: [], copied: [], refreshed: [], unchanged: 0, kept: [], removed: [], notes: [] };
+  const skillsDir = path.join(targetDir, '.claude', 'skills');
+  const names = installedSkillNames(targetDir);
+  if (!manifest.generatedFiles || typeof manifest.generatedFiles !== 'object') manifest.generatedFiles = {};
+  const gf = manifest.generatedFiles;
+  const useCopy = claudeSkillsUseCopy();
+  fs.mkdirSync(skillsDir, { recursive: true });
+  const layout = claudeSkillsLayout(targetDir);
+  if (layout.redirected) {
+    report.notes.push(`.claude/skills resolves through a symlink to ${layout.realDir}; skill links there point at ${layout.srcRoot} relative to that location`);
+  }
+
+  const place = (name) => {
+    const p = path.join(skillsDir, name);
+    if (!useCopy) {
+      // Relative to the real directory first, then absolute; never leave a dangling link
+      const relTarget = claudeSkillLinkTargetFor(layout, name);
+      for (const target of [relTarget, path.join(layout.srcRoot, name)]) {
+        try {
+          fs.symlinkSync(target, p, 'dir');
+          if (fs.existsSync(p)) {
+            delete gf[claudeSkillCopyKey(name)];
+            return 'linked';
+          }
+          fs.unlinkSync(p);
+        } catch (e) { /* try the next form, then fall back to a copy */ }
+      }
+    }
+    copyRecursiveSync(path.join(targetDir, '.agents', 'skills', name), p);
+    gf[claudeSkillCopyKey(name)] = computeSkillHash(p);
+    return 'copied';
+  };
+
+  names.forEach((name) => {
+    const p = path.join(skillsDir, name);
+    const state = inspectClaudeSkill(targetDir, name, manifest, layout);
+    if (state === 'missing') {
+      report[place(name)].push(name);
+    } else if (state === 'linked') {
+      report.unchanged++;
+    } else if (state === 'dangling') {
+      fs.unlinkSync(p);
+      report[place(name)].push(name);
+    } else if (state === 'copy-fresh') {
+      if (useCopy) { report.unchanged++; return; }
+      // Our unedited copy: upgrade it to a link now that links work
+      fs.rmSync(p, { recursive: true, force: true });
+      if (place(name) === 'linked') report.linked.push(name); else report.unchanged++;
+    } else if (state === 'copy-stale') {
+      fs.rmSync(p, { recursive: true, force: true });
+      place(name);
+      report.refreshed.push(name);
+    } else {
+      report.kept.push(`${name} (${state})`);
+    }
+  });
+
+  // Prune our own entries for skills that are no longer installed
+  fs.readdirSync(skillsDir).filter((f) => !names.includes(f)).forEach((entry) => {
+    const p = path.join(skillsDir, entry);
+    let st;
+    try { st = fs.lstatSync(p); } catch (e) { return; }
+    if (st.isSymbolicLink()) {
+      if (isOurSkillLink(layout, entry, fs.readlinkSync(p)) && !fs.existsSync(p)) {
+        fs.unlinkSync(p);
+        report.removed.push(entry);
+      }
+      return;
+    }
+    const key = claudeSkillCopyKey(entry);
+    if (st.isDirectory() && gf[key] && computeSkillHash(p) === gf[key]) {
+      copyRecursiveSync(p, path.join(targetDir, '.agents', '_backup', `migration-${RUN_STAMP}`, '.claude', 'skills', entry));
+      fs.rmSync(p, { recursive: true, force: true });
+      delete gf[key];
+      report.removed.push(entry);
+    }
+  });
+  removeDirIfEmpty(skillsDir);
+  return report;
+}
+
+function describeClaudeSkillSync(r) {
+  const parts = [];
+  if (r.linked.length) parts.push(`${r.linked.length} linked`);
+  if (r.copied.length) parts.push(`${r.copied.length} copied`);
+  if (r.refreshed.length) parts.push(`${r.refreshed.length} refreshed`);
+  parts.push(`${r.unchanged} unchanged`);
+  if (r.removed.length) parts.push(`${r.removed.length} pruned`);
+  if (r.kept.length) parts.push(`${r.kept.length} of yours kept`);
+  return parts.join(', ');
+}
+
+function warnKeptClaudeSkills(r) {
+  (r.notes || []).forEach((n) => console.log(`${colors.yellow}[ WARN ] ${n}${colors.reset}`));
+  r.kept.forEach((k) => console.log(`${colors.yellow}[ WARN ] kept your .claude/skills/${k}; Dev-OS links skills there only when the path is free or Dev-OS-owned${colors.reset}`));
+}
+
+// Drift between .agents/skills/ and .claude/skills/ for `devos doctor`
+function claudeSkillsDrift(targetDir, manifest) {
+  const drift = { missing: [], dangling: [], stale: [], kept: [], orphaned: [] };
+  const names = installedSkillNames(targetDir);
+  const layout = claudeSkillsLayout(targetDir);
+  names.forEach((name) => {
+    const state = inspectClaudeSkill(targetDir, name, manifest, layout);
+    if (state === 'missing') drift.missing.push(name);
+    else if (state === 'dangling') drift.dangling.push(name);
+    else if (state === 'copy-stale') drift.stale.push(name);
+    else if (state !== 'linked' && state !== 'copy-fresh') drift.kept.push(name);
+  });
+  const skillsDir = path.join(targetDir, '.claude', 'skills');
+  if (fs.existsSync(skillsDir)) {
+    fs.readdirSync(skillsDir).filter((f) => !names.includes(f)).forEach((entry) => {
+      const p = path.join(skillsDir, entry);
+      try {
+        if (fs.lstatSync(p).isSymbolicLink() && isOurSkillLink(layout, entry, fs.readlinkSync(p))) drift.orphaned.push(entry);
+      } catch (e) {}
+    });
+  }
+  return drift;
+}
+
+// After `devos skill add|sync|update`: keep .claude/skills/ in step when the
+// project uses Claude Code (manifest platform, or .claude/ on disk).
+function refreshClaudeSkillLinks(flags) {
+  if (TEMPLATE_DIR === TARGET_DIR || flags.dryRun) return;
+  const manifestPath = path.join(TARGET_DIR, '.agents', 'manifest.json');
+  if (!fs.existsSync(manifestPath)) return;
+  const manifest = readManifestLenient(path.join(TARGET_DIR, '.agents'));
+  if (!harnessesForUpdate({}, manifest).has('claude') || !fs.existsSync(path.join(TARGET_DIR, '.claude'))) return;
+  const res = syncClaudeSkills(TARGET_DIR, manifest);
+  if (!flags.json) warnKeptClaudeSkills(res);
+  if (res.linked.length || res.copied.length || res.refreshed.length || res.removed.length) {
+    saveSkillManifest(manifest, TARGET_DIR);
+    if (!flags.json) console.log(`${colors.gray}         .claude/skills/: ${describeClaudeSkillSync(res)}${colors.reset}`);
+  }
+}
+
+function describeClaudeSkillsDrift(d) {
+  const parts = [];
+  if (d.missing.length) parts.push(`missing: ${d.missing.join(', ')}`);
+  if (d.dangling.length) parts.push(`broken links: ${d.dangling.join(', ')}`);
+  if (d.stale.length) parts.push(`stale copies: ${d.stale.join(', ')}`);
+  if (d.orphaned.length) parts.push(`links to removed skills: ${d.orphaned.join(', ')}`);
+  return parts.length ? `${parts.join('; ')}; run devos update` : null;
+}
+
+// Claude Code hook wiring (contract C1). Merged into .claude/settings.json;
+// Dev-OS-owned entries are identified by a command containing '.agents/hooks/'.
+// Rule syntax verified against https://code.claude.com/docs/en/permissions
+// (space-separated trailing wildcard, e.g. `Bash(git commit *)`; `Read(./.env)`).
+const DEVOS_HOOK_MARKER = '.agents/hooks/';
+const DEVOS_CLAUDE_HOOKS = {
+  SessionStart: [{ hooks: [{ type: 'command', command: '"$CLAUDE_PROJECT_DIR"/.agents/hooks/session-start.sh' }] }],
+  UserPromptSubmit: [{ hooks: [{ type: 'command', command: '"$CLAUDE_PROJECT_DIR"/.agents/hooks/user-prompt-submit.sh' }] }],
+  PreToolUse: [{ matcher: 'Bash|Edit|Write|MultiEdit|NotebookEdit', hooks: [{ type: 'command', command: '"$CLAUDE_PROJECT_DIR"/.agents/hooks/pre-tool-use.sh' }] }],
+  // PostToolUse exit 2 shows stderr to Claude; the edit has already happened (hooks reference, exit code table)
+  PostToolUse: [{ matcher: 'Edit|Write|MultiEdit', hooks: [{ type: 'command', command: '"$CLAUDE_PROJECT_DIR"/.agents/hooks/post-tool-use.sh' }] }],
+  Stop: [{ hooks: [{ type: 'command', command: '"$CLAUDE_PROJECT_DIR"/.agents/hooks/stop.sh' }] }],
+  // No matcher: SubagentStop matches on agent type, and an omitted matcher fires for every subagent
+  SubagentStop: [{ hooks: [{ type: 'command', command: '"$CLAUDE_PROJECT_DIR"/.agents/hooks/subagent-stop.sh' }] }],
+  SessionEnd: [{ hooks: [{ type: 'command', command: '"$CLAUDE_PROJECT_DIR"/.agents/hooks/session-end.sh' }] }]
+};
+const DEVOS_PERMISSION_DENY = [
+  'Bash(git commit *)',
+  'Bash(git push --force *)',
+  'Bash(git push -f *)',
+  'Read(./.env)',
+  'Read(./.env.*)'
+];
+
+// Only the seven Dev-OS lifecycle scripts are Dev-OS-owned. A user hook that
+// happens to live in .agents/hooks/ (e.g. my-audit.sh) is never touched.
+// SessionStart has no matcher, so it already fires on `compact` (re-injection).
+const DEVOS_HOOK_SCRIPTS = ['session-start.sh', 'user-prompt-submit.sh', 'pre-tool-use.sh', 'post-tool-use.sh', 'stop.sh', 'subagent-stop.sh', 'session-end.sh'];
+const DEVOS_HOOK_COMMAND_RE = new RegExp(`(^|[/"'\\s])\\.agents/hooks/(${DEVOS_HOOK_SCRIPTS.map(escapeRegExp).join('|')})(?=$|["'\\s;&|])`);
+
+function isDevosHookCommand(entry) {
+  return Boolean(entry && typeof entry.command === 'string' && DEVOS_HOOK_COMMAND_RE.test(entry.command));
+}
+
+function mergeClaudeSettings(existing) {
+  const settings = existing && typeof existing === 'object' && !Array.isArray(existing) ? existing : {};
+  if (!settings.$schema) {
+    settings.$schema = 'https://json.schemastore.org/claude-code-settings.json';
+  }
+
+  const hooks = settings.hooks && typeof settings.hooks === 'object' && !Array.isArray(settings.hooks) ? settings.hooks : {};
+  // Strip previously written Dev-OS hook handlers from every event, keep user handlers
+  Object.keys(hooks).forEach((event) => {
+    if (!Array.isArray(hooks[event])) return;
+    hooks[event] = hooks[event]
+      .map((group) => {
+        if (!group || !Array.isArray(group.hooks)) return group;
+        return { ...group, hooks: group.hooks.filter((h) => !isDevosHookCommand(h)) };
+      })
+      .filter((group) => !(group && Array.isArray(group.hooks) && group.hooks.length === 0));
+    if (hooks[event].length === 0) delete hooks[event];
+  });
+  Object.keys(DEVOS_CLAUDE_HOOKS).forEach((event) => {
+    const ours = JSON.parse(JSON.stringify(DEVOS_CLAUDE_HOOKS[event]));
+    hooks[event] = Array.isArray(hooks[event]) ? hooks[event].concat(ours) : ours;
+  });
+  settings.hooks = hooks;
+
+  const permissions = settings.permissions && typeof settings.permissions === 'object' && !Array.isArray(settings.permissions) ? settings.permissions : {};
+  const deny = Array.isArray(permissions.deny) ? permissions.deny.slice() : [];
+  DEVOS_PERMISSION_DENY.forEach((rule) => {
+    if (!deny.includes(rule)) deny.push(rule);
+  });
+  permissions.deny = deny;
+  settings.permissions = permissions;
+  // Keep $schema as the first key for readability
+  const { $schema, ...rest } = settings;
+  return { $schema, ...rest };
+}
+
+function removeLegacyClaudeHooksJson(destClaude) {
+  const legacyPath = path.join(destClaude, 'hooks.json');
+  if (!fs.existsSync(legacyPath)) return false;
+  const raw = fs.readFileSync(legacyPath, 'utf8');
+  if (!raw.includes(DEVOS_HOOK_MARKER)) return false;
+  // Back up first: the user may have added their own entries to it
+  const backup = backupForMigration(legacyPath, path.dirname(destClaude));
+  fs.unlinkSync(legacyPath);
+  return backup;
 }
 
 function wireHooks(destAgents, destClaude) {
@@ -1032,23 +2176,101 @@ function wireHooks(destAgents, destClaude) {
 
   if (destClaude) {
     fs.mkdirSync(destClaude, { recursive: true });
-    const claudeHooksPath = path.join(destClaude, 'hooks.json');
-    const hooksConfig = {
-      hooks: {
-        SessionStart: [{ command: '.agents/hooks/session-start.sh' }],
-        UserPromptSubmit: [{ command: '.agents/hooks/user-prompt-submit.sh' }],
-        PreToolUse: [{ command: '.agents/hooks/pre-tool-use.sh' }],
-        SessionEnd: [{ command: '.agents/hooks/session-end.sh' }]
+    const settingsPath = path.join(destClaude, 'settings.json');
+    let existing = {};
+    if (fs.existsSync(settingsPath)) {
+      const raw = fs.readFileSync(settingsPath, 'utf8');
+      if (raw.trim()) {
+        try {
+          existing = JSON.parse(raw);
+        } catch (e) {
+          throw new Error(`.claude/settings.json is not valid JSON (${e.message}); fix it or move it aside, then re-run. It was left untouched.`);
+        }
       }
-    };
-    fs.writeFileSync(claudeHooksPath, JSON.stringify(hooksConfig, null, 2) + '\n', 'utf8');
-    return 'executable hooks + .claude/hooks.json';
+    }
+    const merged = mergeClaudeSettings(existing);
+    fs.writeFileSync(settingsPath, JSON.stringify(merged, null, 2) + '\n', 'utf8');
+    const removedLegacy = removeLegacyClaudeHooksJson(destClaude);
+    return `executable hooks + .claude/settings.json (merged)${removedLegacy ? `, removed legacy .claude/hooks.json (backup: ${removedLegacy})` : ''}`;
   }
   return 'executable hooks (.agents/hooks/)';
 }
 
-function ensureGitleaks(targetDir) {
-  const { spawnSync } = require('child_process');
+// Effective hooks choice recorded for a project. 5.x manifests record it
+// faithfully. 4.x always wrote hooksEnabled: true (even with --no-hooks), so for
+// those the choice is inferred from disk: hooks were on only if Dev-OS wired
+// .claude/hooks.json or installed its .git/hooks/pre-commit gate.
+function recordedHooksChoice(manifest, targetDir) {
+  const major = parseInt(String((manifest && manifest.version) || '0'), 10) || 0;
+  if (major >= 5) return manifest.hooksEnabled !== false;
+  if (fs.existsSync(path.join(targetDir, '.claude', 'hooks.json'))) return true;
+  if (claudeHooksWired(targetDir)) return true;
+  const preCommit = path.join(targetDir, '.git', 'hooks', 'pre-commit');
+  try {
+    if (fs.existsSync(preCommit) && /DEVOS_COMMIT_APPROVED|Dev-OS Pre-Commit/.test(fs.readFileSync(preCommit, 'utf8'))) return true;
+  } catch (e) {}
+  return false;
+}
+
+// Returns true when the Dev-OS PreToolUse hook is wired in .claude/settings.json
+function claudeHooksWired(targetDir) {
+  const settingsPath = path.join(targetDir, '.claude', 'settings.json');
+  if (!fs.existsSync(settingsPath)) return false;
+  try {
+    const settings = JSON.parse(fs.readFileSync(settingsPath, 'utf8'));
+    const groups = settings && settings.hooks && Array.isArray(settings.hooks.PreToolUse) ? settings.hooks.PreToolUse : [];
+    return groups.some((g) => g && Array.isArray(g.hooks) && g.hooks.some((h) => h && h.type === 'command' &&
+      typeof h.command === 'string' && h.command.includes('.agents/hooks/pre-tool-use.sh')));
+  } catch (e) {
+    return false;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Network side effects (contract C4)
+// ---------------------------------------------------------------------------
+
+// Pinned skills.sh CLI (verified with `npm view skills version` on 2026-10-22)
+const SKILLS_CLI = 'skills@1.7.4';
+
+function isOffline() {
+  const v = String(process.env.DEVOS_OFFLINE || '').toLowerCase();
+  return v === '1' || v === 'true' || v === 'yes';
+}
+
+function warnOfflineSkip(what) {
+  console.log(`${colors.yellow}[ WARN ] skipped (offline): ${what} (DEVOS_OFFLINE is set)${colors.reset}`);
+}
+
+function runSkillsCli(args, options = {}) {
+  const label = `npx ${SKILLS_CLI} ${args.join(' ')}`;
+  if (isOffline()) {
+    warnOfflineSkip(label);
+    return { status: null, skipped: true };
+  }
+  return spawnSync('npx', ['--yes', SKILLS_CLI, ...args], {
+    cwd: TARGET_DIR,
+    stdio: options.stdio || 'inherit',
+    env: { ...process.env, CI: '1' }
+  });
+}
+
+// Environment for .agents/scripts/install-hooks.sh: DEVOS_INSTALL_GITLEAKS=1
+// only when --install-gitleaks was passed; never inherited by default.
+function installHooksEnv(flags) {
+  const env = { ...process.env };
+  delete env.DEVOS_INSTALL_GITLEAKS;
+  if (flags && flags.installGitleaks && !isOffline()) env.DEVOS_INSTALL_GITLEAKS = '1';
+  return env;
+}
+
+// Detect Gitleaks. This function never downloads or installs anything: the
+// single install path is .agents/scripts/install-hooks.sh, which the CLI runs
+// right after this check with DEVOS_INSTALL_GITLEAKS=1 when --install-gitleaks
+// was passed (see installHooksEnv). Keeping one installer avoids two
+// unverified download paths. A '[ WARN ]' prefix is rendered in yellow by step().
+function ensureGitleaks(targetDir, options = {}) {
+  const install = Boolean(options.install);
   const localBin = path.join(targetDir, '.agents', 'bin', 'gitleaks');
   let glBin = null;
 
@@ -1059,8 +2281,6 @@ function ensureGitleaks(targetDir) {
     glBin = localBin;
   }
 
-  const hasBrew = spawnSync('which', ['brew'], { encoding: 'utf8' }).status === 0;
-
   if (glBin) {
     let ver = 'active';
     try {
@@ -1069,163 +2289,268 @@ function ensureGitleaks(targetDir) {
         ver = verRes.stdout.trim().split('\n')[0];
       }
     } catch (e) {}
-
-    // Check for update if Homebrew is available
-    if (hasBrew) {
-      try {
-        const outdatedRes = spawnSync('brew', ['outdated', 'gitleaks'], {
-          encoding: 'utf8',
-          timeout: 8000,
-          env: { ...process.env, HOMEBREW_NO_AUTO_UPDATE: '1' }
-        });
-        if (outdatedRes.status === 0 && outdatedRes.stdout && outdatedRes.stdout.trim().includes('gitleaks')) {
-          const upRes = spawnSync('brew', ['upgrade', 'gitleaks'], {
-            encoding: 'utf8',
-            timeout: 20000,
-            env: { ...process.env, HOMEBREW_NO_AUTO_UPDATE: '1' }
-          });
-          if (upRes.status === 0) return 'gitleaks updated to latest via brew';
-        }
-      } catch (e) {}
-    }
-    return `gitleaks v${ver} (verified & active)`;
+    return `gitleaks v${ver} (verified & active)${install ? '; upgrade handled by install-hooks.sh' : ''}`;
   }
 
-  // Gitleaks not found: Attempt automated installation
-  if (hasBrew) {
-    try {
-      const brewRes = spawnSync('brew', ['install', 'gitleaks'], {
-        encoding: 'utf8',
-        timeout: 45000,
-        env: { ...process.env, HOMEBREW_NO_AUTO_UPDATE: '1' }
-      });
-      if (brewRes.status === 0) return 'gitleaks auto-installed via brew';
-    } catch (e) {}
+  if (install && isOffline()) {
+    return '[ WARN ] skipped (offline): gitleaks install; built-in scanner active';
   }
-
-  if (process.platform === 'linux') {
-    const hasSnap = spawnSync('which', ['snap'], { encoding: 'utf8' }).status === 0;
-    if (hasSnap) {
-      try {
-        const snapRes = spawnSync('snap', ['install', 'gitleaks'], { encoding: 'utf8', timeout: 45000 });
-        if (snapRes.status === 0) return 'gitleaks auto-installed via snap';
-      } catch (e) {}
+  if (install) {
+    if (!fs.existsSync(path.join(targetDir, '.git'))) {
+      return '[ WARN ] gitleaks not installed: --install-gitleaks needs a git repository (install-hooks.sh does the install)';
     }
+    return 'not found; install-hooks.sh will install it (--install-gitleaks)';
   }
-
-  // Cross-platform standalone binary fallback from GitHub releases
-  try {
-    const osMap = { darwin: 'darwin', linux: 'linux' };
-    const archMap = { arm64: 'arm64', x64: 'x64' };
-    const osName = osMap[process.platform];
-    const archName = archMap[process.arch];
-
-    if (osName && archName) {
-      const binDir = path.join(targetDir, '.agents', 'bin');
-      fs.mkdirSync(binDir, { recursive: true });
-      const dlVersion = '8.30.1';
-      const tarUrl = `https://github.com/gitleaks/gitleaks/releases/download/v${dlVersion}/gitleaks_${dlVersion}_${osName}_${archName}.tar.gz`;
-      const tarPath = path.join(binDir, 'gitleaks.tar.gz');
-
-      const dlRes = spawnSync('curl', ['-sSfL', tarUrl, '-o', tarPath], { timeout: 15000 });
-      if (dlRes.status === 0 && fs.existsSync(tarPath)) {
-        const extractRes = spawnSync('tar', ['-xzf', tarPath, '-C', binDir, 'gitleaks'], { timeout: 5000 });
-        try { fs.unlinkSync(tarPath); } catch (e) {}
-        if (extractRes.status === 0 && fs.existsSync(localBin)) {
-          fs.chmodSync(localBin, 0o755);
-          return `gitleaks v${dlVersion} auto-installed into .agents/bin/`;
-        }
-      }
-    }
-  } catch (e) {}
-
-  return 'built-in zero-dependency scanner active';
+  const hasBrew = spawnSync('which', ['brew'], { encoding: 'utf8' }).status === 0;
+  const hint = hasBrew ? "run 'brew install gitleaks'" : 'see https://github.com/gitleaks/gitleaks#installing';
+  return `[ WARN ] gitleaks not found; built-in scanner active. To install, ${hint} or re-run with --install-gitleaks`;
 }
+
+// Append missing lines to the target's .gitignore under a comment header.
+// Idempotent: an entry already present (exact line) is never added twice.
+function ensureGitignoreEntries(targetDir, groups) {
+  const gitignorePath = path.join(targetDir, '.gitignore');
+  let content = fs.existsSync(gitignorePath) ? fs.readFileSync(gitignorePath, 'utf8') : '';
+  const lines = new Set(content.split(/\r?\n/).map((l) => l.trim()));
+  let updated = false;
+  groups.forEach(({ comment, entries }) => {
+    const missing = entries.filter((e) => !lines.has(e) && !lines.has(e.replace(/\/$/, '')));
+    if (!missing.length) return;
+    content = `${content.trimEnd()}${content.trim() ? '\n\n' : ''}# ${comment}\n${missing.join('\n')}\n`;
+    missing.forEach((e) => lines.add(e));
+    updated = true;
+  });
+  if (updated) fs.writeFileSync(gitignorePath, content.trimStart(), 'utf8');
+  return updated;
+}
+
+const DEVOS_GITIGNORE_GROUPS = [
+  { comment: 'Dev-OS temporary backups', entries: ['.agents/_backup/'] },
+  { comment: 'Dev-OS runtime session state', entries: ['.agents/memory/session.json', '.agents/memory/sdlc-state.json'] },
+  { comment: 'Dev-OS local tool binaries (gitleaks installed by install-hooks.sh)', entries: ['.agents/bin/'] }
+];
 
 // ---------------------------------------------------------------------------
 // Capability Packs & Skills Copying Helper
 // ---------------------------------------------------------------------------
 
-function installSkillsAndPacks(srcAgents, destAgents, stack, allSkills, telemetry = true, mode = 'interactive', goal = '', platform = 'all') {
+const ALL_HARNESS_TARGETS = ['claude', 'antigravity', 'cursor', 'opencode', 'codex'];
+
+// Turn a platform/harness choice ('all', 'claude,cursor', 'gemini', ...) into a Set
+function resolveHarnesses(rawChoice) {
+  const selected = new Set();
+  if (!rawChoice || rawChoice === 'all') {
+    ALL_HARNESS_TARGETS.forEach((h) => selected.add(h));
+    return selected;
+  }
+  String(rawChoice).split(',').map((h) => h.trim().toLowerCase()).forEach((h) => {
+    if (h === 'gemini') h = 'antigravity';
+    if (h === 'windsurf') h = 'codex';
+    if (h === 'all') {
+      ALL_HARNESS_TARGETS.forEach((p) => selected.add(p));
+    } else if (HARNESSES.includes(h) || PLATFORMS.includes(h)) {
+      selected.add(h);
+    }
+  });
+  return selected;
+}
+
+// Copy the Dev-OS core structure (everything but skills) into a target.
+// memory/ is not copied wholesale (the source checkout's own session/context
+// state must never land in a target), and evals/ ships only its suites: the
+// source repo's reports (latest-scorecard.json, run history) stay behind.
+// The source .agents/manifest.json is never read or copied.
+function copyCoreComponents(srcAgents, destAgents) {
+  ['agents', 'commands', 'hooks', 'scripts', 'templates', 'catalog'].forEach((dir) => {
+    const src = path.join(srcAgents, dir);
+    if (fs.existsSync(src)) copyRecursiveSync(src, path.join(destAgents, dir));
+  });
+  const suites = path.join(srcAgents, 'evals', 'suites');
+  if (fs.existsSync(suites)) copyRecursiveSync(suites, path.join(destAgents, 'evals', 'suites'));
+  fs.mkdirSync(path.join(destAgents, 'evals', 'reports'), { recursive: true });
+  installMemoryTemplates(srcAgents, destAgents);
+  ['AGENTS.md', 'README.md', 'packs.json'].forEach((file) => {
+    const src = path.join(srcAgents, file);
+    if (fs.existsSync(src)) fs.copyFileSync(src, path.join(destAgents, file));
+  });
+}
+
+// Target manifest for migration decisions; tolerates a missing or broken file
+function readManifestLenient(destAgents) {
+  const manifestPath = path.join(destAgents, 'manifest.json');
+  if (!fs.existsSync(manifestPath)) return { installedPacks: [], skills: {} };
+  try {
+    const m = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
+    return m && typeof m === 'object' ? m : { installedPacks: [], skills: {} };
+  } catch (e) {
+    return { installedPacks: [], skills: {} };
+  }
+}
+
+// Copy only memory templates (never the source repo's own session/context state)
+function installMemoryTemplates(srcAgents, destAgents) {
+  const pairs = [
+    ['decisions', 'ADR-000-template.md'],
+    ['handoffs', 'handoff-template.md']
+  ];
+  pairs.forEach(([dir, file]) => {
+    const destDir = path.join(destAgents, 'memory', dir);
+    fs.mkdirSync(destDir, { recursive: true });
+    const src = path.join(srcAgents, 'memory', dir, file);
+    if (fs.existsSync(src)) fs.copyFileSync(src, path.join(destDir, file));
+  });
+}
+
+// Skills listed by the given packs (unknown pack ids are ignored)
+function packSkillNames(packsData, packIds) {
+  const out = new Set();
+  if (!packsData || !packsData.packs) return [];
+  packIds.forEach((id) => {
+    const p = packsData.packs[id];
+    if (p && Array.isArray(p.skills)) p.skills.forEach((sk) => out.add(sk));
+  });
+  return Array.from(out);
+}
+
+// True when the skill name ships with Dev-OS (listed in any packs.json pack)
+function isShippedSkill(packsData, name) {
+  return Boolean(packsData && packsData.packs && Object.values(packsData.packs).some((p) => Array.isArray(p.skills) && p.skills.includes(name)));
+}
+
+// Install or refresh one Dev-OS skill from the templates without losing user
+// edits. A skill whose files differ from the hash recorded in the manifest (or
+// that has no record: a user-authored skill sharing the name) is customized:
+// it is kept unless `force`, which backs it up first. Mutates manifest.skills.
+// Returns { status: installed|updated|unchanged|customized|missing, backup }.
+function installSkillSafely(srcSkills, destSkills, name, manifest, options = {}) {
+  const srcPath = path.join(srcSkills, name);
+  const destPath = path.join(destSkills, name);
+  if (!safeFileStem(name, null) || !fs.existsSync(srcPath)) return { status: 'missing' };
+  if (!manifest.skills || typeof manifest.skills !== 'object') manifest.skills = {};
+  const entry = manifest.skills[name];
+  const now = new Date().toISOString();
+  const record = () => {
+    manifest.skills[name] = {
+      source: (entry && entry.source) || options.source || 'core',
+      version: PKG.version,
+      hash: computeSkillHash(destPath),
+      customized: false,
+      installedAt: (entry && entry.installedAt) || now,
+      updatedAt: now
+    };
+  };
+  if (!fs.existsSync(destPath)) {
+    copyRecursiveSync(srcPath, destPath);
+    record();
+    return { status: 'installed' };
+  }
+  const destHash = computeSkillHash(destPath);
+  if (destHash === computeSkillHash(srcPath)) {
+    if (!entry || entry.hash !== destHash) record();
+    return { status: 'unchanged' };
+  }
+  const customized = !entry || !entry.hash || entry.hash !== destHash;
+  let backup = null;
+  if (customized) {
+    if (!options.force) {
+      if (entry) entry.customized = true;
+      return { status: 'customized' };
+    }
+    backup = relToTarget(options.targetDir || TARGET_DIR, backupSkill(destPath, name, options.targetDir || TARGET_DIR));
+  }
+  copyRecursiveSync(srcPath, destPath);
+  record();
+  return { status: 'updated', backup };
+}
+
+function warnCustomizedSkills(names, command) {
+  names.forEach((n) => console.log(`${colors.yellow}[ WARN ] kept your customized skill .agents/skills/${n}/; run '${command} --force' to refresh it (a backup is taken)${colors.reset}`));
+}
+
+// Install core + default + stack packs (or every skill). `prior` is the
+// manifest of an existing install (re-init): its installed packs, skill
+// records, generatedFiles and other choices are merged, never reset, and
+// customized skills are kept in place unless options.force.
+function installSkillsAndPacks(srcAgents, destAgents, stack, allSkills, telemetry = true, mode = 'interactive', goal = '', platform = 'all', hooks = true, prior = null, options = {}) {
   const srcSkills = path.join(srcAgents, 'skills');
   const destSkills = path.join(destAgents, 'skills');
   const packsPath = path.join(srcAgents, 'packs.json');
   const manifestPath = path.join(destAgents, 'manifest.json');
+  const targetDir = path.dirname(destAgents);
   fs.mkdirSync(destSkills, { recursive: true });
 
   const packsData = fs.existsSync(packsPath) ? JSON.parse(fs.readFileSync(packsPath, 'utf8')) : null;
+  const priorSkills = prior && prior.skills && typeof prior.skills === 'object' ? prior.skills : {};
+  const work = { skills: { ...priorSkills } };
+  const result = { customized: [], backedUp: [] };
 
-  function buildSkillsMap() {
-    const map = {};
-    if (fs.existsSync(destSkills)) {
-      const installedSkillDirs = fs.readdirSync(destSkills).filter((f) => f !== '_backup' && fs.statSync(path.join(destSkills, f)).isDirectory());
-      for (const sName of installedSkillDirs) {
-        map[sName] = {
-          source: 'core',
-          version: PKG.version,
-          hash: computeSkillHash(path.join(destSkills, sName)),
-          customized: false,
-          installedAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString()
-        };
-      }
-    }
-    return map;
-  }
-
+  let installedPacks;
+  let skillsToInstall;
   if (allSkills || !packsData) {
-    copyRecursiveSync(srcSkills, destSkills);
-    const installed = packsData ? Object.keys(packsData.packs) : ['all'];
-    const manifest = {
-      version: PKG.version,
-      platform: platform || 'all',
-      installedPacks: installed,
-      hooksEnabled: true,
-      telemetry: telemetry ? 'on' : 'off',
-      mode: mode || 'interactive',
-      goal: goal || null,
-      skills: buildSkillsMap(),
-      updatedAt: new Date().toISOString()
-    };
-    fs.writeFileSync(manifestPath, JSON.stringify(manifest, null, 2) + '\n', 'utf8');
-    return { count: countSkills(destSkills), packs: installed };
+    // --all-skills means every skill, not the maintainer agents/commands:
+    // packs that ship agents or commands still need an explicit `pack add`.
+    installedPacks = packsData ? Object.keys(packsData.packs).filter((k) => !packHasAssets(packsData.packs[k])) : ['all'];
+    skillsToInstall = fs.existsSync(srcSkills) ? fs.readdirSync(srcSkills).filter((f) => fs.statSync(path.join(srcSkills, f)).isDirectory()) : [];
+  } else {
+    // Lean pack installation: core + packs flagged default + the stack pack.
+    // Packs that ship agents/commands (maintainer) are never installed implicitly.
+    installedPacks = ['core'];
+    Object.keys(packsData.packs).forEach((pKey) => {
+      if (pKey === 'core') return;
+      const p = packsData.packs[pKey];
+      if (packHasAssets(p)) return;
+      if (p.default === true || p.stack === stack || pKey === stack) installedPacks.push(pKey);
+    });
   }
-
-  // Lean pack installation
-  const installedPacks = ['core'];
-  const skillsToInstall = new Set(packsData.packs.core ? packsData.packs.core.skills : []);
-
-  // Check if stack matches a pack
-  Object.keys(packsData.packs).forEach((pKey) => {
-    const p = packsData.packs[pKey];
-    if (p.stack === stack || pKey === stack) {
-      installedPacks.push(pKey);
-      p.skills.forEach((s) => skillsToInstall.add(s));
-    }
-  });
+  // Re-init keeps every pack the project already had (union)
+  const priorPacks = prior && Array.isArray(prior.installedPacks) ? prior.installedPacks : [];
+  priorPacks.forEach((id) => { if (!installedPacks.includes(id)) installedPacks.push(id); });
+  if (!skillsToInstall) skillsToInstall = packSkillNames(packsData, installedPacks);
+  else packSkillNames(packsData, priorPacks).forEach((sk) => { if (!skillsToInstall.includes(sk)) skillsToInstall.push(sk); });
 
   skillsToInstall.forEach((skillName) => {
-    const src = path.join(srcSkills, skillName);
-    const dest = path.join(destSkills, skillName);
-    if (fs.existsSync(src)) {
-      copyRecursiveSync(src, dest);
-    }
+    const res = installSkillSafely(srcSkills, destSkills, skillName, work, { force: options.force, targetDir });
+    if (res.status === 'customized') result.customized.push(skillName);
+    if (res.backup) result.backedUp.push(res.backup);
+  });
+
+  // Every skill dir gets a record; one Dev-OS does not ship is 'local'
+  if (fs.existsSync(destSkills)) {
+    fs.readdirSync(destSkills).filter((f) => f !== '_backup' && fs.statSync(path.join(destSkills, f)).isDirectory()).forEach((sName) => {
+      if (work.skills[sName]) return;
+      const now = new Date().toISOString();
+      work.skills[sName] = {
+        source: isShippedSkill(packsData, sName) ? 'core' : 'local',
+        version: PKG.version,
+        hash: computeSkillHash(path.join(destSkills, sName)),
+        customized: false,
+        installedAt: now,
+        updatedAt: now
+      };
+    });
+  }
+  // Drop records of skills no longer on disk
+  Object.keys(work.skills).forEach((sName) => {
+    if (!fs.existsSync(path.join(destSkills, sName))) delete work.skills[sName];
   });
 
   const manifest = {
+    ...(prior && typeof prior === 'object' ? prior : {}),
     version: PKG.version,
     platform: platform || 'all',
     installedPacks,
-    hooksEnabled: true,
+    hooksEnabled: hooks !== false,
     telemetry: telemetry ? 'on' : 'off',
     mode: mode || 'interactive',
     goal: goal || null,
-    skills: buildSkillsMap(),
+    skills: work.skills,
     updatedAt: new Date().toISOString()
   };
+  if (prior && prior.version && prior.version !== PKG.version) manifest.migratedFrom = prior.version;
+  if (prior && prior.generatedFiles && typeof prior.generatedFiles === 'object') manifest.generatedFiles = { ...prior.generatedFiles };
   fs.writeFileSync(manifestPath, JSON.stringify(manifest, null, 2) + '\n', 'utf8');
 
-  return { count: countSkills(destSkills), packs: installedPacks };
+  return { count: countSkills(destSkills), packs: installedPacks, customized: result.customized, backedUp: result.backedUp };
 }
 
 // ---------------------------------------------------------------------------
@@ -1240,31 +2565,13 @@ async function runInit(flags) {
     console.log(`${colors.yellow}[ WARN ] You are running init inside the Dev-OS source repository itself. Template copy steps will be skipped.${colors.reset}\n`);
   }
 
-  const { isFresh, stack, platform, telemetry, mode, allSkills, hooks, autoGoal } = await promptInitOptions(flags);
+  const initOptions = await promptInitOptions(flags);
+  const { isFresh, stack, platform, telemetry, mode, allSkills, hooksExplicit, autoGoal } = initOptions;
+  let hooks = initOptions.hooks;
 
   // Determine target AI harnesses
-  const selectedHarnesses = new Set();
   const rawChoice = flags.harness || flags.platform || platform || (flags.allHarnesses ? 'all' : null);
-
-  if (rawChoice === 'all' || flags.allHarnesses) {
-    selectedHarnesses.add('claude');
-    selectedHarnesses.add('antigravity');
-    selectedHarnesses.add('cursor');
-    selectedHarnesses.add('opencode');
-    selectedHarnesses.add('codex');
-  } else if (rawChoice) {
-    rawChoice.split(',').map((h) => h.trim().toLowerCase()).forEach((h) => {
-      if (h === 'gemini') h = 'antigravity';
-      if (h === 'windsurf') h = 'codex';
-      if (h === 'all') {
-        ['claude', 'antigravity', 'cursor', 'opencode', 'codex'].forEach((p) => selectedHarnesses.add(p));
-      } else if (HARNESSES.includes(h) || PLATFORMS.includes(h)) {
-        selectedHarnesses.add(h);
-      }
-    });
-  } else {
-    ['claude', 'antigravity', 'cursor', 'opencode', 'codex'].forEach((p) => selectedHarnesses.add(p));
-  }
+  const selectedHarnesses = resolveHarnesses(flags.allHarnesses ? 'all' : rawChoice);
 
   if (flags.claude === false) {
     selectedHarnesses.delete('claude');
@@ -1280,7 +2587,8 @@ async function runInit(flags) {
     process.stdout.write(`${colors.gray}${label}... ${colors.reset}`);
     try {
       const result = fn();
-      console.log(`${colors.green}${result || 'done'}${colors.reset}`);
+      const isWarn = typeof result === 'string' && result.startsWith('[ WARN ]');
+      console.log(`${isWarn ? colors.yellow : colors.green}${result || 'done'}${colors.reset}`);
     } catch (err) {
       console.log(`${colors.red}failed${colors.reset}`);
       console.error(`${colors.red}[ FAIL ] ${label}: ${err.message}${colors.reset}`);
@@ -1291,8 +2599,13 @@ async function runInit(flags) {
 
   // Step 1: Back up any existing .agents/, then copy components
   let packSummary = null;
+  const hadAgents = fs.existsSync(destAgents);
+  // Re-init over an existing install merges its manifest instead of resetting it
+  const hadManifest = !insideSource && fs.existsSync(path.join(destAgents, 'manifest.json'));
+  const prior = hadManifest ? readManifestLenient(destAgents) : null;
+  if (prior && !hooksExplicit) hooks = recordedHooksChoice(prior, TARGET_DIR);
   if (!insideSource) {
-    if (fs.existsSync(destAgents)) {
+    if (hadAgents) {
       step('Backing up existing .agents/ to .agents/_backup/', () => {
         const stamp = new Date().toISOString().replace(/[:.]/g, '-');
         const backupDir = path.join(destAgents, '_backup', stamp);
@@ -1302,25 +2615,29 @@ async function runInit(flags) {
     }
 
     step('Installing agent roster, hooks, memory, catalog, and evaluation suites', () => {
-      // Copy core structure excluding skills
-      const subdirs = ['agents', 'commands', 'hooks', 'memory', 'scripts', 'templates', 'evals', 'catalog'];
-      subdirs.forEach((dir) => {
-        const src = path.join(srcAgents, dir);
-        const dest = path.join(destAgents, dir);
-        if (fs.existsSync(src)) copyRecursiveSync(src, dest);
-      });
-      ['AGENTS.md', 'README.md', 'packs.json'].forEach((file) => {
-        const src = path.join(srcAgents, file);
-        const dest = path.join(destAgents, file);
-        if (fs.existsSync(src)) fs.copyFileSync(src, dest);
-      });
+      // Copy core structure excluding skills. memory/ is NOT copied wholesale:
+      // the source checkout's own session/context state must never land in a target.
+      copyCoreComponents(srcAgents, destAgents);
     });
 
+    // A re-init over a 4.x install retires merged agents/commands/skills
+    if (hadAgents) {
+      let migration = null;
+      step('Migrating retired 4.x agents, commands, and skills', () => {
+        const packsData = loadPacks(srcAgents);
+        migration = migrateLegacyInstall(srcAgents, TARGET_DIR, prior || readManifestLenient(destAgents), packsData);
+        return describeMigration(migration);
+      });
+      printMigrationDetails(migration);
+    }
+
     step('Installing specialist skills and capability packs', () => {
-      const useAllSkills = flags.allSkills !== undefined && flags.allSkills !== null ? flags.allSkills : allSkills;
-      packSummary = installSkillsAndPacks(srcAgents, destAgents, stack, useAllSkills, telemetry, mode, autoGoal, platform);
-      return `${packSummary.count} skills (packs: ${packSummary.packs.join(', ')})`;
+      // allSkills already folds in --all-skills (flag wins) or the interactive answer
+      packSummary = installSkillsAndPacks(srcAgents, destAgents, stack, allSkills, telemetry, mode, autoGoal, platform, hooks, prior, { force: flags.force });
+      const kept = packSummary.customized.length ? `, ${packSummary.customized.length} customized kept` : '';
+      return `${packSummary.count} skills (packs: ${packSummary.packs.join(', ')})${kept}`;
     });
+    warnCustomizedSkills(packSummary.customized, 'devos init');
   }
 
   // Ensure telemetry buffer directory exists
@@ -1343,7 +2660,7 @@ async function runInit(flags) {
   });
 
   // Step 2b: Wire runtime lifecycle hooks
-  if (flags.hooks !== false && hooks !== false) {
+  if (hooks) {
     step('Wiring runtime lifecycle hooks (.agents/hooks/)', () => {
       const claudeDest = selectedHarnesses.has('claude') ? path.join(TARGET_DIR, '.claude') : null;
       return wireHooks(destAgents, claudeDest);
@@ -1365,10 +2682,10 @@ async function runInit(flags) {
     }
   }
 
-  // Step 2d: Verify, auto-install, or update Gitleaks secret scanner and install pre-commit hook
-  if (flags.hooks !== false && hooks !== false) {
-    step('Verifying & configuring Gitleaks secret scanner', () => {
-      return ensureGitleaks(TARGET_DIR);
+  // Step 2d: Detect Gitleaks (install only with --install-gitleaks) and install pre-commit hook
+  if (hooks) {
+    step('Verifying Gitleaks secret scanner', () => {
+      return ensureGitleaks(TARGET_DIR, { install: flags.installGitleaks });
     });
 
     if (fs.existsSync(gitDir)) {
@@ -1376,7 +2693,7 @@ async function runInit(flags) {
         const hookInstaller = path.join(destAgents, 'scripts', 'install-hooks.sh');
         if (fs.existsSync(hookInstaller)) {
           const { spawnSync } = require('child_process');
-          const res = spawnSync('bash', [hookInstaller], { cwd: TARGET_DIR, encoding: 'utf8' });
+          const res = spawnSync('bash', [hookInstaller], { cwd: TARGET_DIR, encoding: 'utf8', env: installHooksEnv(flags) });
           if (res.status === 0) return 'installed & verified';
           return `warning (installer exited ${res.status})`;
         }
@@ -1422,7 +2739,7 @@ async function runInit(flags) {
     if (fs.existsSync(destBoard)) {
       let boardContent = fs.readFileSync(destBoard, 'utf8');
       if (boardContent.includes('[ IN_PROGRESS ]')) {
-        const autoTask = `### [ IN_PROGRESS ]\n- **\`TASK-001\`**: Autonomous MVP Delivery — ${autoGoal}\n  - **Assignee:** Executive Proxy / Orchestrator\n  - **DependsOn:** None\n  - **Triage Level:** STANDARD\n  - **ParallelGate:** [QA: pending, Tester: pending, Security: pending]\n  - **HumanCheckpoint:** pending\n`;
+        const autoTask = `### [ IN_PROGRESS ]\n- **\`TASK-001\`**: Autonomous MVP Delivery — ${autoGoal}\n  - **Assignee:** Orchestrator\n  - **DependsOn:** None\n  - **Triage Level:** STANDARD\n  - **ParallelGate:** [QA: pending, Tester: pending, Security: pending]\n  - **HumanCheckpoint:** pending\n`;
         boardContent = boardContent.replace(/### \[ IN_PROGRESS \][\s\S]*?(?=### \[ QUEUED \])/, autoTask + '\n');
         fs.writeFileSync(destBoard, boardContent, 'utf8');
       }
@@ -1445,61 +2762,49 @@ async function runInit(flags) {
     });
   }
 
-  // Step 5: Multi-Harness Integration (Claude Code, Antigravity/Gemini, Cursor, OpenCode, Codex)
+  // Step 5: Multi-Harness Integration (Claude Code, Antigravity/Gemini, Cursor, OpenCode, Codex).
+  // AGENTS.md is the canonical cross-harness file; the others point at it.
   let claudeSummary = null;
+  const hctx = harnessContext(TARGET_DIR, readManifestLenient(destAgents), { force: flags.force });
   if (selectedHarnesses.has('claude')) {
     step('Wiring Claude Code integration (.claude/, CLAUDE.md)', () => {
       const destClaude = path.join(TARGET_DIR, '.claude');
-      const cmdCount = generateClaudeCommands(destAgents, destClaude);
-      const agentCount = generateClaudeAgents(destAgents, destClaude);
-      const claudeMd = bootstrapClaudeMd(TARGET_DIR);
+      const cmdCount = generateClaudeCommands(destAgents, destClaude, hctx.written, hctx.guard);
+      const agentCount = generateClaudeAgents(destAgents, destClaude, hctx.written, hctx.guard);
+      const claudeMd = bootstrapClaudeMd(TARGET_DIR, hctx);
       claudeSummary = { cmdCount, agentCount, claudeMd };
-      return `${cmdCount} commands, ${agentCount} agents (CLAUDE.md ${claudeMd})`;
+      const kept = hctx.guard.kept.length ? `, ${hctx.guard.kept.length} edited file(s) kept` : '';
+      return `${cmdCount} commands, ${agentCount} agents (CLAUDE.md ${claudeMd})${kept}`;
     });
   }
 
-  if (selectedHarnesses.has('antigravity') || selectedHarnesses.has('gemini')) {
-    step('Wiring Google Antigravity / Gemini integration (ANTIGRAVITY.md, GEMINI.md)', () => {
-      return generateAntigravityConfig(TARGET_DIR);
-    });
-  }
+  step('Writing cross-harness instructions (AGENTS.md and per-harness pointers)', () => {
+    return generateHarnessConfigs(TARGET_DIR, selectedHarnesses, hctx).join('; ');
+  });
+  hctx.guard.report();
+  printHarnessNotes(hctx);
 
-  if (selectedHarnesses.has('cursor')) {
-    step('Wiring Cursor integration (.cursor/rules/devos.mdc, .cursorrules)', () => {
-      return generateCursorConfig(TARGET_DIR);
-    });
-  }
-
-  if (selectedHarnesses.has('opencode')) {
-    step('Wiring OpenCode integration (OPENCODE.md, .opencode/)', () => {
-      return generateOpenCodeConfig(TARGET_DIR);
-    });
-  }
-
-  if (selectedHarnesses.has('codex')) {
-    step('Wiring Codex / Windsurf integration (.codex/, .windsurfrules)', () => {
-      return generateCodexConfig(TARGET_DIR);
-    });
+  // Record hashes of the agent/command files Dev-OS wrote, so a later
+  // update can tell generated-and-unedited files from user edits.
+  if (!insideSource && fs.existsSync(path.join(destAgents, 'manifest.json'))) {
+    const manifest = getSkillManifest(TARGET_DIR);
+    // hctx.manifest was read from the same file; it only lost records of retired files
+    if (hctx.manifest.generatedFiles) manifest.generatedFiles = { ...hctx.manifest.generatedFiles };
+    recordGeneratedFiles(manifest, TARGET_DIR, [...defaultAssetPaths(srcAgents, destAgents), ...hctx.written]);
+    if (selectedHarnesses.has('claude')) {
+      let linkRes = null;
+      step('Linking skills for Claude Code (.claude/skills/)', () => {
+        linkRes = syncClaudeSkills(TARGET_DIR, manifest);
+        return describeClaudeSkillSync(linkRes);
+      });
+      warnKeptClaudeSkills(linkRes);
+    }
+    saveSkillManifest(manifest, TARGET_DIR);
   }
 
   // Step 6: Update .gitignore
   step('Updating .gitignore rules', () => {
-    const gitignorePath = path.join(TARGET_DIR, '.gitignore');
-    let gitignoreContent = fs.existsSync(gitignorePath) ? fs.readFileSync(gitignorePath, 'utf8') : '';
-    let updated = false;
-    if (!gitignoreContent.includes('.agents/_backup')) {
-      gitignoreContent += `\n# Dev-OS temporary backups\n.agents/_backup/\n`;
-      updated = true;
-    }
-    if (!gitignoreContent.includes('.agents/memory/session.json')) {
-      gitignoreContent += `\n# Dev-OS runtime session state\n.agents/memory/session.json\n.agents/memory/sdlc-state.json\n`;
-      updated = true;
-    }
-    if (updated) {
-      fs.writeFileSync(gitignorePath, gitignoreContent.trim() + '\n', 'utf8');
-      return 'updated';
-    }
-    return 'already up to date';
+    return ensureGitignoreEntries(TARGET_DIR, DEVOS_GITIGNORE_GROUPS) ? 'updated' : 'already up to date';
   });
 
   // Summary card
@@ -1510,7 +2815,7 @@ async function runInit(flags) {
   const rows = [
     ['.agents/agents/', `${agentCount} Agent Personas (Orchestrator, Developer, QA, DBA, Security...)`],
     ['.agents/skills/', `${skillCount} Specialist Skills (Packs: ${(packSummary ? packSummary.packs : ['core']).join(', ')})`],
-    ['.agents/hooks/', 'Runtime Lifecycle Hooks (SessionStart, UserPromptSubmit, PreToolUse, SessionEnd)'],
+    ['.agents/hooks/', hooks ? 'Runtime Lifecycle Hooks (SessionStart, UserPromptSubmit, PreToolUse, PostToolUse, Stop, SubagentStop, SessionEnd)' : 'Runtime Lifecycle Hooks (not wired: --no-hooks)'],
     ['.agents/memory/', 'Shared Memory Vault (ADRs in decisions/, session handoffs)'],
     ['docs/TASK_BOARD.md', 'Deterministic Task Board & DAG Workflow State'],
     ['.agents/scripts/', 'Commit Checkpoint Gate (commit.sh) + Hook Installer'],
@@ -1540,7 +2845,7 @@ async function runInit(flags) {
     console.log(`\n${colors.bold}NEXT STEPS & PROMPTING GUIDE${colors.reset}`);
     console.log(`  1. Open your AI coding environment (${harnessesList.join(', ')}).`);
     console.log(`  2. ${colors.bold}Prompt the What, Not the How:${colors.reset} Dev-OS enforces roles, gates, and safety automatically.`);
-    console.log(`\n${colors.bold}💡 Golden Prompt Formula for Dev-OS:${colors.reset}`);
+    console.log(`\n${colors.bold}Golden Prompt Formula for Dev-OS:${colors.reset}`);
     console.log(`  ${colors.green}/auto Build a [product] for [target user].${colors.reset}`);
     console.log(`  ${colors.cyan}Features:${colors.reset}     [key capabilities & user workflows]`);
     console.log(`  ${colors.cyan}Integrations:${colors.reset} [database / auth / payments / external APIs]`);
@@ -1559,6 +2864,125 @@ async function runInit(flags) {
 // update
 // ---------------------------------------------------------------------------
 
+// Sync only skills that are already installed in the target from the Dev-OS
+// templates. A skill whose current hash differs from the manifest hash (or has
+// no recorded hash) is treated as customized and skipped unless `force`, in
+// which case it is backed up first. Never installs skills the target lacks.
+function syncInstalledSkills(srcSkills, destSkills, manifest, options = {}) {
+  const result = { updated: [], unchanged: [], skippedCustomized: [], backedUp: [], notInTemplates: [] };
+  if (!fs.existsSync(srcSkills) || !fs.existsSync(destSkills)) return result;
+  if (path.resolve(srcSkills) === path.resolve(destSkills)) return result;
+
+  const installed = fs.readdirSync(destSkills).filter((f) => f !== '_backup' && fs.statSync(path.join(destSkills, f)).isDirectory());
+  for (const name of installed) {
+    const srcPath = path.join(srcSkills, name);
+    const destPath = path.join(destSkills, name);
+    if (!fs.existsSync(srcPath)) {
+      result.notInTemplates.push(name);
+      continue;
+    }
+    const srcHash = computeSkillHash(srcPath);
+    const destHash = computeSkillHash(destPath);
+    const entry = manifest.skills[name];
+
+    if (destHash === srcHash) {
+      result.unchanged.push(name);
+      if (!entry) {
+        manifest.skills[name] = { source: 'core', version: PKG.version, hash: srcHash, customized: false, installedAt: new Date().toISOString(), updatedAt: new Date().toISOString() };
+      }
+      continue;
+    }
+
+    const customized = !entry || !entry.hash || entry.hash !== destHash;
+    if (customized && !options.force) {
+      result.skippedCustomized.push(name);
+      if (entry) entry.customized = true;
+      continue;
+    }
+    if (options.dryRun) {
+      result.updated.push(name);
+      continue;
+    }
+    if (customized) {
+      const backupPath = backupSkill(destPath, name, options.targetDir || TARGET_DIR);
+      result.backedUp.push(path.relative(options.targetDir || TARGET_DIR, backupPath));
+    }
+    copyRecursiveSync(srcPath, destPath);
+    manifest.skills[name] = {
+      source: (entry && entry.source) || 'core',
+      version: PKG.version,
+      hash: computeSkillHash(destPath),
+      customized: false,
+      installedAt: (entry && entry.installedAt) || new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+    result.updated.push(name);
+  }
+  return result;
+}
+
+// Update-time skill sync: refresh every installed Dev-OS skill that is
+// unedited, then install the skills of installed packs that are missing
+// (a 4.x upgrade gains the new core skills). Mutates manifest.skills.
+function syncPackSkills(srcAgents, destAgents, manifest, packsData, options = {}) {
+  const srcSkills = path.join(srcAgents, 'skills');
+  const destSkills = path.join(destAgents, 'skills');
+  const out = { installed: [], updated: [], unchanged: 0, customized: [], backedUp: [] };
+  if (!fs.existsSync(srcSkills) || path.resolve(srcSkills) === path.resolve(destSkills)) return out;
+  fs.mkdirSync(destSkills, { recursive: true });
+  if (!manifest.skills || typeof manifest.skills !== 'object') manifest.skills = {};
+  const res = syncInstalledSkills(srcSkills, destSkills, manifest, { force: options.force, targetDir: options.targetDir });
+  out.updated.push(...res.updated);
+  out.unchanged = res.unchanged.length;
+  out.customized.push(...res.skippedCustomized);
+  out.backedUp.push(...res.backedUp);
+  // 4.x recorded every skill dir as 'core', third-party ones included
+  res.notInTemplates.forEach((name) => {
+    const e = manifest.skills[name];
+    if (e && e.source === 'core' && !isShippedSkill(packsData, name)) e.source = 'local';
+  });
+  const packs = Array.isArray(manifest.installedPacks) ? manifest.installedPacks : [];
+  packSkillNames(packsData, packs).forEach((name) => {
+    if (fs.existsSync(path.join(destSkills, name))) return;
+    const r = installSkillSafely(srcSkills, destSkills, name, manifest, options);
+    if (r.status === 'installed') out.installed.push(name);
+  });
+  return out;
+}
+
+function describePackSkillSync(r) {
+  const parts = [];
+  if (r.installed.length) parts.push(`${r.installed.length} installed (${r.installed.join(', ')})`);
+  parts.push(`${r.updated.length} refreshed`, `${r.unchanged} unchanged`);
+  if (r.customized.length) parts.push(`${r.customized.length} customized kept`);
+  if (r.backedUp.length) parts.push(`${r.backedUp.length} backed up`);
+  return parts.join(', ');
+}
+
+function describeSkillSync(r) {
+  let msg = `${r.updated.length} updated, ${r.unchanged.length} unchanged`;
+  if (r.skippedCustomized.length) msg += `, ${r.skippedCustomized.length} customized skipped (${r.skippedCustomized.join(', ')}; use --force to overwrite with backup)`;
+  if (r.backedUp.length) msg += `, ${r.backedUp.length} backed up`;
+  return msg;
+}
+
+// Harnesses recorded at init time. Falls back to the harness outputs present
+// on disk for manifests written before `platform` was recorded.
+function harnessesForUpdate(flags, manifest) {
+  const explicit = flags.harness || flags.platform || (flags.allHarnesses ? 'all' : null);
+  if (explicit) return resolveHarnesses(explicit);
+  if (manifest && typeof manifest.platform === 'string' && manifest.platform.trim()) {
+    return resolveHarnesses(manifest.platform.trim().toLowerCase());
+  }
+  const detected = new Set();
+  if (fs.existsSync(path.join(TARGET_DIR, '.claude'))) detected.add('claude');
+  if (fs.existsSync(path.join(TARGET_DIR, 'ANTIGRAVITY.md'))) detected.add('antigravity');
+  if (fs.existsSync(path.join(TARGET_DIR, '.cursor', 'rules', 'devos.mdc'))) detected.add('cursor');
+  if (fs.existsSync(path.join(TARGET_DIR, '.opencode')) || fs.existsSync(path.join(TARGET_DIR, 'opencode.json'))) detected.add('opencode');
+  if (fs.existsSync(path.join(TARGET_DIR, '.codex')) || fs.existsSync(path.join(TARGET_DIR, '.windsurfrules'))) detected.add('codex');
+  return detected;
+}
+
 async function runUpdate(flags) {
   if (!flags.quiet) printBanner();
 
@@ -1574,12 +2998,23 @@ async function runUpdate(flags) {
 
   const srcAgents = path.join(TEMPLATE_DIR, '.agents');
   const insideSource = TEMPLATE_DIR === TARGET_DIR;
+  const manifestPath = path.join(destAgents, 'manifest.json');
+  const manifest = fs.existsSync(manifestPath) ? readJsonFile(manifestPath, '.agents/manifest.json') : {};
+  const previousVersion = manifest.version || 'unknown';
+  const packsData = loadPacks(srcAgents);
+  let migration = null;
+  const harnesses = harnessesForUpdate(flags, manifest);
+  if (flags.claude === false) harnesses.delete('claude');
+  // --no-hooks / --hooks win; otherwise the recorded choice (inferred from disk for 4.x)
+  const hooksEnabled = flags.hooks === false ? false
+    : (flags.passed && flags.passed.hooks ? true : recordedHooksChoice(manifest, TARGET_DIR));
 
   const step = (label, fn) => {
     process.stdout.write(`${colors.gray}${label}... ${colors.reset}`);
     try {
       const result = fn();
-      console.log(`${colors.green}${result || 'done'}${colors.reset}`);
+      const isWarn = typeof result === 'string' && result.startsWith('[ WARN ]');
+      console.log(`${isWarn ? colors.yellow : colors.green}${result || 'done'}${colors.reset}`);
     } catch (err) {
       console.log(`${colors.red}failed${colors.reset}`);
       console.error(`${colors.red}[ FAIL ] ${label}: ${err.message}${colors.reset}`);
@@ -1597,29 +3032,34 @@ async function runUpdate(flags) {
     });
 
     // 2. Refresh .agents/ subdirectories
-    step('Refreshing agent personas, hooks, memory, catalog, scripts, and evaluation suites', () => {
-      ['agents', 'commands', 'hooks', 'scripts', 'templates', 'evals', 'catalog'].forEach((dir) => {
-        const src = path.join(srcAgents, dir);
-        const dest = path.join(destAgents, dir);
-        if (fs.existsSync(src)) copyRecursiveSync(src, dest);
-      });
-      // Refresh memory templates without deleting user ADRs
-      const srcMemDec = path.join(srcAgents, 'memory', 'decisions', 'ADR-000-template.md');
-      const destMemDec = path.join(destAgents, 'memory', 'decisions');
-      fs.mkdirSync(destMemDec, { recursive: true });
-      if (fs.existsSync(srcMemDec)) fs.copyFileSync(srcMemDec, path.join(destMemDec, 'ADR-000-template.md'));
-
-      const srcMemHand = path.join(srcAgents, 'memory', 'handoffs', 'handoff-template.md');
-      const destMemHand = path.join(destAgents, 'memory', 'handoffs');
-      fs.mkdirSync(destMemHand, { recursive: true });
-      if (fs.existsSync(srcMemHand)) fs.copyFileSync(srcMemHand, path.join(destMemHand, 'handoff-template.md'));
-
-      ['AGENTS.md', 'README.md', 'packs.json'].forEach((file) => {
-        const src = path.join(srcAgents, file);
-        const dest = path.join(destAgents, file);
-        if (fs.existsSync(src)) fs.copyFileSync(src, dest);
-      });
+    step('Refreshing agent personas, hooks, memory templates, catalog, scripts, and evaluation suites', () => {
+      // Memory templates are refreshed without touching user ADRs, handoffs or context
+      copyCoreComponents(srcAgents, destAgents);
+      const assetPacks = (Array.isArray(manifest.installedPacks) ? manifest.installedPacks : [])
+        .filter((id) => packsData && packHasAssets(packsData.packs[id]));
+      if (assetPacks.length) {
+        const written = installPackAssets(srcAgents, destAgents, packsData, assetPacks);
+        return `done (+${written.length} agent/command file(s) from pack(s): ${assetPacks.join(', ')})`;
+      }
+      return 'done';
     });
+
+    // 2b. Retire merged/moved 4.x agents, commands, and skills (backed up; edited files kept)
+    step('Migrating retired 4.x agents, commands, and skills', () => {
+      migration = migrateLegacyInstall(srcAgents, TARGET_DIR, manifest, packsData);
+      return describeMigration(migration);
+    });
+    printMigrationDetails(migration);
+
+    // 2c. Skills: install what installed packs are missing (e.g. new core skills
+    // after a 4.x upgrade) and refresh unedited ones. Customized skills are kept
+    // unless --force, which backs them up first.
+    let skillRes = null;
+    step('Syncing specialist skills for installed packs', () => {
+      skillRes = syncPackSkills(srcAgents, destAgents, manifest, packsData, { force: flags.force, targetDir: TARGET_DIR });
+      return describePackSkillSync(skillRes);
+    });
+    warnCustomizedSkills(skillRes.customized, 'devos update');
   }
 
   // 3. Ensure executable script permissions
@@ -1638,85 +3078,84 @@ async function runUpdate(flags) {
     return 'executable (755)';
   });
 
-  // 4. Update runtime lifecycle hooks
-  if (flags.hooks) {
+  // 4. Runtime lifecycle hooks (respects --no-hooks and the manifest's hooksEnabled)
+  if (hooksEnabled) {
     step('Refreshing runtime lifecycle hooks', () => {
-      return wireHooks(destAgents, path.join(TARGET_DIR, '.claude'));
+      return wireHooks(destAgents, harnesses.has('claude') ? path.join(TARGET_DIR, '.claude') : null);
     });
+
+    // 4b. Detect Gitleaks only; install/upgrade solely with --install-gitleaks
+    step('Verifying Gitleaks secret scanner', () => {
+      return ensureGitleaks(TARGET_DIR, { install: flags.installGitleaks });
+    });
+  } else {
+    console.log(`${colors.gray}Skipping runtime lifecycle hooks (disabled)${colors.reset}`);
   }
 
-  // 4b. Verify and update Gitleaks secret scanner
-  step('Verifying & updating Gitleaks secret scanner', () => {
-    return ensureGitleaks(TARGET_DIR);
+  // 5. Multi-Harness refresh: only the harnesses recorded for this project.
+  // AGENTS.md is always written; it is the canonical cross-harness file.
+  const hctx = harnessContext(TARGET_DIR, manifest, { force: flags.force });
+  const claudeWritten = hctx.written;
+  step('Refreshing AI harness configurations', () => {
+    const done = [];
+    if (harnesses.has('claude')) {
+      const destClaude = path.join(TARGET_DIR, '.claude');
+      generateClaudeCommands(destAgents, destClaude, claudeWritten, hctx.guard);
+      generateClaudeAgents(destAgents, destClaude, claudeWritten, hctx.guard);
+      bootstrapClaudeMd(TARGET_DIR, hctx);
+      done.push(hctx.guard.kept.length ? `Claude Code (${hctx.guard.kept.length} edited file(s) kept)` : 'Claude Code');
+    }
+    done.push(...generateHarnessConfigs(TARGET_DIR, harnesses, hctx));
+    return harnesses.size ? `${done.join('; ')} synchronized` : `[ WARN ] ${done.join('; ')}; no harnesses recorded; pass --platform <list> to choose`;
   });
+  hctx.guard.report();
+  printHarnessNotes(hctx);
 
-  // 5. Multi-Harness refresh
-  step('Refreshing AI harness configurations (Claude Code, Cursor, OpenCode, Antigravity, Codex)', () => {
-    const destClaude = path.join(TARGET_DIR, '.claude');
-    generateClaudeCommands(destAgents, destClaude);
-    generateClaudeAgents(destAgents, destClaude);
-    bootstrapClaudeMd(TARGET_DIR);
-    generateCursorConfig(TARGET_DIR);
-    generateOpenCodeConfig(TARGET_DIR);
-    generateAntigravityConfig(TARGET_DIR);
-    generateCodexConfig(TARGET_DIR);
-    wireHooks(destAgents, destClaude);
-    return 'Claude Code, Cursor, OpenCode, Antigravity/Gemini, Codex and lifecycle hooks synchronized';
-  });
-
-  // 5b. Refresh skills if requested
-  if (flags.skills || flags.allSkills) {
-    step('Refreshing specialist skills and capability packs', () => {
-      const srcSkills = path.join(srcAgents, 'skills');
-      const destSkills = path.join(destAgents, 'skills');
-      let msg = 'skipped';
-      if (fs.existsSync(srcSkills)) {
-        const manifest = getSkillManifest(TARGET_DIR);
-        if (fs.existsSync(destSkills) && TEMPLATE_DIR !== TARGET_DIR) {
-          const localSkills = fs.readdirSync(destSkills).filter((f) => f !== '_backup' && fs.statSync(path.join(destSkills, f)).isDirectory());
-          for (const sName of localSkills) {
-            const dPath = path.join(destSkills, sName);
-            const dHash = computeSkillHash(dPath);
-            if (manifest.skills && manifest.skills[sName] && manifest.skills[sName].hash && manifest.skills[sName].hash !== dHash) {
-              backupSkill(dPath, sName, TARGET_DIR);
-            }
-          }
-        }
-        copyRecursiveSync(srcSkills, destSkills);
-        const localSkills = fs.readdirSync(destSkills).filter((f) => f !== '_backup' && fs.statSync(path.join(destSkills, f)).isDirectory());
-        for (const sName of localSkills) {
-          manifest.skills[sName] = {
-            source: manifest.skills[sName]?.source || 'core',
-            version: PKG.version,
-            hash: computeSkillHash(path.join(destSkills, sName)),
-            customized: false,
-            installedAt: manifest.skills[sName]?.installedAt || new Date().toISOString(),
-            updatedAt: new Date().toISOString()
-          };
-        }
-        saveSkillManifest(manifest, TARGET_DIR);
-        msg = `${countSkills(destSkills)} skills synchronized`;
-      }
-      try {
-        const { spawnSync } = require('child_process');
-        spawnSync('npx', ['skills', 'update', '-y'], {
-          cwd: TARGET_DIR,
-          stdio: 'ignore',
-          env: { ...process.env, CI: '1' }
-        });
-      } catch (e) {}
-      return msg;
+  // 5b. Claude Code skill links (.claude/skills/<name> -> .agents/skills/<name>)
+  if (harnesses.has('claude') && !insideSource) {
+    let linkRes = null;
+    step('Syncing Claude Code skill links (.claude/skills/)', () => {
+      linkRes = syncClaudeSkills(TARGET_DIR, manifest);
+      return describeClaudeSkillSync(linkRes);
     });
+    warnKeptClaudeSkills(linkRes);
+  }
+
+  // 5a. Manifest: version, migration provenance, and hashes of the files Dev-OS wrote
+  if (!insideSource) {
+    step('Updating .agents/manifest.json', () => {
+      const assetPacks = (Array.isArray(manifest.installedPacks) ? manifest.installedPacks : [])
+        .filter((id) => packsData && packHasAssets(packsData.packs[id]));
+      const names = packAssetNames(packsData, assetPacks);
+      const packFiles = [
+        ...names.agents.map((n) => path.join(destAgents, 'agents', `${n}.md`)),
+        ...names.commands.map((n) => path.join(destAgents, 'commands', `${n}.md`))
+      ];
+      recordGeneratedFiles(manifest, TARGET_DIR, [...defaultAssetPaths(srcAgents, destAgents), ...packFiles, ...claudeWritten]);
+      if (previousVersion !== PKG.version) manifest.migratedFrom = previousVersion;
+      manifest.version = PKG.version;
+      manifest.hooksEnabled = hooksEnabled;
+      if (!manifest.skills || typeof manifest.skills !== 'object') manifest.skills = {};
+      saveSkillManifest(manifest, TARGET_DIR);
+      return previousVersion !== PKG.version ? `v${previousVersion} -> v${PKG.version}` : `v${PKG.version}`;
+    });
+    step('Updating .gitignore rules', () => (ensureGitignoreEntries(TARGET_DIR, DEVOS_GITIGNORE_GROUPS) ? 'updated' : 'already up to date'));
+  }
+
+  // 5c. Dev-OS skills were synced in step 2c; --skills also updates skills.sh installs
+  if (flags.skills || flags.allSkills) {
+    try {
+      runSkillsCli(['update', '-y'], { stdio: 'ignore' });
+    } catch (e) {}
   }
 
   // 6. Pre-commit hook
   const gitDir = path.join(TARGET_DIR, '.git');
-  if (fs.existsSync(gitDir)) {
+  if (hooksEnabled && fs.existsSync(gitDir)) {
     step('Updating mechanical pre-commit hook', () => {
       const hookInstaller = path.join(destAgents, 'scripts', 'install-hooks.sh');
       if (fs.existsSync(hookInstaller)) {
-        const { spawnSync } = require('child_process');
-        const res = spawnSync('bash', [hookInstaller], { cwd: TARGET_DIR, encoding: 'utf8' });
+        const res = spawnSync('bash', [hookInstaller], { cwd: TARGET_DIR, encoding: 'utf8', env: installHooksEnv(flags) });
         if (res.status === 0) return 'updated';
         return `warning (installer exited ${res.status})`;
       }
@@ -1739,8 +3178,8 @@ function runPack(flags, positional) {
     console.error(`${colors.red}[ FAIL ] Capability packs registry (.agents/packs.json) not found.${colors.reset}`);
     process.exit(1);
   }
-  const packsData = JSON.parse(fs.readFileSync(packsPath, 'utf8'));
-  const manifest = fs.existsSync(manifestPath) ? JSON.parse(fs.readFileSync(manifestPath, 'utf8')) : { installedPacks: [] };
+  const packsData = readJsonFile(packsPath, 'Dev-OS packs registry (.agents/packs.json)');
+  const manifest = fs.existsSync(manifestPath) ? readJsonFile(manifestPath, '.agents/manifest.json') : { installedPacks: [] };
 
   if (subCmd === 'list') {
     if (!flags.quiet && !flags.json) printBanner();
@@ -1756,7 +3195,11 @@ function runPack(flags, positional) {
       const tag = isInstalled ? `${colors.green}[installed]${colors.reset}` : `${colors.gray}[available]${colors.reset}`;
       console.log(`  ${colors.cyan}${colors.bold}${key.padEnd(12)}${colors.reset} ${tag} ${p.name}`);
       console.log(`  ${colors.gray}${p.description}${colors.reset}`);
-      console.log(`  ${colors.dim}Skills (${p.skills.length}): ${p.skills.join(', ')}${colors.reset}\n`);
+      const pSkills = Array.isArray(p.skills) ? p.skills : [];
+      console.log(`  ${colors.dim}Skills (${pSkills.length}): ${pSkills.join(', ')}${colors.reset}`);
+      if (Array.isArray(p.agents) && p.agents.length) console.log(`  ${colors.dim}Agents (${p.agents.length}): ${p.agents.join(', ')}${colors.reset}`);
+      if (Array.isArray(p.commands) && p.commands.length) console.log(`  ${colors.dim}Commands (${p.commands.length}): ${p.commands.map((c) => `/${c}`).join(', ')}${colors.reset}`);
+      console.log('');
     });
     console.log(`Add a pack: ${colors.cyan}devos pack add <name>${colors.reset}\n`);
     return;
@@ -1773,21 +3216,52 @@ function runPack(flags, positional) {
     fs.mkdirSync(destSkills, { recursive: true });
 
     let addedCount = 0;
-    pack.skills.forEach((skillName) => {
-      const srcSkill = path.join(TEMPLATE_DIR, '.agents', 'skills', skillName);
-      const destSkill = path.join(destSkills, skillName);
-      if (fs.existsSync(srcSkill)) {
-        copyRecursiveSync(srcSkill, destSkill);
-        addedCount++;
-      }
-    });
+    const customizedSkills = [];
+    if (!manifest.skills || typeof manifest.skills !== 'object') manifest.skills = {};
+    const srcSkillsDir = path.join(TEMPLATE_DIR, '.agents', 'skills');
+    if (path.resolve(srcSkillsDir) !== path.resolve(destSkills)) {
+      (Array.isArray(pack.skills) ? pack.skills : []).forEach((skillName) => {
+        // Customized skills are kept unless --force, which backs them up first
+        const res = installSkillSafely(srcSkillsDir, destSkills, skillName, manifest, { force: flags.force, targetDir: TARGET_DIR });
+        if (res.status === 'customized') customizedSkills.push(skillName);
+        else if (res.status !== 'missing') addedCount++;
+        if (res.backup) console.log(`${colors.yellow}[ BACKUP ] Preserved local modifications of ${skillName} in ${res.backup}${colors.reset}`);
+      });
+    }
+    warnCustomizedSkills(customizedSkills, `devos pack add ${packName}`);
+
+    // Packs may also ship agents and commands (R3); install them flat into
+    // .agents/ and regenerate the Claude Code output when that harness is in use.
+    const srcAgents = path.join(TEMPLATE_DIR, '.agents');
+    const destAgents = path.join(TARGET_DIR, '.agents');
+    // Every agent/command file written here goes through the same guard:
+    // edited or user-authored files are kept unless --force (backup first).
+    const guard = createGeneratedWriteGuard({ targetDir: TARGET_DIR, manifest, force: flags.force });
+    const assetFiles = TEMPLATE_DIR === TARGET_DIR ? [] : installPackAssets(srcAgents, destAgents, packsData, [packName], guard);
+    const claudeWritten = [];
+    if (packHasAssets(pack) && TEMPLATE_DIR !== TARGET_DIR && harnessesForUpdate(flags, manifest).has('claude')) {
+      const destClaude = path.join(TARGET_DIR, '.claude');
+      generateClaudeCommands(destAgents, destClaude, claudeWritten, guard);
+      generateClaudeAgents(destAgents, destClaude, claudeWritten, guard);
+    }
+    guard.report();
+    if (assetFiles.length || claudeWritten.length) recordGeneratedFiles(manifest, TARGET_DIR, [...assetFiles, ...claudeWritten]);
+    // Keep .claude/skills/ links in step with the newly installed skills
+    let linkNote = '';
+    if (TEMPLATE_DIR !== TARGET_DIR && harnessesForUpdate(flags, manifest).has('claude')) {
+      const linkRes = syncClaudeSkills(TARGET_DIR, manifest);
+      warnKeptClaudeSkills(linkRes);
+      if (linkRes.linked.length || linkRes.copied.length) linkNote = `, ${linkRes.linked.length + linkRes.copied.length} skill link(s) added to .claude/skills/`;
+    }
 
     if (!manifest.installedPacks) manifest.installedPacks = [];
     if (!manifest.installedPacks.includes(packName)) manifest.installedPacks.push(packName);
     manifest.updatedAt = new Date().toISOString();
+    fs.mkdirSync(path.dirname(manifestPath), { recursive: true });
     fs.writeFileSync(manifestPath, JSON.stringify(manifest, null, 2) + '\n', 'utf8');
 
-    console.log(`${colors.green}[ OK ] Pack '${packName}' added successfully (${addedCount} skills installed).${colors.reset}`);
+    const assetNote = assetFiles.length ? `, ${assetFiles.length} agent/command file(s)` : '';
+    console.log(`${colors.green}[ OK ] Pack '${packName}' added successfully (${addedCount} skills installed${assetNote}${linkNote}).${colors.reset}`);
     return;
   }
 
@@ -1810,7 +3284,7 @@ function runMemory(flags, positional) {
     const adrs = fs.existsSync(decisionsDir) ? fs.readdirSync(decisionsDir).filter((f) => f.endsWith('.md')) : [];
     const handoffs = fs.existsSync(handoffsDir) ? fs.readdirSync(handoffsDir).filter((f) => f.endsWith('.md')) : [];
     const contextPath = path.join(memoryDir, 'context.json');
-    const context = fs.existsSync(contextPath) ? JSON.parse(fs.readFileSync(contextPath, 'utf8')) : null;
+    const context = fs.existsSync(contextPath) ? readJsonFile(contextPath, '.agents/memory/context.json') : null;
 
     if (flags.json) {
       console.log(JSON.stringify({ adrs, handoffs, context }, null, 2));
@@ -2009,6 +3483,19 @@ function runSkillList(flags) {
   console.log();
 }
 
+// Map a merged (old) skill name to the skill that absorbed it, following
+// chained aliases defensively. Returns the input when it is not an alias.
+function resolveSkillAlias(name) {
+  const aliases = skillAliases(loadPacks(path.join(TEMPLATE_DIR, '.agents')));
+  let current = name;
+  const seen = new Set();
+  while (Object.prototype.hasOwnProperty.call(aliases, current) && !seen.has(current)) {
+    seen.add(current);
+    current = aliases[current];
+  }
+  return current;
+}
+
 function runSkill(flags, positional) {
   const subCmd = positional[0] || 'list';
   const { spawnSync } = require('child_process');
@@ -2035,11 +3522,12 @@ function runSkill(flags, positional) {
 
     report.skills.forEach((s) => {
       if (s.errors.length > 0) {
-        console.log(`  ${colors.red}✖ ${s.name.padEnd(30)}${colors.reset} ${s.errors.join(', ')}`);
+        console.log(`  ${colors.red}[ FAIL ] ${s.name.padEnd(30)}${colors.reset} ${s.errors.join(', ')}`);
       } else if (s.warnings.length > 0) {
-        console.log(`  ${colors.yellow}⚠ ${s.name.padEnd(30)}${colors.reset} (${s.tokens.toLocaleString()} tokens) — ${s.warnings.join(', ')}`);
+        const shown = s.warnings.slice(0, 4).join('; ') + (s.warnings.length > 4 ? `; (+${s.warnings.length - 4} more, see --json)` : '');
+        console.log(`  ${colors.yellow}[ WARN ] ${s.name.padEnd(30)}${colors.reset} (${s.tokens.toLocaleString()} tokens) - ${shown}`);
       } else {
-        console.log(`  ${colors.green}✔ ${s.name.padEnd(30)}${colors.reset} (${s.tokens.toLocaleString()} tokens)`);
+        console.log(`  ${colors.green}[ OK ]   ${s.name.padEnd(30)}${colors.reset} (${s.tokens.toLocaleString()} tokens)`);
       }
     });
 
@@ -2261,18 +3749,50 @@ function runSkill(flags, positional) {
     console.log(`\n${colors.bold}SUMMARY:${colors.reset} ${report.total} installed, ${report.customizedCount} customized, ${report.driftCount} updates available.\n`);
 
     try {
-      spawnSync('npx', ['skills', 'check'], {
-        cwd: TARGET_DIR,
-        stdio: 'inherit',
-        env: { ...process.env, CI: '1' }
-      });
+      runSkillsCli(['check']);
     } catch (e) {}
 
     return;
   }
 
   if (subCmd === 'add' || subCmd === 'install') {
-    const pkg = positional[1];
+    let pkg = positional[1];
+    // Merged skills keep working through packs.json aliases (single source of truth)
+    if (pkg) {
+      const resolved = resolveSkillAlias(pkg);
+      if (resolved !== pkg) {
+        console.log(`${colors.yellow}[ WARN ] ${pkg} was merged into ${resolved}${colors.reset}`);
+        pkg = resolved;
+      }
+    }
+    // A Dev-OS core skill installs from the bundled templates (no network)
+    if (pkg && safeFileStem(pkg, null) === pkg && fs.existsSync(path.join(TEMPLATE_DIR, '.agents', 'skills', pkg, 'SKILL.md'))) {
+      const destSkill = path.join(TARGET_DIR, '.agents', 'skills', pkg);
+      if (TEMPLATE_DIR === TARGET_DIR) {
+        console.log(`${colors.green}[ OK ] Skill '${pkg}' is part of this Dev-OS source tree.${colors.reset}`);
+        return;
+      }
+      const manifest = getSkillManifest(TARGET_DIR);
+      const entry = manifest.skills[pkg];
+      const currentHash = fs.existsSync(destSkill) ? computeSkillHash(destSkill) : null;
+      if (currentHash && (!entry || entry.hash !== currentHash)) {
+        const backupPath = backupSkill(destSkill, pkg, TARGET_DIR);
+        console.log(`${colors.yellow}[ BACKUP ] Preserved local modifications in ${path.relative(TARGET_DIR, backupPath)}${colors.reset}`);
+      }
+      fs.mkdirSync(path.dirname(destSkill), { recursive: true });
+      copyRecursiveSync(path.join(TEMPLATE_DIR, '.agents', 'skills', pkg), destSkill);
+      manifest.skills[pkg] = {
+        source: 'core',
+        version: PKG.version,
+        hash: computeSkillHash(destSkill),
+        customized: false,
+        installedAt: (entry && entry.installedAt) || new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      };
+      saveSkillManifest(manifest, TARGET_DIR);
+      console.log(`${colors.green}[ OK ] Core skill '${pkg}' installed from Dev-OS templates into .agents/skills/${pkg}/.${colors.reset}`);
+      return;
+    }
     if (!pkg) {
       console.error(`${colors.red}[ FAIL ] Missing skill package or repository name.${colors.reset}`);
       console.log(`\nUsage: ${colors.cyan}devos skill add <owner/repo>${colors.reset}`);
@@ -2282,12 +3802,13 @@ function runSkill(flags, positional) {
     }
     console.log(`${colors.bold}INSTALLING AGENT SKILL${colors.reset}`);
     console.log(`${colors.gray}${RULE}${colors.reset}\n`);
-    console.log(`Fetching from skills.sh / GitHub (${colors.cyan}npx skills add ${pkg}${colors.reset})...\n`);
-    const res = spawnSync('npx', ['skills', 'add', pkg, '--yes'], {
-      cwd: TARGET_DIR,
-      stdio: 'inherit',
-      env: { ...process.env, CI: '1' }
-    });
+    if (isOffline()) {
+      warnOfflineSkip(`npx ${SKILLS_CLI} add ${pkg}`);
+      console.error(`${colors.red}[ FAIL ] Skill '${pkg}' was not installed (offline mode).${colors.reset}`);
+      process.exit(1);
+    }
+    console.log(`Fetching from skills.sh / GitHub (${colors.cyan}npx ${SKILLS_CLI} add ${pkg}${colors.reset})...\n`);
+    const res = runSkillsCli(['add', pkg, '--yes']);
     if (res.status !== 0) {
       console.error(`\n${colors.red}[ FAIL ] Failed to install skill '${pkg}'. Check package name or network connectivity.${colors.reset}`);
       process.exit(res.status || 1);
@@ -2325,62 +3846,33 @@ function runSkill(flags, positional) {
     const srcSkills = path.join(TEMPLATE_DIR, '.agents', 'skills');
     const manifest = getSkillManifest(TARGET_DIR);
 
-    if (flags.dryRun) {
-      console.log(`[ DRY RUN ] Checking for modified or upstream skills...`);
-      const report = auditSkills(fs.existsSync(destSkills) ? destSkills : srcSkills);
-      console.log(`[ DRY RUN ] Would inspect ${report.total} skills for updates.`);
+    if (TEMPLATE_DIR === TARGET_DIR) {
+      console.log(`${colors.yellow}[ WARN ] Running inside the Dev-OS source repository; nothing to update.${colors.reset}\n`);
       return;
     }
 
-    if (fs.existsSync(destSkills) && TEMPLATE_DIR !== TARGET_DIR) {
-      const localSkills = fs.readdirSync(destSkills).filter((f) => {
-        if (f === '_backup') return false;
-        return fs.statSync(path.join(destSkills, f)).isDirectory();
-      });
+    // Only already-installed skills are refreshed; customized ones need --force (backed up first)
+    const res = syncInstalledSkills(srcSkills, destSkills, manifest, { force: flags.force, dryRun: flags.dryRun, targetDir: TARGET_DIR });
+    const prefix = flags.dryRun ? '[ DRY RUN ] Would update' : '[ UPDATED ]';
+    res.updated.forEach((n) => console.log(`${colors.green}${prefix} ${n}${colors.reset}`));
+    res.backedUp.forEach((b) => console.log(`${colors.yellow}[ BACKUP ] Preserved local modifications in ${b}${colors.reset}`));
+    res.skippedCustomized.forEach((n) => console.log(`${colors.yellow}[ WARN ] Skipped customized skill '${n}' (re-run with --force to overwrite; a backup is taken)${colors.reset}`));
 
-      for (const name of localSkills) {
-        const destPath = path.join(destSkills, name);
-        const destHash = computeSkillHash(destPath);
-        const manifestEntry = manifest.skills[name];
-        if (manifestEntry && manifestEntry.hash && manifestEntry.hash !== destHash) {
-          const backupPath = backupSkill(destPath, name, TARGET_DIR);
-          console.log(`${colors.yellow}[ BACKUP ] Preserved local modifications in ${path.relative(TARGET_DIR, backupPath)}${colors.reset}`);
-        }
-      }
+    if (flags.dryRun) {
+      console.log(`\n[ DRY RUN ] ${describeSkillSync(res)}\n`);
+      return;
     }
+    saveSkillManifest(manifest, TARGET_DIR);
 
-    console.log(`Checking upstream repositories (${colors.cyan}npx skills update${colors.reset})...\n`);
+    console.log(`\nChecking upstream repositories (${colors.cyan}npx ${SKILLS_CLI} update${colors.reset})...\n`);
     try {
-      const res = spawnSync('npx', ['skills', 'update', '-y'], {
-        cwd: TARGET_DIR,
-        stdio: 'inherit',
-        env: { ...process.env, CI: '1' }
-      });
-      if (res.status === 0) {
+      const upRes = runSkillsCli(['update', '-y']);
+      if (upRes.status === 0) {
         console.log(`\n${colors.green}[ OK ] Upstream skills updated successfully.${colors.reset}`);
       }
     } catch (e) {}
 
-    if (fs.existsSync(srcSkills)) {
-      copyRecursiveSync(srcSkills, destSkills);
-      const updatedDirs = fs.readdirSync(destSkills).filter((f) => {
-        if (f === '_backup') return false;
-        return fs.statSync(path.join(destSkills, f)).isDirectory();
-      });
-      for (const name of updatedDirs) {
-        const h = computeSkillHash(path.join(destSkills, name));
-        manifest.skills[name] = {
-          source: manifest.skills[name]?.source || 'core',
-          version: PKG.version,
-          hash: h,
-          customized: false,
-          installedAt: manifest.skills[name]?.installedAt || new Date().toISOString(),
-          updatedAt: new Date().toISOString()
-        };
-      }
-      saveSkillManifest(manifest, TARGET_DIR);
-      console.log(`${colors.green}[ OK ] Dev-OS core skills synchronized (${countSkills(destSkills)} total).${colors.reset}\n`);
-    }
+    console.log(`${colors.green}[ OK ] Dev-OS core skills synchronized: ${describeSkillSync(res)}.${colors.reset}\n`);
     return;
   }
 
@@ -2388,13 +3880,9 @@ function runSkill(flags, positional) {
     const query = positional.slice(1).join(' ');
     console.log(`${colors.bold}SEARCHING AGENT SKILLS (skills.sh)${colors.reset}`);
     console.log(`${colors.gray}${RULE}${colors.reset}\n`);
-    const args = ['skills', 'find'];
+    const args = ['find'];
     if (query) args.push(query);
-    spawnSync('npx', args, {
-      cwd: TARGET_DIR,
-      stdio: 'inherit',
-      env: process.env
-    });
+    runSkillsCli(args);
     return;
   }
 
@@ -2573,11 +4061,66 @@ function analyzeTelemetry(events) {
   };
 }
 
-function runTelemetry(flags, positional) {
+// Ask a yes/no question on a TTY; resolves false on EOF or anything but y/yes
+function confirmPrompt(question) {
+  return new Promise((resolve) => {
+    const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
+    let answered = false;
+    rl.on('close', () => { if (!answered) resolve(false); });
+    rl.question(question, (answer) => {
+      answered = true;
+      rl.close();
+      resolve(/^y(es)?$/i.test(answer.trim()));
+    });
+  });
+}
+
+// Environment markers set by AI coding agents in the shells they spawn. Kept
+// in sync with AGENT_MARKERS in .agents/hooks/lib/hook-input.js (sources
+// listed there); DEVOS_AGENT_SHELL lets any other harness opt in explicitly.
+const AGENT_SHELL_MARKERS = ['CLAUDECODE', 'CLAUDE_CODE_ENTRYPOINT', 'GEMINI_CLI', 'CODEX_SANDBOX',
+  'CODEX_SANDBOX_NETWORK_DISABLED', 'CODEX_THREAD_ID', 'CURSOR_AGENT', 'AI_AGENT', 'DEVOS_AGENT_SHELL'];
+
+function detectAgentShell(env = process.env) {
+  return AGENT_SHELL_MARKERS.find((k) => {
+    const v = env[k];
+    return typeof v === 'string' && v.trim() !== '' && v.trim() !== '0' && v.trim().toLowerCase() !== 'false';
+  }) || null;
+}
+
+// Publishing telemetry upstream is a public, irreversible action, so only a
+// human at an interactive terminal may approve it (default No). --yes is
+// ignored here: an agent could pass it by itself. Agent shells and non-TTY
+// stdin are refused outright. --dry-run never reaches this function.
+async function requirePublishConsent(flags, what) {
+  const refuse = (reason) => {
+    console.error(`${colors.red}[ FAIL ] Refusing to publish ${what} to olitech1010/dev-os: ${reason}.${colors.reset}`);
+    console.error(`${colors.yellow}         Review it with --dry-run, then have a human run the command in an interactive terminal and confirm.${colors.reset}\n`);
+    process.exit(1);
+  };
+  const marker = detectAgentShell();
+  if (marker) refuse(`running inside an AI agent shell (${marker} is set); publishing needs a human`);
+  if (!process.stdin.isTTY) refuse('stdin is not an interactive terminal, so no human can confirm');
+  if (flags.yes) {
+    console.log(`${colors.yellow}[ WARN ] --yes does not approve publishing; confirm below.${colors.reset}`);
+  }
+  const ok = await confirmPrompt(`${colors.cyan}Publish ${what} publicly to github.com/olitech1010/dev-os? [y/N]: ${colors.reset}`);
+  if (!ok) {
+    console.log(`${colors.yellow}[ WARN ] Publishing cancelled. Nothing was sent.${colors.reset}\n`);
+  }
+  return ok;
+}
+
+async function runTelemetry(flags, positional) {
   if (!flags.quiet && !flags.json && flags.dryRun !== true) printBanner();
   const sub = (positional[0] || 'status').toLowerCase();
   const manifestPath = path.join(TARGET_DIR, '.agents', 'manifest.json');
-  const manifest = fs.existsSync(manifestPath) ? JSON.parse(fs.readFileSync(manifestPath, 'utf8')) : { telemetry: 'on' };
+  if ((sub === 'enable' || sub === 'disable') && !fs.existsSync(path.join(TARGET_DIR, '.agents'))) {
+    console.error(`${colors.red}[ FAIL ] Dev-OS is not initialized in this directory (${TARGET_DIR}).${colors.reset}`);
+    console.error(`${colors.yellow}         Run 'devos init' first, then 'devos telemetry ${sub}'.${colors.reset}\n`);
+    process.exit(1);
+  }
+  const manifest = fs.existsSync(manifestPath) ? readJsonFile(manifestPath, '.agents/manifest.json') : { telemetry: 'on' };
   const telemetryDir = path.join(TARGET_DIR, '.agents', 'telemetry');
   const reportsDir = path.join(telemetryDir, 'reports');
   const eventsPath = path.join(telemetryDir, 'events.jsonl');
@@ -2668,7 +4211,7 @@ function runTelemetry(flags, positional) {
     console.log(`  Event Buffer: ${colors.cyan}${eventCount} events recorded${colors.reset}\n`);
 
     if (eventCount === 0) {
-      console.log(`  ${colors.green}✓ Zero failure events recorded. All runtime hooks and gates are operating cleanly.${colors.reset}\n`);
+      console.log(`  ${colors.green}[ OK ] Zero failure events recorded. All runtime hooks and gates are operating cleanly.${colors.reset}\n`);
       return;
     }
 
@@ -2779,7 +4322,7 @@ function runTelemetry(flags, positional) {
       } else {
         console.log(`${colors.bold}UPSTREAM DIAGNOSTIC ISSUE (DRY-RUN)${colors.reset}`);
         console.log(`${colors.gray}${RULE}${colors.reset}`);
-        console.log(`  ${colors.green}✓ Privacy Gate Verified:${colors.reset} 0 credentials, 0 machine paths, 0 usernames exposed.`);
+        console.log(`  ${colors.green}[ OK ] Privacy Gate Verified:${colors.reset} 0 credentials, 0 machine paths, 0 usernames exposed.`);
         console.log(`  Title:       ${colors.cyan}${title}${colors.reset}`);
         console.log(`  Saved to:    ${path.relative(TARGET_DIR, reportPath) || reportPath}`);
         console.log(`  Web Link:    ${colors.gray}${webUrl.slice(0, 80)}...${colors.reset}`);
@@ -2788,8 +4331,11 @@ function runTelemetry(flags, positional) {
       return;
     }
 
+    if (!(await requirePublishConsent(flags, 'this diagnostic issue'))) return;
+
     // Live dispatch via gh CLI if present
-    const ghCheck = spawnSync('gh', ['auth', 'status'], { encoding: 'utf8' });
+    const ghCheck = isOffline() ? { status: null } : spawnSync('gh', ['auth', 'status'], { encoding: 'utf8' });
+    if (isOffline()) warnOfflineSkip('gh issue create');
     if (ghCheck.status === 0) {
       console.log(`Dispatching issue via GitHub CLI (${colors.cyan}gh issue create --repo olitech1010/dev-os${colors.reset})...\n`);
       const res = spawnSync('gh', ['issue', 'create', '--repo', 'olitech1010/dev-os', '--title', title, '--body-file', reportPath], {
@@ -2846,7 +4392,7 @@ function runTelemetry(flags, positional) {
       } else {
         console.log(`${colors.bold}UPSTREAM DIAGNOSTIC PR (DRY-RUN)${colors.reset}`);
         console.log(`${colors.gray}${RULE}${colors.reset}`);
-        console.log(`  ${colors.green}✓ Privacy Gate Verified:${colors.reset} Zero credentials or sensitive data detected.`);
+        console.log(`  ${colors.green}[ OK ] Privacy Gate Verified:${colors.reset} Zero credentials or sensitive data detected.`);
         console.log(`  Title:       ${colors.cyan}${title}${colors.reset}`);
         console.log(`  Draft file:  ${path.relative(TARGET_DIR, prPath) || prPath}`);
         console.log(`\n${colors.bold}PR Preview:${colors.reset}\n${sanitizedPrBody}\n`);
@@ -2854,7 +4400,10 @@ function runTelemetry(flags, positional) {
       return;
     }
 
-    const ghCheck = spawnSync('gh', ['auth', 'status'], { encoding: 'utf8' });
+    if (!(await requirePublishConsent(flags, 'this diagnostic pull request'))) return;
+
+    const ghCheck = isOffline() ? { status: null } : spawnSync('gh', ['auth', 'status'], { encoding: 'utf8' });
+    if (isOffline()) warnOfflineSkip('gh pr create');
     if (ghCheck.status === 0) {
       console.log(`Creating pull request via GitHub CLI (${colors.cyan}gh pr create --repo olitech1010/dev-os${colors.reset})...\n`);
       const res = spawnSync('gh', ['pr', 'create', '--repo', 'olitech1010/dev-os', '--title', title, '--body-file', prPath], {
@@ -3116,7 +4665,7 @@ async function runDesign(flags, positional) {
     }
 
     for (const [cat, systems] of Object.entries(groups)) {
-      console.log(`${colors.bold}${colors.cyan}📂 ${cat}${colors.reset} (${systems.length} systems)`);
+      console.log(`${colors.bold}${colors.cyan}${cat}${colors.reset} (${systems.length} systems)`);
       for (const sys of systems) {
         const idCol = sys.id.padEnd(16);
         const nameCol = sys.name.padEnd(18);
@@ -3243,6 +4792,12 @@ async function runDesign(flags, positional) {
     }
 
     if (selected) {
+      // Never replace an existing DESIGN.md non-interactively without --yes
+      if (!process.stdin.isTTY && !flags.yes && fs.existsSync(path.join(TARGET_DIR, 'DESIGN.md'))) {
+        console.error(`${colors.red}[ FAIL ] DESIGN.md already exists; refusing to replace it non-interactively.${colors.reset}`);
+        console.error(`${colors.yellow}         Re-run with --yes to replace it (the current file is backed up first).${colors.reset}\n`);
+        process.exit(1);
+      }
       applyDesignSystem(catalogDir, selected);
     }
     return;
@@ -3295,9 +4850,22 @@ function applyDesignSystem(catalogDir, system) {
 
   const destFile = path.join(TARGET_DIR, 'DESIGN.md');
   const content = fs.readFileSync(srcFile, 'utf8');
+  if (fs.existsSync(destFile)) {
+    const current = fs.readFileSync(destFile, 'utf8');
+    if (current !== content) {
+      const stamp = new Date().toISOString().replace(/[:.]/g, '-');
+      const backupDir = fs.existsSync(path.join(TARGET_DIR, '.agents'))
+        ? path.join(TARGET_DIR, '.agents', '_backup')
+        : TARGET_DIR;
+      fs.mkdirSync(backupDir, { recursive: true });
+      const backupFile = path.join(backupDir, `DESIGN.md.${stamp}.bak`);
+      fs.copyFileSync(destFile, backupFile);
+      console.log(`${colors.yellow}[ WARN ] Existing DESIGN.md backed up to ${path.relative(TARGET_DIR, backupFile)}${colors.reset}`);
+    }
+  }
   fs.writeFileSync(destFile, content, 'utf8');
 
-  console.log(`${colors.green}✓ Successfully applied [${system.name}] design system to ./DESIGN.md${colors.reset}`);
+  console.log(`${colors.green}[ OK ] Applied [${system.name}] design system to ./DESIGN.md${colors.reset}`);
   console.log(`  Category: ${colors.cyan}${system.category}${colors.reset}`);
   console.log(`  Colors:   Primary ${system.primaryColor} | Canvas ${system.backgroundColor}`);
   console.log(`  Gate:     ${colors.green}Mandatory Design Gate Satisfied (.agents/hooks/pre-tool-use.sh unblocked)${colors.reset}\n`);
@@ -3359,6 +4927,14 @@ function runEval(flags, positional) {
 function runDoctor(flags) {
   if (!flags.quiet && !flags.json) printBanner();
 
+  // .claude/skills/ must mirror .agents/skills/ (links, or recorded copies)
+  const hasClaudeDir = fs.existsSync(path.join(TARGET_DIR, '.claude'));
+  const skillDrift = hasClaudeDir && fs.existsSync(path.join(TARGET_DIR, '.agents', 'skills'))
+    ? describeClaudeSkillsDrift(claudeSkillsDrift(TARGET_DIR, readManifestLenient(path.join(TARGET_DIR, '.agents'))))
+    : null;
+  const agentsMdPath = path.join(TARGET_DIR, 'AGENTS.md');
+  const agentsMdHasBlock = () => fs.readFileSync(agentsMdPath, 'utf8').includes(DEVOS_BLOCK_START);
+
   const checks = [
     { name: '.agents/ directory', path: path.join(TARGET_DIR, '.agents'), type: 'dir' },
     { name: 'Agent personas (.agents/agents/)', path: path.join(TARGET_DIR, '.agents', 'agents'), type: 'dir' },
@@ -3381,11 +4957,12 @@ function runDoctor(flags) {
     { name: 'Documentation (docs/)', path: path.join(TARGET_DIR, 'docs'), type: 'dir' },
     { name: 'Claude Code commands (.claude/commands/)', path: path.join(TARGET_DIR, '.claude', 'commands'), type: 'dir', optional: true },
     { name: 'Claude Code agents (.claude/agents/)', path: path.join(TARGET_DIR, '.claude', 'agents'), type: 'dir', optional: true },
-    { name: 'Claude Code hooks (.claude/hooks.json)', path: path.join(TARGET_DIR, '.claude', 'hooks.json'), type: 'file', optional: true },
+    { name: 'Claude Code hook wiring (.claude/settings.json PreToolUse)', path: path.join(TARGET_DIR, '.claude', 'settings.json'), type: 'file', optional: true, validate: () => claudeHooksWired(TARGET_DIR), invalidReason: 'Dev-OS PreToolUse hook not wired; run devos update' },
+    { name: 'Claude Code skills (.claude/skills/ in sync with .agents/skills/)', path: path.join(TARGET_DIR, '.claude', 'skills'), type: 'dir', optional: true, skip: !hasClaudeDir, validate: () => !skillDrift, invalidReason: skillDrift },
+    { name: 'Cross-harness instructions (AGENTS.md Dev-OS block)', path: agentsMdPath, type: 'file', optional: true, validate: agentsMdHasBlock, invalidReason: 'no Dev-OS block; run devos update' },
     { name: 'Cursor rules (.cursor/rules/devos.mdc)', path: path.join(TARGET_DIR, '.cursor', 'rules', 'devos.mdc'), type: 'file', optional: true },
-    { name: 'OpenCode rules (.opencode/rules/devos-rules.md)', path: path.join(TARGET_DIR, '.opencode', 'rules', 'devos-rules.md'), type: 'file', optional: true },
+    { name: 'OpenCode config (opencode.json)', path: path.join(TARGET_DIR, 'opencode.json'), type: 'file', optional: true },
     { name: 'Antigravity / Gemini instructions (ANTIGRAVITY.md)', path: path.join(TARGET_DIR, 'ANTIGRAVITY.md'), type: 'file', optional: true },
-    { name: 'Codex instructions (.codex/instructions.md)', path: path.join(TARGET_DIR, '.codex', 'instructions.md'), type: 'file', optional: true },
     { name: 'Mechanical pre-commit hook (.git/hooks/pre-commit)', path: path.join(TARGET_DIR, '.git', 'hooks', 'pre-commit'), type: 'file', optional: true }
   ];
 
@@ -3394,7 +4971,7 @@ function runDoctor(flags) {
   let requiredTotal = 0;
   let failedRequired = 0;
 
-  checks.forEach((check) => {
+  checks.filter((check) => !check.skip).forEach((check) => {
     const exists = fs.existsSync(check.path);
     let isExec = false;
 
@@ -3407,7 +4984,8 @@ function runDoctor(flags) {
       }
     }
 
-    const ok = exists && (!check.exec || isExec);
+    const valid = exists && check.validate ? Boolean(check.validate()) : true;
+    const ok = exists && (!check.exec || isExec) && valid;
     const status = ok ? 'PASS' : (check.optional ? 'WARN' : 'FAIL');
     if (!check.optional) {
       requiredTotal++;
@@ -3415,7 +4993,8 @@ function runDoctor(flags) {
       else failedRequired++;
     }
 
-    results.push({ name: check.name, path: check.path, status, optional: Boolean(check.optional), exec: check.exec ? isExec : undefined });
+    const reason = ok ? undefined : (!exists ? 'Missing' : (check.exec && !isExec ? 'Missing Executable Permissions (run chmod +x)' : (check.invalidReason || 'Invalid')));
+    results.push({ name: check.name, path: check.path, status, optional: Boolean(check.optional), exec: check.exec ? isExec : undefined, reason });
   });
 
   if (flags.json) {
@@ -3432,7 +5011,7 @@ function runDoctor(flags) {
       const execLabel = res.exec !== undefined ? ` ${colors.gray}(Executable: 755)${colors.reset}` : '';
       console.log(`  [ ${colors.green}PASS${colors.reset} ] ${res.name}${execLabel}`);
     } else {
-      const reason = !fs.existsSync(res.path) ? 'Missing' : 'Missing Executable Permissions (run chmod +x)';
+      const reason = res.reason || 'Missing';
       const tagColor = res.status === 'WARN' ? colors.yellow : colors.red;
       console.log(`  [ ${tagColor}${res.status}${colors.reset} ] ${res.name} ${colors.gray}(${reason})${colors.reset}`);
     }
@@ -3470,15 +5049,15 @@ function runStatus(flags) {
   const hasHook = fs.existsSync(path.join(TARGET_DIR, '.git', 'hooks', 'pre-commit'));
   const hasClaude = fs.existsSync(path.join(TARGET_DIR, '.claude', 'commands'));
   const hasCursor = fs.existsSync(path.join(TARGET_DIR, '.cursor', 'rules', 'devos.mdc'));
-  const hasOpenCode = fs.existsSync(path.join(TARGET_DIR, 'OPENCODE.md'));
+  const hasOpenCode = fs.existsSync(path.join(TARGET_DIR, 'opencode.json')) || fs.existsSync(path.join(TARGET_DIR, 'OPENCODE.md'));
   const hasAntigravity = fs.existsSync(path.join(TARGET_DIR, 'ANTIGRAVITY.md')) || fs.existsSync(path.join(TARGET_DIR, 'GEMINI.md'));
-  const hasCodex = fs.existsSync(path.join(TARGET_DIR, '.codex', 'instructions.md')) || fs.existsSync(path.join(TARGET_DIR, '.windsurfrules'));
+  const hasCodex = fs.existsSync(path.join(TARGET_DIR, '.windsurfrules')) || fs.existsSync(path.join(TARGET_DIR, '.codex', 'instructions.md'));
   const hasMemory = fs.existsSync(path.join(TARGET_DIR, '.agents', 'memory'));
   const hasTaskBoard = fs.existsSync(path.join(TARGET_DIR, 'docs', 'TASK_BOARD.md'));
   const hasDesign = fs.existsSync(path.join(TARGET_DIR, 'DESIGN.md')) || fs.existsSync(path.join(TARGET_DIR, 'docs', 'DESIGN.md'));
   const hasTestingGuide = fs.existsSync(path.join(TARGET_DIR, 'docs', 'TESTING_GUIDE.md'));
   const manifestPath = path.join(TARGET_DIR, '.agents', 'manifest.json');
-  const manifest = fs.existsSync(manifestPath) ? JSON.parse(fs.readFileSync(manifestPath, 'utf8')) : null;
+  const manifest = fs.existsSync(manifestPath) ? readJsonFile(manifestPath, '.agents/manifest.json') : null;
 
   if (flags.json) {
     console.log(JSON.stringify({
@@ -3519,21 +5098,436 @@ function runStatus(flags) {
   console.log(`  Memory Vault:  ${hasMemory ? colors.green + 'Active (.agents/memory/)' : colors.gray + 'None'}${colors.reset}`);
   console.log(`  Task Board:    ${hasTaskBoard ? colors.green + 'Active (docs/TASK_BOARD.md)' : colors.gray + 'None'}${colors.reset}`);
   const latestScorecardPath = path.join(TARGET_DIR, '.agents', 'evals', 'reports', 'latest-scorecard.json');
-  const latestScorecard = fs.existsSync(latestScorecardPath) ? JSON.parse(fs.readFileSync(latestScorecardPath, 'utf8')) : null;
+  const latestScorecard = fs.existsSync(latestScorecardPath) ? readJsonFile(latestScorecardPath, '.agents/evals/reports/latest-scorecard.json') : null;
   console.log(`  Eval Benchmark:${latestScorecard ? (latestScorecard.verdict === 'EVAL_PASSED' ? colors.green + ' Passed (' + latestScorecard.score + '%)' : colors.red + ' Regressed (' + latestScorecard.score + '%)') : colors.gray + ' None'}${colors.reset}`);
   if (manifest && manifest.installedPacks) {
     console.log(`  Active Packs:  ${colors.cyan}${manifest.installedPacks.join(', ')}${colors.reset}`);
   }
-  console.log(`  Harnesses:     Claude (${hasClaude ? '✓' : '✗'}), Antigravity (${hasAntigravity ? '✓' : '✗'}), Cursor (${hasCursor ? '✓' : '✗'}), OpenCode (${hasOpenCode ? '✓' : '✗'}), Codex (${hasCodex ? '✓' : '✗'})\n`);
+  const yn = (v) => (v ? 'yes' : 'no');
+  console.log(`  Harnesses:     Claude (${yn(hasClaude)}), Antigravity (${yn(hasAntigravity)}), Cursor (${yn(hasCursor)}), OpenCode (${yn(hasOpenCode)}), Codex (${yn(hasCodex)})\n`);
 
   if (!hasAgents) {
     console.log(`Run ${colors.cyan}npx @olives/devos init${colors.reset} to install Dev-OS in this project.\n`);
   }
 }
 
+// ---------------------------------------------------------------------------
+// spec (W5): docs/specs/<slug>/{requirements,tasks}.md
+// ---------------------------------------------------------------------------
+// Grammar (binding, from the spec-driven skill templates):
+// - Lines inside ``` or ~~~ fences are ignored (CommonMark: a fence closes only on
+//   the same character, at least as long, with no info string); trailing
+//   whitespace and CRLF are trimmed.
+// - Requirement: `### R<n>: <title>`, ids unique.
+// - Task: `### T<n>: <title>`, ids unique; its block runs to the next `##` or
+//   `###` heading or the end of the file.
+// - Fields: `- depends: none | T.., T..`, `- covers: R.., R..`, `- verify: <text>`,
+//   each exactly once per block, in any order; other lines are free text.
+
+const SPEC_REQ_RE = /^### (R[1-9][0-9]*): (.+)$/;
+const SPEC_TASK_RE = /^### (T[1-9][0-9]*): (.+)$/;
+const SPEC_FIELD_RE = /^- (depends|covers|verify): (.+)$/;
+const SPEC_EMPTY_FIELD_RE = /^- (depends|covers|verify):$/;
+const SPEC_BLOCK_END_RE = /^#{2,3}\s/;
+const SPEC_FIELDS = ['depends', 'covers', 'verify'];
+
+// Non-fenced lines with their 1-based line numbers
+function specLines(text) {
+  const out = [];
+  let fence = null; // the opening run, e.g. '```' or '~~~~'
+  String(text).split(/\r?\n/).forEach((raw, i) => {
+    const line = raw.replace(/\s+$/, '');
+    const m = /^\s*(`{3,}|~{3,})(.*)$/.exec(line);
+    if (fence === null) {
+      // A backtick fence's info string may not contain a backtick
+      if (m && !(m[1][0] === '`' && m[2].includes('`'))) { fence = m[1]; return; }
+      out.push({ n: i + 1, line });
+    } else if (m && m[1][0] === fence[0] && m[1].length >= fence.length && m[2].trim() === '') {
+      fence = null;
+    }
+  });
+  return out;
+}
+
+function idNum(id) {
+  return parseInt(id.slice(1), 10);
+}
+
+function parseSpecRequirements(text, file = 'requirements.md') {
+  const ids = [];
+  const titles = {};
+  const errors = [];
+  specLines(text).forEach(({ n, line }) => {
+    const m = line.match(SPEC_REQ_RE);
+    if (m) {
+      if (titles[m[1]] !== undefined) errors.push(`${file}:${n}: duplicate requirement id ${m[1]}`);
+      else { ids.push(m[1]); titles[m[1]] = m[2]; }
+    } else if (/^### R/.test(line)) {
+      errors.push(`${file}:${n}: malformed requirement heading (expected '### R<n>: <title>'): ${line}`);
+    }
+  });
+  return { ids, titles, errors };
+}
+
+function splitSpecIds(value) {
+  return value.split(/\s*,\s*/).map((v) => v.trim());
+}
+
+function parseSpecTasks(text, file = 'tasks.md') {
+  const tasks = [];
+  const errors = [];
+  const seen = new Set();
+  let cur = null;
+  const finish = () => {
+    if (!cur) return;
+    SPEC_FIELDS.forEach((f) => {
+      if (!cur.fieldCount[f]) errors.push(`${file}:${cur.line}: ${cur.id} is missing '- ${f}:'`);
+    });
+    tasks.push(cur);
+    cur = null;
+  };
+  specLines(text).forEach(({ n, line }) => {
+    if (SPEC_BLOCK_END_RE.test(line)) {
+      finish();
+      const m = line.match(SPEC_TASK_RE);
+      if (m) {
+        if (seen.has(m[1])) {
+          errors.push(`${file}:${n}: duplicate task id ${m[1]}`);
+          return;
+        }
+        seen.add(m[1]);
+        cur = { id: m[1], title: m[2], line: n, depends: [], covers: [], verify: '', fieldCount: {} };
+      } else if (/^### T/.test(line)) {
+        errors.push(`${file}:${n}: malformed task heading (expected '### T<n>: <title>'): ${line}`);
+      }
+      return;
+    }
+    if (!cur) return;
+    const empty = line.match(SPEC_EMPTY_FIELD_RE);
+    if (empty) {
+      cur.fieldCount[empty[1]] = (cur.fieldCount[empty[1]] || 0) + 1;
+      errors.push(`${file}:${n}: ${cur.id} has an empty '- ${empty[1]}:'`);
+      return;
+    }
+    const m = line.match(SPEC_FIELD_RE);
+    if (!m) return; // free text
+    const [, field, value] = m;
+    cur.fieldCount[field] = (cur.fieldCount[field] || 0) + 1;
+    if (cur.fieldCount[field] > 1) {
+      errors.push(`${file}:${n}: ${cur.id} repeats '- ${field}:'`);
+      return;
+    }
+    if (field === 'verify') {
+      cur.verify = value.trim();
+    } else if (field === 'depends') {
+      if (value.trim() === 'none') return;
+      splitSpecIds(value).forEach((id) => {
+        if (/^T[1-9][0-9]*$/.test(id)) cur.depends.push(id);
+        else errors.push(`${file}:${n}: ${cur.id} depends on '${id}', which is not a task id (use 'none' or T<n>, T<n>)`);
+      });
+    } else {
+      splitSpecIds(value).forEach((id) => {
+        if (/^R[1-9][0-9]*$/.test(id)) cur.covers.push(id);
+        else errors.push(`${file}:${n}: ${cur.id} covers '${id}', which is not a requirement id (use R<n>, R<n>)`);
+      });
+    }
+  });
+  finish();
+  tasks.forEach((t) => { delete t.fieldCount; });
+  return { tasks, errors };
+}
+
+// Kahn topological layers over `depends`. Unknown ids and cycles (a
+// self-dependency included) are errors; waves is null when any exist.
+function specWaves(tasks) {
+  const errors = [];
+  const ids = new Set(tasks.map((t) => t.id));
+  tasks.forEach((t) => {
+    t.depends.forEach((d) => {
+      if (d === t.id) errors.push(`${t.id} depends on itself (cycle)`);
+      else if (!ids.has(d)) errors.push(`${t.id} depends on unknown task ${d}`);
+    });
+  });
+  if (errors.length) return { waves: null, errors };
+  const indeg = {};
+  const next = {};
+  tasks.forEach((t) => { indeg[t.id] = 0; next[t.id] = []; });
+  tasks.forEach((t) => {
+    new Set(t.depends).forEach((d) => { indeg[t.id]++; next[d].push(t.id); });
+  });
+  const waves = [];
+  let layer = tasks.map((t) => t.id).filter((id) => indeg[id] === 0);
+  let placed = 0;
+  while (layer.length) {
+    layer.sort((a, b) => idNum(a) - idNum(b));
+    waves.push(layer);
+    placed += layer.length;
+    const following = [];
+    layer.forEach((id) => next[id].forEach((n) => { if (--indeg[n] === 0) following.push(n); }));
+    layer = following;
+  }
+  if (placed < tasks.length) {
+    const stuck = tasks.map((t) => t.id).filter((id) => indeg[id] > 0).sort((a, b) => idNum(a) - idNum(b));
+    return { waves: null, errors: [`dependency cycle among ${stuck.join(', ')}`] };
+  }
+  return { waves, errors: [] };
+}
+
+// Full analysis of a spec. `requirementsText` may be null (waves only).
+function analyzeSpec(requirementsText, tasksText) {
+  const req = requirementsText == null ? null : parseSpecRequirements(requirementsText);
+  const parsed = parseSpecTasks(tasksText);
+  const graph = specWaves(parsed.tasks);
+  const structural = [...(req ? req.errors : []), ...parsed.errors, ...graph.errors];
+  const coverage = [];
+  if (req) {
+    const known = new Set(req.ids);
+    const covered = new Set();
+    parsed.tasks.forEach((t) => t.covers.forEach((r) => {
+      if (known.has(r)) covered.add(r);
+      else coverage.push(`${t.id} covers unknown requirement ${r}`);
+    }));
+    req.ids.forEach((r) => { if (!covered.has(r)) coverage.push(`requirement ${r} (${req.titles[r]}) is not covered by any task`); });
+    if (!req.ids.length) coverage.push('requirements.md defines no requirements (### R<n>: <title>)');
+  }
+  if (!parsed.tasks.length) structural.push('tasks.md defines no tasks (### T<n>: <title>)');
+  return {
+    requirements: req ? req.ids : null,
+    tasks: parsed.tasks,
+    waves: graph.waves,
+    structural,
+    coverage,
+    problems: [...structural, ...coverage]
+  };
+}
+
+function specFail(flags, msg, extra = {}) {
+  if (flags.json) console.log(JSON.stringify({ ok: false, problems: [msg], ...extra }, null, 2));
+  else console.error(`${colors.red}[ FAIL ] ${msg}${colors.reset}`);
+  process.exit(1);
+}
+
+function runSpec(flags, positional) {
+  const sub = positional[0];
+  const slug = positional[1];
+  const usage = 'Usage: devos spec waves <slug> [--json] | devos spec check <slug> [--json]';
+  if (sub !== 'waves' && sub !== 'check') specFail(flags, `Unknown spec subcommand '${sub || ''}'. ${usage}`);
+  if (!slug) specFail(flags, `Missing <slug>. ${usage}`);
+  if (slug.includes('/') || slug.includes('\\') || slug.includes('..') || slug.startsWith('.') || path.isAbsolute(slug)) {
+    specFail(flags, `Invalid spec slug '${slug}': it must be a folder name under docs/specs/ (no '/', '\\', or '..').`);
+  }
+  const dir = path.join(TARGET_DIR, 'docs', 'specs', slug);
+  const tasksPath = path.join(dir, 'tasks.md');
+  const reqPath = path.join(dir, 'requirements.md');
+  if (!fs.existsSync(tasksPath)) specFail(flags, `docs/specs/${slug}/tasks.md not found.`, { slug });
+  if (sub === 'check' && !fs.existsSync(reqPath)) specFail(flags, `docs/specs/${slug}/requirements.md not found.`, { slug });
+  const reqText = fs.existsSync(reqPath) ? fs.readFileSync(reqPath, 'utf8') : null;
+  const a = analyzeSpec(reqText, fs.readFileSync(tasksPath, 'utf8'));
+  const taskOut = a.tasks.map((t) => ({ id: t.id, title: t.title, depends: t.depends, covers: t.covers, verify: t.verify }));
+
+  if (sub === 'waves') {
+    const ok = a.structural.length === 0;
+    if (flags.json) {
+      console.log(JSON.stringify({ slug, ok, waves: a.waves, tasks: taskOut, problems: a.structural, warnings: a.coverage }, null, 2));
+      if (!ok) process.exit(1);
+      return;
+    }
+    if (!ok) {
+      console.error(`${colors.red}[ FAIL ] docs/specs/${slug}/tasks.md cannot be ordered into waves:${colors.reset}`);
+      a.structural.forEach((p) => console.error(`         ${p}`));
+      process.exit(1);
+    }
+    const byId = {};
+    a.tasks.forEach((t) => { byId[t.id] = t; });
+    console.log(`${colors.bold}Spec ${slug}: ${a.tasks.length} task(s) in ${a.waves.length} wave(s)${colors.reset} ${colors.gray}(tasks in one wave can run in parallel)${colors.reset}`);
+    a.waves.forEach((w, i) => {
+      console.log(`  ${colors.cyan}Wave ${i + 1}${colors.reset}: ${w.map((id) => `${id} ${byId[id].title}`).join(' | ')}`);
+    });
+    if (a.coverage.length) console.log(`${colors.yellow}[ WARN ] ${a.coverage.length} coverage gap(s); run 'devos spec check ${slug}'.${colors.reset}`);
+    return;
+  }
+
+  const ok = a.problems.length === 0;
+  if (flags.json) {
+    console.log(JSON.stringify({ slug, ok, requirements: a.requirements, tasks: taskOut, waves: a.waves, problems: a.problems }, null, 2));
+    if (!ok) process.exit(1);
+    return;
+  }
+  if (!ok) {
+    console.error(`${colors.red}[ FAIL ] docs/specs/${slug}: ${a.problems.length} problem(s)${colors.reset}`);
+    a.problems.forEach((p) => console.error(`         ${p}`));
+    process.exit(1);
+  }
+  console.log(`${colors.green}[ OK ] docs/specs/${slug}: ${a.requirements.length} requirement(s), ${a.tasks.length} task(s), every requirement covered, ${a.waves.length} wave(s).${colors.reset}`);
+}
+
+// ---------------------------------------------------------------------------
+// build-plugin (W4): a Claude Code plugin built from the Dev-OS sources
+// ---------------------------------------------------------------------------
+// Layout and schemas verified on 2026-10-22 against
+// https://code.claude.com/docs/en/plugins-reference (manifest at
+// .claude-plugin/plugin.json, components at the plugin root, hooks/hooks.json
+// wraps the event map in a top-level "hooks" key, ${CLAUDE_PLUGIN_ROOT} in
+// double quotes in shell-form commands) and
+// https://code.claude.com/docs/en/plugins/components ("Ignored fields:
+// permissionMode, hooks, mcpServers, and initialPrompt" for plugin agents).
+
+const PLUGIN_NAME = 'devos';
+// Entries build-plugin owns inside the output dir; nothing else is touched
+const PLUGIN_OUTPUTS = ['.claude-plugin', 'agents', 'commands', 'skills', 'hooks', 'README.md'];
+
+const PLUGIN_HOOK_ENV_PREFIX = 'DEVOS_PLUGIN_MODE=1 ';
+
+function pluginHooksJson() {
+  const hooks = {};
+  Object.keys(DEVOS_CLAUDE_HOOKS).forEach((event) => {
+    hooks[event] = DEVOS_CLAUDE_HOOKS[event].map((group) => ({
+      ...group,
+      hooks: group.hooks.map((h) => ({
+        ...h,
+        // Shell form (no `args`) runs through `sh -c` (hooks reference, "Exec form
+        // and shell form"), so a leading VAR=value assignment sets the env for
+        // the script only. DEVOS_PLUGIN_MODE=1 makes the scripts exit 0 in a
+        // project without .agents/manifest.json (not initialized with devos init).
+        command: `${PLUGIN_HOOK_ENV_PREFIX}${h.command.replace('"$CLAUDE_PROJECT_DIR"/.agents/hooks/', '"${CLAUDE_PLUGIN_ROOT}"/hooks/')}`
+      }))
+    }));
+  });
+  return { hooks };
+}
+
+function pluginManifest() {
+  const author = String(PKG.author || 'Clement Olives').replace(/\s+—\s+/g, ', ');
+  return {
+    name: PLUGIN_NAME,
+    version: PKG.version,
+    description: 'Dev-OS multi-agent engineering OS: the 13-agent roster, slash commands, core skills, and lifecycle gate hooks.',
+    author: { name: author, url: 'https://github.com/olitech1010' },
+    homepage: PKG.homepage || 'https://github.com/olitech1010/dev-os#readme',
+    repository: 'https://github.com/olitech1010/dev-os',
+    license: PKG.license || 'MIT',
+    keywords: ['agents', 'multi-agent', 'hooks', 'skills', 'sdlc']
+  };
+}
+
+function pluginReadme() {
+  return [
+    '# Dev-OS Claude Code plugin',
+    '',
+    `Built by \`devos build-plugin\` from @olives/devos v${PKG.version}. Do not edit; rebuild instead.`,
+    '',
+    'Install from the Dev-OS marketplace:',
+    '',
+    '    /plugin marketplace add olitech1010/dev-os',
+    '    /plugin install devos@olives-devos',
+    '',
+    '- `agents/`: the default Dev-OS roster as plugin subagents (`devos:<name>`).',
+    '- `commands/`: the Dev-OS slash commands (`/devos:<name>`).',
+    '- `skills/`: the core skill pack.',
+    '- `hooks/hooks.json`: the Dev-OS lifecycle gates, run from `${CLAUDE_PLUGIN_ROOT}/hooks/`.',
+    '',
+    'The hooks only act in projects initialized with `npx @olives/devos init` (they look for',
+    '`.agents/manifest.json`). Each hook command runs with `DEVOS_PLUGIN_MODE=1`, and in any other',
+    'project the scripts exit 0 at once, so enabling the plugin user-wide never blocks unrelated work.',
+    '',
+    'The marketplace entry is a `command` source: Claude Code runs',
+    '`npx -y @olives/devos@<version> build-plugin --print-path` when you install or update the plugin,',
+    'and again once per session, then copies the printed directory into its plugin cache (`mode: copy`).',
+    '',
+    'Limits of the plugin form: Claude Code ignores `permissionMode`, `hooks`, and `mcpServers` in plugin agent',
+    'frontmatter, and a plugin cannot add `permissions.deny` rules. The hook scripts look for project state',
+    '(`.agents/`, `docs/TASK_BOARD.md`, `.agents/scripts/`) under the project root. For the full install, run',
+    '`npx @olives/devos init` in the project; do not enable this plugin in a project that already wired the',
+    'Dev-OS hooks in `.claude/settings.json`, or every gate runs twice.',
+    ''
+  ].join('\n');
+}
+
+// Refuse output dirs that are, or contain, something we must not clear
+function assertSafePluginOut(outDir) {
+  const home = require('os').homedir();
+  const resolved = path.resolve(outDir);
+  const forbidden = [path.parse(resolved).root, home, TARGET_DIR, TEMPLATE_DIR].map((p) => path.resolve(p));
+  if (forbidden.includes(resolved)) throw new Error(`refusing to build into ${resolved}; pick an empty or dedicated directory with --out`);
+  const rel = path.relative(resolved, TEMPLATE_DIR);
+  if (rel === '' || (!rel.startsWith('..') && !path.isAbsolute(rel))) {
+    throw new Error(`refusing to build into ${resolved}: it contains the Dev-OS sources`);
+  }
+  const manifestPath = path.join(resolved, '.claude-plugin', 'plugin.json');
+  if (fs.existsSync(resolved) && fs.readdirSync(resolved).length) {
+    let ours = false;
+    try { ours = JSON.parse(fs.readFileSync(manifestPath, 'utf8')).name === PLUGIN_NAME; } catch (e) {}
+    if (!ours) throw new Error(`refusing to build into ${resolved}: it is not empty and holds no previous Dev-OS plugin build`);
+  }
+  return resolved;
+}
+
+function buildPlugin(outDir) {
+  const out = assertSafePluginOut(outDir);
+  const srcAgents = path.join(TEMPLATE_DIR, '.agents');
+  fs.mkdirSync(out, { recursive: true });
+  // Rebuild: clear only the entries build-plugin itself writes
+  PLUGIN_OUTPUTS.forEach((entry) => fs.rmSync(path.join(out, entry), { recursive: true, force: true }));
+
+  const agents = generateClaudeAgents(srcAgents, out);
+  const commands = generateClaudeCommands(srcAgents, out);
+
+  const packsData = loadPacks(srcAgents);
+  const coreSkills = packSkillNames(packsData, ['core']).filter((n) => safeFileStem(n, null) && fs.existsSync(path.join(srcAgents, 'skills', n)));
+  coreSkills.forEach((n) => copyRecursiveSync(path.join(srcAgents, 'skills', n), path.join(out, 'skills', n)));
+
+  const hooksOut = path.join(out, 'hooks');
+  fs.mkdirSync(hooksOut, { recursive: true });
+  const hookSrc = path.join(srcAgents, 'hooks');
+  fs.readdirSync(hookSrc).forEach((f) => {
+    const src = path.join(hookSrc, f);
+    if (fs.statSync(src).isDirectory()) {
+      if (f === 'lib') copyRecursiveSync(src, path.join(hooksOut, f));
+    } else if (f.endsWith('.sh')) {
+      fs.copyFileSync(src, path.join(hooksOut, f));
+      fs.chmodSync(path.join(hooksOut, f), 0o755);
+    }
+  });
+  fs.writeFileSync(path.join(hooksOut, 'hooks.json'), JSON.stringify(pluginHooksJson(), null, 2) + '\n', 'utf8');
+
+  fs.mkdirSync(path.join(out, '.claude-plugin'), { recursive: true });
+  fs.writeFileSync(path.join(out, '.claude-plugin', 'plugin.json'), JSON.stringify(pluginManifest(), null, 2) + '\n', 'utf8');
+  fs.writeFileSync(path.join(out, 'README.md'), pluginReadme(), 'utf8');
+  return { out, agents, commands, skills: coreSkills.length, hooks: Object.keys(DEVOS_CLAUDE_HOOKS).length };
+}
+
+function runBuildPlugin(flags) {
+  const outDir = path.resolve(TARGET_DIR, flags.out || path.join('dist', 'claude-plugin'));
+  let res;
+  try {
+    res = buildPlugin(outDir);
+  } catch (err) {
+    console.error(`${colors.red}[ FAIL ] build-plugin: ${err.message}${colors.reset}`);
+    process.exit(1);
+  }
+  if (flags.printPath) {
+    // Contract for a marketplace `command` source: exactly one line, the absolute path
+    process.stdout.write(res.out + '\n');
+    return;
+  }
+  if (flags.json) {
+    console.log(JSON.stringify({ ok: true, ...res, version: PKG.version }, null, 2));
+    return;
+  }
+  console.log(`${colors.green}[ OK ] Claude Code plugin '${PLUGIN_NAME}' v${PKG.version} built in ${res.out}${colors.reset}`);
+  console.log(`${colors.gray}         ${res.agents} agents, ${res.commands} commands, ${res.skills} core skills, ${res.hooks} hook events${colors.reset}`);
+  console.log(`${colors.gray}         Try it: claude --plugin-dir ${res.out}   Validate: claude plugin validate ${res.out}${colors.reset}`);
+}
+
 // Main CLI Entrypoint
 async function main() {
-  const { command, positional, flags } = parseArgs(process.argv.slice(2));
+  let argv = process.argv.slice(2);
+  // The 'devos-init' bin alias runs init directly
+  const invokedAs = path.basename(process.argv[1] || '').replace(/\.js$/, '');
+  if (invokedAs === 'devos-init' && argv[0] !== 'init' && argv[0] !== 'setup') {
+    argv = ['init', ...argv];
+  }
+  const { command, positional, flags } = parseArgs(argv);
 
   if (flags.version) {
     printVersion();
@@ -3559,7 +5553,7 @@ async function main() {
       runAuto(flags, positional);
       break;
     case 'telemetry':
-      runTelemetry(flags, positional);
+      await runTelemetry(flags, positional);
       break;
     case 'mode':
       runMode(flags, positional);
@@ -3585,6 +5579,14 @@ async function main() {
     case 'skill':
     case 'skills':
       runSkill(flags, positional);
+      if (['add', 'install', 'sync', 'update', 'upgrade'].includes(positional[0])) refreshClaudeSkillLinks(flags);
+      break;
+    case 'spec':
+    case 'specs':
+      runSpec(flags, positional);
+      break;
+    case 'build-plugin':
+      runBuildPlugin(flags);
       break;
     case 'status':
       runStatus(flags);
@@ -3612,7 +5614,7 @@ async function main() {
 
 if (require.main === module) {
   main().catch((err) => {
-    console.error(`${colors.red}Error: ${err.message}${colors.reset}`);
+    console.error(`${colors.red}[ FAIL ] ${err.message}${colors.reset}`);
     process.exit(1);
   });
 }
@@ -3628,5 +5630,36 @@ module.exports = {
   analyzeTelemetry,
   detectHarness,
   parseArgs,
-  runTelemetry
+  parseFrontmatter,
+  yamlScalar,
+  mergeClaudeSettings,
+  claudeHooksWired,
+  generateClaudeAgents,
+  generateClaudeCommands,
+  upsertManagedBlock,
+  syncInstalledSkills,
+  ensureGitleaks,
+  ensureGitignoreEntries,
+  isDevosHookCommand,
+  detectAgentShell,
+  legacyFileHash,
+  isDevosGeneratedUnedited,
+  recordedHooksChoice,
+  installSkillSafely,
+  migrateLegacyInstall,
+  resolveSkillAlias,
+  AGENT_ALIASES,
+  runTelemetry,
+  analyzeSpec,
+  parseSpecTasks,
+  parseSpecRequirements,
+  specWaves,
+  syncClaudeSkills,
+  claudeSkillsDrift,
+  pluginHooksJson,
+  pluginManifest,
+  rootAgentsMdContent,
+  mergeOpenCodeJson,
+  DEVOS_CLAUDE_HOOKS,
+  DEVOS_HOOK_SCRIPTS
 };

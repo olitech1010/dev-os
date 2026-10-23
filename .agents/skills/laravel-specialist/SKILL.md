@@ -1,8 +1,9 @@
 ---
 name: laravel-specialist
-description: Build and configure Laravel 10+ applications, including creating Eloquent models and relationships, implementing Sanctum authentication, configuring Horizon queues, designing RESTful APIs with API resources, and building reactive interfaces with Livewire. Use when creating Laravel models, setting up queue workers, implementing Sanctum auth flows, building Livewire components, optimising Eloquent queries, or writing Pest/PHPUnit tests for Laravel features.
+description: "Use when building or configuring Laravel 10+ applications: Eloquent models and relationships, Sanctum authentication, Horizon queues, RESTful APIs with API resources, Livewire components, Eloquent query optimization, or Pest/PHPUnit feature tests."
 license: MIT
 metadata:
+  source: https://github.com/Jeffallan/claude-skills
   author: https://github.com/Jeffallan
   version: "1.1.0"
   domain: backend

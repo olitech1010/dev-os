@@ -25,13 +25,13 @@
     },
     {
       "id": "harness-opencode-artifacts",
-      "name": "OpenCode generator yields OPENCODE.md, .opencode/rules/devos-rules.md, and opencode.json",
+      "name": "OpenCode generator yields root AGENTS.md and a schema-valid root opencode.json",
       "platform": "opencode",
       "critical": true
     },
     {
       "id": "harness-codex-artifacts",
-      "name": "Codex generator yields .codex/instructions.md and .windsurfrules",
+      "name": "Codex generator yields root AGENTS.md and .windsurfrules",
       "platform": "codex",
       "critical": true
     },

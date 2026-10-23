@@ -1,6 +1,6 @@
 {
   "name": "@olives/devos",
-  "version": "4.5.0",
+  "version": "5.0.0",
   "publishConfig": {
     "access": "public"
   },
@@ -16,6 +16,7 @@
     "eval":           "node ./scripts/eval-runner.js",
     "auto":           "node ./scripts/sdlc-runner.js",
     "sdlc":           "node ./scripts/sdlc-runner.js",
+    "build:plugin":   "node ./bin/devos.js build-plugin",
     "prepublishOnly": "node ./scripts/smoke-test.js"
   },
   "repository": {
@@ -52,9 +53,9 @@
     "scripts/",
     ".agents/AGENTS.md",
     ".agents/packs.json",
-    ".agents/manifest.json",
     ".agents/agents/",
     ".agents/commands/",
+    ".agents/maintainer/",
     ".agents/hooks/",
     ".agents/skills/",
     ".agents/scripts/",

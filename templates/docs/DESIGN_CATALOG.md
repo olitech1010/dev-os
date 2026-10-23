@@ -29,7 +29,7 @@ The catalog is stored locally in the project repository:
     │   └── DESIGN.md
     ├── supabase/
     │   └── DESIGN.md
-    └── ... (74 brand systems)
+    └── ... (more brand systems)
 ```
 
 ### The 8 Industry Verticals
@@ -50,7 +50,7 @@ The catalog is stored locally in the project repository:
 ## 3. CLI Command Reference
 
 ### `devos design list [category]`
-List all 74 systems or filter by industry vertical:
+List every system or filter by industry vertical:
 
 ```bash
 # List all systems grouped by vertical

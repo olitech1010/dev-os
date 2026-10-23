@@ -1,6 +1,6 @@
 ---
 name: workflow-metrics
-description: Guidelines for tracking agent performance, loop counts, and error rates.
+description: "Use when recording or reviewing agent workflow metrics for Dev-OS itself: loop counts, gate failures, and error rates per agent. Maintainer pack only."
 ---
 
 # Workflow Metrics

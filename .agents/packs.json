@@ -1,122 +1,177 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "packs": {
     "core": {
       "name": "Core Engineering Foundation",
-      "description": "Essential multi-agent orchestration, autonomous SDLC, design gate, humanizer, telemetry, shared memory, and task board.",
+      "description": "Every gate-critical skill: orchestration, autonomous SDLC, brainstorming and plan gates, design gate, humanizer, task contracts and board, shared memory, commit gate, review, QA, security review, browser testing, deployment checks, observability, and local telemetry.",
       "default": true,
       "skills": [
         "brainstorming",
+        "writing-plans",
+        "spec-driven",
+        "grill-me",
         "autonomous-sdlc",
         "testing-guide",
         "humanizer",
         "anti-ai-ui",
-        "telemetry",
         "task-contract",
         "task-board",
         "shared-memory",
-        "git-workflow",
         "git-ops",
-        "git-commit",
         "code-reviewer",
         "human-checkpoint",
         "token-optimization",
         "deployment-checklist",
         "project-requirements",
         "stacks",
-        "workflow-metrics",
-        "eval-harness"
+        "qa",
+        "security-review",
+        "agent-browser",
+        "telemetry",
+        "performance-engineer"
       ]
     },
     "nextjs": {
       "name": "Next.js & Modern Web Stack",
-      "description": "Next.js App Router, React Server Components, Vercel, Supabase, Tailwind, and UI engineering.",
+      "description": "Next.js App Router, React Server Components, React performance and composition, view transitions, Vercel deploy and optimization, Supabase and Postgres, shadcn/ui, and UI craft.",
       "stack": "nextjs",
       "skills": [
-        "nextjs-app-router-patterns",
         "nextjs-developer",
-        "nextjs-supabase-auth",
         "vercel-react-best-practices",
         "vercel-composition-patterns",
         "vercel-react-view-transitions",
         "vercel-optimize",
-        "vercel-cli-with-tokens",
         "deploy-to-vercel",
         "shadcn-ui",
-        "frontend-ui-engineering",
         "anti-ai-ui",
-        "ui-ux-pro-max",
-        "ui-designer",
-        "web-design-guidelines",
-        "seo-aeo-best-practices",
-        "seo-geo",
         "supabase",
         "supabase-postgres-best-practices"
       ]
     },
     "laravel": {
       "name": "Laravel Specialist Stack",
-      "description": "PHP 8.2+, Eloquent, Sanctum, Livewire, Pest/PHPUnit TDD, and security hardening.",
+      "description": "PHP 8.2+, Eloquent, Sanctum, Livewire, Pest/PHPUnit TDD, verification loop, security hardening, and general backend guidelines.",
       "stack": "laravel",
       "skills": [
         "laravel-specialist",
         "laravel-security",
         "laravel-tdd",
         "laravel-verification",
-        "backend-patterns",
         "backend-dev-guidelines"
       ]
     },
     "python": {
-      "name": "Python, Django & FastAPI Stack",
-      "description": "Python backend architecture, Django REST framework, FastAPI, and async backend patterns.",
+      "name": "Python Backend Stack (Django & FastAPI)",
+      "description": "Backend architecture guidance for Django and FastAPI projects. Note: backend-dev-guidelines is written for Node.js/Express; its layering, validation, error-handling, and testing doctrine applies to Python, but its code samples are TypeScript. No Python-specific skill ships yet; use the stacks skill's Django and FastAPI standards for language detail.",
       "stack": "django",
       "skills": [
-        "backend-patterns",
-        "backend-dev-guidelines",
-        "backend-development",
-        "nodejs-backend-patterns"
+        "backend-dev-guidelines"
       ]
     },
     "mobile": {
       "name": "Mobile & React Native Stack",
-      "description": "React Native, Expo Router, mobile performance, gestures, and native transitions.",
+      "description": "React Native, Expo, mobile performance, gestures, native transitions, and UI craft.",
       "stack": "react-native",
       "skills": [
         "vercel-react-native-skills",
-        "ui-ux-pro-max",
-        "design"
+        "anti-ai-ui"
       ]
     },
     "agentic": {
       "name": "Agent Development & Automation",
-      "description": "Agent creation, Google ADK patterns, browser automation CLI, and skill benchmarking.",
+      "description": "Agent and skill authoring, skill discovery and benchmarking, interface design exploration, requirement grilling, and browser automation. Google ADK skills moved to the google-adk pack.",
       "skills": [
         "agent-browser",
         "agent-development",
-        "google-agents-cli-adk-code",
-        "google-agents-cli-workflow",
         "skill-creator",
         "find-skills",
         "design-an-interface",
-        "grill-me",
-        "grill-with-docs"
+        "grill-me"
       ]
     },
     "creative": {
       "name": "Creative & Design Assets",
-      "description": "UI/UX styling, image generation prompts, content strategy, and writing guidelines.",
+      "description": "UI craft, image creation and AI image prompting (including website design reference images), content strategy, and writing guidelines.",
       "skills": [
-        "design",
         "anti-ai-ui",
         "image",
-        "image-generation",
-        "imagegen",
-        "imagegen-frontend-web",
         "content-strategy",
         "writing-guidelines"
       ]
+    },
+    "design-data": {
+      "name": "UI/UX Design Data",
+      "description": "Optional searchable design database: styles, color palettes, font pairings, product types, UX guidelines, and chart types across 10 stacks. Requires Python 3 for its search scripts.",
+      "skills": [
+        "ui-ux-pro-max"
+      ]
+    },
+    "codex": {
+      "name": "OpenAI Codex Image Generation",
+      "description": "Optional Codex-specific raster image generation and editing. Uses the Codex built-in image tool; the bundled scripts/image_gen.py fallback needs OPENAI_API_KEY in the environment.",
+      "skills": [
+        "imagegen"
+      ]
+    },
+    "google-adk": {
+      "name": "Google Agent Development Kit",
+      "description": "Optional Google agents-cli / ADK workflow and Python API patterns. The upstream scaffold, eval, deploy, publish, and observability sibling skills are not shipped; install them with uvx google-agents-cli setup if needed.",
+      "skills": [
+        "google-agents-cli-workflow",
+        "google-agents-cli-adk-code"
+      ]
+    },
+    "growth": {
+      "name": "Growth: SEO, GEO & Content",
+      "description": "Optional search visibility (traditional SEO and AI answer engines) and content strategy.",
+      "skills": [
+        "seo-geo",
+        "content-strategy"
+      ]
+    },
+    "web-tools": {
+      "name": "Web Platform Tools",
+      "description": "Optional modern web-platform guidance (HTML, CSS, client-side APIs) and exposing a local service through an ngrok tunnel.",
+      "skills": [
+        "modern-web-guidance",
+        "expose-localhost"
+      ]
+    },
+    "maintainer": {
+      "name": "Dev-OS Maintainer",
+      "description": "For developing Dev-OS itself: the Telemetry and Eval Engineer agents, the /eval and /telemetry commands, the eval harness, and workflow metrics. Agents and commands resolve from .agents/maintainer/. Not needed in application projects.",
+      "default": false,
+      "agents": [
+        "telemetry",
+        "eval-engineer"
+      ],
+      "commands": [
+        "eval",
+        "telemetry"
+      ],
+      "skills": [
+        "eval-harness",
+        "workflow-metrics"
+      ]
     }
+  },
+  "aliases": {
+    "git-commit": "git-ops",
+    "git-workflow": "git-ops",
+    "design": "anti-ai-ui",
+    "web-design-guidelines": "anti-ai-ui",
+    "frontend-ui-engineering": "anti-ai-ui",
+    "ui-designer": "anti-ai-ui",
+    "image-generation": "image",
+    "imagegen-frontend-web": "image",
+    "backend-development": "backend-dev-guidelines",
+    "backend-patterns": "backend-dev-guidelines",
+    "nodejs-backend-patterns": "backend-dev-guidelines",
+    "nextjs-app-router-patterns": "nextjs-developer",
+    "nextjs-supabase-auth": "supabase",
+    "vercel-cli-with-tokens": "deploy-to-vercel",
+    "seo-aeo-best-practices": "seo-geo",
+    "grill-with-docs": "grill-me"
   }
 }

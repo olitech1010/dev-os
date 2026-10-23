@@ -1,9 +1,6 @@
 ---
 name: autonomous-sdlc
-description: |
-  Comprehensive protocol for autonomous software development lifecycle execution across four standardized modes:
-  interactive (default developer pair-programming), guided (checkpoint approval), auto (hands-off MVP builder for founders/CEOs),
-  and audit (read-only diagnostic). Enforces strict multi-agent handoffs, mandatory design gates, and testing guides.
+description: "Use when running or reasoning about the Dev-OS software lifecycle modes (interactive, guided, auto via /auto or devos run, and read-only audit), the 10-stage autonomous pipeline, or the handoffs and gates between stages (design gate, QA, security, humanizer)."
 license: MIT
 metadata:
   version: "1.0.0"
@@ -35,18 +32,18 @@ Dev-OS operates in four distinct execution modes:
 
 ### 3. `auto` (`devos run` / `/auto`)
 - **Target Audience:** Startup founders, CEOs, and product managers who want to build an MVP from an idea hands-off.
-- **Workflow:** An **Executive Proxy** agent mounts the Tech Lead seat and oversees the entire team through all 10 stages without requiring technical human intervention.
+- **Workflow:** The **Orchestrator** runs in Autonomous Mode (see its "Autonomous Mode (/auto)" section) and oversees the entire team through all 10 stages without requiring technical human intervention. The Tech Lead stays a read-only arbiter for deadlocks.
 - **Key Deliverable:** At the conclusion of the run, the system delivers:
   1. Full working codebase with passing tests.
   2. `docs/PROJECT_REQUIREMENTS.md` (Product spec).
-  3. `DESIGN.md` at project root (Extracted from `ui-ux-pro-max`).
+  3. `DESIGN.md` at project root (written by the UI Designer under `anti-ai-ui`).
   4. Database schema + realistic seed data.
   5. `docs/TESTING_GUIDE.md` (Interactive step-by-step testing guide with `devos123` test accounts).
   6. Humanized documentation with zero AI fluff.
 
 ### 4. `audit`
 - **Target Audience:** Reviewers auditing an existing repository for security, architecture, and code health.
-- **Workflow:** Read-only analysis. Security, QA, and Eval Engineer agents scan the repository and produce comprehensive diagnostic reports in `/docs/` without modifying production code.
+- **Workflow:** Read-only analysis. Security and QA agents scan the repository (plus the Eval Engineer as an optional step when the `maintainer` pack is installed) and produce comprehensive diagnostic reports in `/docs/` without modifying production code.
 
 ---
 
@@ -61,7 +58,7 @@ In `auto` mode, the team executes the following 10-stage pipeline:
 1. INCEPTION (Architect) ────────────────► docs/PROJECT_REQUIREMENTS.md (grill-me)
        │
        ▼
-2. DESIGN GATE (UI Designer) ────────────► DESIGN.md (at project root via ui-ux-pro-max)
+2. DESIGN GATE (UI Designer) ────────────► DESIGN.md (at project root via anti-ai-ui)
        │
        ▼
 3. ARCHITECTURE & DB (DBA) ──────────────► Migrations + Seed Fixtures (devos123)
@@ -85,7 +82,7 @@ In `auto` mode, the team executes the following 10-stage pipeline:
 9. SECURITY AUDIT (Security) ────────────► OWASP Top 10, Auth/RLS, Secret scan
        │
        ▼
-10. HUMANIZER AUDIT (Release Manager) ───► Scrub AI tells from all docs and PRDs
+10. HUMANIZER AUDIT (Tech Writer) ───────► Scrub AI tells from all docs and PRDs
        │
        ▼
 [ FINAL STAGED SUMMARY PRESENTED TO FOUNDER ]
@@ -105,7 +102,7 @@ In `auto` mode, the team executes the following 10-stage pipeline:
 
 ## 4. SDLC Pipeline Runner CLI Reference
 
-The `scripts/sdlc-runner.js` engine executes, tracks, and gates the 10-stage pipeline. State is persisted in `.agents/memory/sdlc-state.json`.
+The SDLC runner executes, tracks, and gates the 10-stage pipeline. It ships inside the Dev-OS CLI package (invoked as `devos run`) and is not copied into your project. On the first run it creates the runtime state file .agents/memory/sdlc-state.json (absent until then, and gitignored by `devos init`).
 
 ### Commands
 
@@ -132,7 +129,7 @@ Stage 5 enforces **three** simultaneous conditions before the Developer may writ
 |---|---|---|
 | 1 | Mandatory Design Gate | `DESIGN.md` at project root |
 | 2 | Task Decomposition Gate | `docs/TASK_BOARD.md` |
-| 3 | **Implementation Plan Gate** | Any file in `docs/superpowers/plans/` (produced by `brainstorming` → `writing-plans`) |
+| 3 | **Implementation Plan Gate** | Any file in `docs/plans/` (produced by `brainstorming` → `writing-plans`) |
 
 All three must be satisfied. `devos run --step implementation` shows which conditions are blocking.
 

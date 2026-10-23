@@ -4,9 +4,13 @@ description: Synchronize, audit, or discover agent skills from the ecosystem
 agent: devops
 triage_level: TRIVIAL
 workflow: direct
+argument-hint: "[audit|list|sync|check|find <query>|add <owner/repo>]"
 ---
 
-Manage, audit, and synchronize specialist agent skills:
+Manage, audit, and synchronize specialist agent skills.
+
+Requested action: $ARGUMENTS (default: `audit`)
+
 
 1. **Audit skills against Agent Skills Standard & token budgets:**
    ```bash
@@ -33,3 +37,5 @@ Manage, audit, and synchronize specialist agent skills:
    devos skill find <query>
    devos skill add <owner/repo>
    ```
+
+`devos skill add`, `devos skill sync`, and `devos skill update` change installed skills and may download third-party content. Show the human the exact command and source and get explicit approval before running them. Run `devos skill sync --dry-run` before any sync.

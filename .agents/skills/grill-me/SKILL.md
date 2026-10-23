@@ -1,6 +1,6 @@
 ---
 name: grill-me
-description: Project inception interrogation. The Architect uses this to grill the user's initial vague project idea into concrete requirements before starting work.
+description: "Use when a project idea, plan, or design is still vague and needs to be interrogated into concrete requirements, edge cases, and open questions before work starts. The Architect runs it at inception; the docs variant also records ADRs and a glossary as decisions are made."
 ---
 
 # Grill-Me Skill (Matt Pocock Style)
@@ -44,4 +44,6 @@ Instead of asking the human 50 questions, perform a **Zero-Shot Extrapolation**:
 4. If a dimension cannot be logically deduced, explicitly mark it as an **OPEN QUESTION** in the final output.
 5. Present the synthesized results in a structured format so the human only has to review and tweak, rather than authoring it from scratch.
 
+## References
 
+- `references/grill-with-docs/GUIDE.md`: read when the grilling should also produce durable documentation (ADRs in `.agents/memory/decisions/` and a domain glossary) as each decision is settled. Formerly the `grill-with-docs` skill.

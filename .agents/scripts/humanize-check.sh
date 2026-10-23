@@ -12,17 +12,17 @@ if [ -z "$TARGET_FILE" ]; then
 fi
 
 if [ -d "$TARGET_FILE" ]; then
-    echo "🔍 Auditing directory '$TARGET_FILE' for AI writing patterns..."
+    echo "Auditing directory '$TARGET_FILE' for AI writing patterns..."
     DIR_FAILURES=0
     for f in "$TARGET_FILE"/*.md; do
         [ -e "$f" ] || continue
         bash "$0" "$f" || DIR_FAILURES=$((DIR_FAILURES + 1))
     done
     if [ "$DIR_FAILURES" -gt 0 ]; then
-        echo "❌ Humanizer Audit: Found AI tells across $DIR_FAILURES document(s)."
+        echo "[ FAIL ] Humanizer Audit: Found AI tells across $DIR_FAILURES document(s)."
         exit 1
     fi
-    echo "✅ Humanizer Audit: All documents in '$TARGET_FILE' are clean!"
+    echo "[ OK ] Humanizer Audit: All documents in '$TARGET_FILE' are clean!"
     exit 0
 fi
 
@@ -33,14 +33,14 @@ fi
 
 FAILURES=0
 
-echo "🔍 Auditing '$TARGET_FILE' for AI writing patterns..."
+echo "Auditing '$TARGET_FILE' for AI writing patterns..."
 
 # 1. Check for banned fluff words
 BANNED_WORDS='delve|deep dive|crucial|pivotal|tapestry|stands as a testament|groundbreaking|nestled in|game-changer|revolutionize|meticulously'
 MATCHES=$(grep -Ein "\b($BANNED_WORDS)\b" "$TARGET_FILE" | grep -v "^[[:space:]]*#" | grep -v "\`" | head -n 5)
 
 if [ -n "$MATCHES" ]; then
-    echo "  ⚠️ [TELL §11/§12] Overused AI words / inflated significance detected:"
+    echo "  [ WARN ] [TELL §11/§12] Overused AI words / inflated significance detected:"
     echo "$MATCHES" | sed 's/^/    Line /'
     FAILURES=$((FAILURES + 1))
 fi
@@ -50,7 +50,7 @@ CHATBOT_PATTERNS="I hope this helps|Certainly!|Certainly,|Great question!|Let me
 MATCHES=$(grep -Ein "($CHATBOT_PATTERNS)" "$TARGET_FILE" | grep -v "\`" | head -n 5)
 
 if [ -n "$MATCHES" ]; then
-    echo "  ❌ [TELL §22] Chatbot residue detected:"
+    echo "  [ FAIL ] [TELL §22] Chatbot residue detected:"
     echo "$MATCHES" | sed 's/^/    Line /'
     FAILURES=$((FAILURES + 1))
 fi
@@ -60,7 +60,7 @@ DRAMATIC_CLOSERS="That is the real win|Read that again|Let that sink in|The old 
 MATCHES=$(grep -Ein "($DRAMATIC_CLOSERS)" "$TARGET_FILE" | grep -v "\`" | head -n 5)
 
 if [ -n "$MATCHES" ]; then
-    echo "  ❌ [TELL §2] Dramatic one-line closer detected:"
+    echo "  [ FAIL ] [TELL §2] Dramatic one-line closer detected:"
     echo "$MATCHES" | sed 's/^/    Line /'
     FAILURES=$((FAILURES + 1))
 fi
@@ -70,17 +70,17 @@ STAGED_RUNUPS="Let's dive in|Here's what you need to know|Here's the thing|Let's
 MATCHES=$(grep -Ein "($STAGED_RUNUPS)" "$TARGET_FILE" | grep -v "\`" | head -n 5)
 
 if [ -n "$MATCHES" ]; then
-    echo "  ⚠️ [TELL §4] Staged run-up detected:"
+    echo "  [ WARN ] [TELL §4] Staged run-up detected:"
     echo "$MATCHES" | sed 's/^/    Line /'
     FAILURES=$((FAILURES + 1))
 fi
 
 if [ "$FAILURES" -gt 0 ]; then
     echo ""
-    echo "⚠️ Humanizer Audit: Found $FAILURES issue category/categories."
+    echo "[ WARN ] Humanizer Audit: Found $FAILURES issue category/categories."
     echo "   Remediation: Apply skill '.agents/skills/humanizer/SKILL.md' to de-fluff."
     exit 1
 else
-    echo "✅ Humanizer Audit: Clean! No robotic AI writing tells detected."
+    echo "[ OK ] Humanizer Audit: Clean! No robotic AI writing tells detected."
     exit 0
 fi

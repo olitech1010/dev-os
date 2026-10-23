@@ -4,6 +4,7 @@ description: Run project inception and requirements grilling
 agent: architect
 triage_level: STANDARD
 workflow: inception
+argument-hint: "<project idea>"
 ---
 
 Run the project inception process using `.agents/skills/grill-me/SKILL.md`.

@@ -1,6 +1,6 @@
 ---
 name: project-requirements
-description: Standard template for project requirements. Output format used by the Architect agent during the project inception phase.
+description: "Use when writing or reviewing docs/PROJECT_REQUIREMENTS.md during project inception. Provides the requirements template the Architect fills after grilling the idea."
 ---
 
 # Project Requirements Specification

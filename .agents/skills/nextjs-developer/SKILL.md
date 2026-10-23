@@ -3,6 +3,7 @@ name: nextjs-developer
 description: "Use when building Next.js 14+ applications with App Router, server components, or server actions. Invoke to configure route handlers, implement middleware, set up API routes, add streaming SSR, write generateMetadata for SEO, scaffold loading.tsx/error.tsx boundaries, or deploy to Vercel. Triggers on: Next.js, Next.js 14, App Router, RSC, use server, Server Components, Server Actions, React Server Components, generateMetadata, loading.tsx, Next.js deployment, Vercel, Next.js performance."
 license: MIT
 metadata:
+  source: https://github.com/Jeffallan/claude-skills
   author: https://github.com/Jeffallan
   version: "1.1.0"
   domain: frontend
@@ -143,3 +144,8 @@ When implementing Next.js features, provide:
 Next.js 14+, App Router, React Server Components, Server Actions, Streaming SSR, Partial Prerendering, next/image, next/font, Metadata API, Route Handlers, Middleware, Edge Runtime, Turbopack, Vercel deployment
 
 [Documentation](https://jeffallan.github.io/claude-skills/skills/frontend/nextjs-developer/)
+
+## References
+
+- `references/app-router.md`, `server-components.md`, `server-actions.md`, `data-fetching.md`, `deployment.md`: topic detail for this skill.
+- `references/nextjs-app-router-patterns/GUIDE.md`: rendering-mode selection, parallel and intercepting routes, streaming, caching, and Pages-to-App Router migration patterns, with longer examples in `references/nextjs-app-router-patterns/references/details.md`. Read when designing route structure or migrating a Pages Router app. Formerly the `nextjs-app-router-patterns` skill.

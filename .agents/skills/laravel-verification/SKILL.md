@@ -1,8 +1,10 @@
 ---
 name: laravel-verification
-description: "Verification loop for Laravel projects: env checks, linting, static analysis, tests with coverage, security scans, and deployment readiness."
+description: "Use when about to open a pull request for, or deploy, a Laravel project, to run the verification loop: environment checks, linting, static analysis, tests with coverage, security scans, and deployment readiness."
 metadata:
+  source: https://github.com/affaan-m/everything-claude-code
   origin: ECC
+license: MIT
 ---
 
 # Laravel Verification Loop

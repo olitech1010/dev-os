@@ -1,9 +1,6 @@
 ---
 name: testing-guide
-description: |
-  Protocol for authoring comprehensive, step-by-step interactive testing guides in docs/TESTING_GUIDE.md.
-  Ensures human testers, non-technical startup founders, and QA reviewers have complete walkthroughs,
-  functional test scenarios, realistic seed data, and standard dev test accounts with universal passwords (devos123).
+description: "Use when writing or updating docs/TESTING_GUIDE.md: a step-by-step walkthrough that lets human testers and non-technical stakeholders verify the app, with functional scenarios, realistic seed data, and standard dev test accounts."
 license: MIT
 metadata:
   version: "1.0.0"

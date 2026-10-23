@@ -1,9 +1,6 @@
 ---
 name: eval-harness
-description: |
-  Quantitative reliability evaluation, capability benchmarking, pass@k metrics, and regression testing for Dev-OS.
-  Provides structured test suites (.agents/evals/suites/), automated runner (scripts/eval-runner.js),
-  and scorecards (.agents/evals/reports/) for the Eval Engineer agent.
+description: "Use when measuring Dev-OS itself: running eval suites in .agents/evals/suites/, computing pass@k and regression metrics, or writing scorecards to .agents/evals/reports/. Maintainer pack only; used by the Eval Engineer agent."
 license: MIT
 metadata:
   version: "1.0.0"

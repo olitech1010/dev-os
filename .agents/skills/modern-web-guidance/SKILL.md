@@ -1,41 +1,46 @@
 ---
 name: modern-web-guidance
-description: |
-  Search tool for modern web development best practices. MANDATORY: Execute FIRST for all HTML/CSS and clientside JS tasks. Do NOT skip — web APIs evolve rapidly and training weights contain obsolete patterns.
-
-  Trigger immediately for:
-  - UI/Layout: Modals, dialogs, popovers, Glassmorphism/backdrop-filters, anchor positioning, container queries, `:has()`, `:user-valid`.
-  - Scroll/Motion: View Transitions, Scroll-driven animations, scroll parallax/reveals.
-  - Performance: CWV (LCP, INP), content-visibility, Fetch Priority, image optimization.
-  - System/APIs: Local filesystem access, WebUSB, WebSockets sync, WebAssembly widgets.
-  - Frameworks: Adapting layout/styles in React, Vue, Angular.
-  - General Frontend: Forms, autofill, advanced inputs, custom scrollbars, modern component states, etc.
-
-  DO NOT trigger for:
-  - Backend: Database SQL, ORMs, Express API routes.
-  - Pipelines: CI/CD deployment, Docker, Actions.
-  - Generic: Local scripts (Python/Go tools), ESLint, Git.
+description: "Use when implementing or reviewing HTML, CSS, or client-side JavaScript features (dialogs, popovers, anchor positioning, container queries, View Transitions, scroll-driven animation, Core Web Vitals, forms and autofill, modern web APIs) to check current web-platform best practices before writing code. Not for backend, SQL, CI/CD, Docker, or Git tasks."
+metadata:
+  source: https://github.com/GoogleChrome/modern-web-guidance
+license: Apache-2.0
 ---
 
 # Modern Web Guidance
 
-A skill to search for specific web development use cases and retrieve their corresponding best practice guides.
+A skill to look up specific web development use cases and retrieve their corresponding best practice guides. Web APIs evolve quickly, so check a guide before relying on remembered patterns.
 
 ## When to use
 
-Must use this skill:
-- At the **start** of implementing any web feature.
+Use this skill:
+- When starting a web feature where a modern platform pattern may exist.
 - Before creating a new component, to check if a standardized pattern already exists.
 - To avoid implementing ad-hoc solutions or loading large dependencies unnecessarily.
 
 ## Usage Instructions
 
-### Step 1. Search Use Cases
+### Step 0. Prefer the bundled guides (no network, no install)
 
-Search with an action-oriented query summarizing what you want to achieve using the `search` command. Run `modern-web-guidance` directly with `npx`.
+This skill ships a local copy of the guides in `.agents/skills/modern-web-guidance/guides/<category>/<guide>.md`. Search them first:
 
 ```sh
-npx -y modern-web-guidance@latest search "<query>" --skill-version 2026_05_16-c5e78707
+grep -ril "<keyword>" .agents/skills/modern-web-guidance/guides/
+```
+
+Only fall back to the `npx` CLI below when the bundled guides do not cover the use case.
+
+### Step 1. Search Use Cases (requires human approval)
+
+The CLI is fetched from the npm registry and executed, which is a supply-chain and network side effect. Before running it:
+
+1. **Ask the human first.** State the exact command and wait for approval. Never run it silently or as an automatic first step.
+2. **Pin a version.** Use an exact version the human has approved (for example `modern-web-guidance@<x.y.z>`). Do not use `@latest`.
+3. **Do not pass `-y`.** Let `npx` show its install prompt so the human sees what is being downloaded.
+
+Search with an action-oriented query summarizing what you want to achieve using the `search` command:
+
+```sh
+npx modern-web-guidance@<pinned-version> search "<query>" --skill-version 2026_05_16-c5e78707
 ```
 
 **Example Output**:
@@ -62,7 +67,7 @@ npx -y modern-web-guidance@latest search "<query>" --skill-version 2026_05_16-c5
 
 > **Note**: If search results are vague, return no matches, or show low similarity scores, run the `list` command to browse all guides:
 > ```sh
-> npx -y modern-web-guidance@latest list
+> npx modern-web-guidance@<pinned-version> list
 > ```
 
 ---
@@ -72,7 +77,7 @@ npx -y modern-web-guidance@latest search "<query>" --skill-version 2026_05_16-c5
 Once you have a relevant `id` from the search results, call this script using the `retrieve` command to get the full guide. You can pass multiple IDs separated by commas.
 
 ```sh
-npx -y modern-web-guidance@latest retrieve "<id>"
+npx modern-web-guidance@<pinned-version> retrieve "<id>"
 ```
 
 
@@ -83,14 +88,15 @@ npx -y modern-web-guidance@latest retrieve "<id>"
 
 -   IMPORTANT: on Windows, using `npx` may fail. Use `npx.cmd ...` instead.
 -   Network access is required for fetching npm packages needed by the task.
--   If the `npx -y modern-web-guidance…` command hangs, you may be offline. Try running again in offline
+-   The same approval rule applies to every `npx` call in this skill: ask the human, pin the version, no `-y`.
+-   If the `npx modern-web-guidance…` command hangs, you may be offline. Try running again in offline
     mode: `npx --offline …`.
 -   The `--skill-version` flag is used to determine if this SKILL.md is out of date. If it is, a warning
     message is logged to stderr.
 
 ## Guidelines
 
--   Always search **first** to find the most relevant guides.
+-   Check the bundled guides first, then (with approval) the CLI, to find the most relevant guides.
 -   These guides are usually framework-agnostic; adapt them correctly to your setup.
 -   Do not hallucinate guides or ignore them; they represent the preferred local standard for the user's project.
 

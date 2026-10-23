@@ -1,6 +1,6 @@
 # Agent System — Olives Technologies Engineering OS
 
-This document defines the multi-agent team. Each agent has a single role, defined constraints, and a system prompt in `.agents/agents/`.
+This document defines the multi-agent team. Each agent has a single role, defined constraints, and a system prompt in `.agents/agents/`. Maintainer-only agents live in `.agents/maintainer/agents/` (see **Maintainer Pack**).
 
 ---
 
@@ -15,6 +15,7 @@ YOU (Engineering Lead)
    ┌────┼────────────────────────────────────────┐
    ▼    ▼         ▼         ▼        ▼           ▼
  DEV  RESEARCHER  TESTER  DEVOPS  SECURITY      DBA
+ (also: ARCHITECT, PM, UI DESIGNER, TECH WRITER, TECH LEAD)
   │
   ▼
   QA ← checks DEV output before it's accepted
@@ -32,15 +33,17 @@ HUMAN ← approves before commit
 ### Orchestrator
 **File:** `agents/orchestrator.md`
 
-The tech lead. Receives high-level tasks, breaks them into subtasks, delegates to specialists, validates outputs, manages the loop. Coordinates with the Memory Manager for context management.
+The team lead, and the lead in Autonomous Mode (`/auto`, `devos run`). Receives high-level tasks, breaks them into subtasks, delegates to specialists, validates outputs, manages the loop, and keeps project memory by invoking the `shared-memory` skill.
 
 - Receives tasks from you
 - Decides which agents to involve based on **Triage Levels**:
-  - `TRIVIAL`: Small bug fixes/typos. Delegated to Developer → QA → Human approval (`commit.sh`).
+  - `TRIVIAL`: Small bug fixes/typos that qualify for the **TRIVIAL Fast Path** (see Workflow Protocols). Developer self-check → Human review.
   - `STANDARD`: Feature work. Goes through Developer → QA → Human.
   - `CRITICAL`: Database/Security work. Goes through DBA/Security → Human.
 - Sequences work (some tasks are parallel, some are serial)
 - Surfaces blockers and asks for human decisions at the right moments
+- Owns `docs/CURRENT_STATE.md`, `docs/LESSONS.md`, context compaction, and session handoff (via the `shared-memory` skill)
+- In Autonomous Mode, acts for the founder and drives an idea through every SDLC stage by delegation, with every Hard Rule and human gate intact
 - Does NOT write production code or run git commit directly under any circumstances.
 
 ---
@@ -52,6 +55,7 @@ The system designer and interrogator. Uses the `.agents/skills/grill-me/SKILL.md
 
 - Single-shot execution to save tokens: internally grills the project constraints and extrapolates logical answers
 - Outputs the final `PROJECT_REQUIREMENTS.md` for human review
+- Leads **Spec-Driven Delivery** (`/spec`): requirements, design, and tasks in `docs/specs/<slug>/`, with a human checkpoint after each
 - Does not write code; purely focused on requirements, architecture, and edge-cases
 
 ---
@@ -65,8 +69,8 @@ Writes code. Follows the project's coding standards exactly.
 - Reads existing code before writing new code
 - Never installs packages without Researcher confirmation on version
 - Never deletes files without explicit instruction
-- Output always goes to QA before being accepted
-- Commits work using `.agents/skills/git-ops/SKILL.md` conventions
+- Output always goes to QA before being accepted (TRIVIAL Fast Path changes use a Developer self-check instead)
+- Never commits: presents a summary of staged changes for human review; the human commits via `.agents/scripts/commit.sh` (`.agents/skills/git-ops/SKILL.md` conventions)
 
 ---
 
@@ -86,13 +90,13 @@ Finds the truth. Searches documentation, changelogs, GitHub issues, and Stack Ov
 ### QA Agent
 **File:** `agents/qa.md`
 
-Reviews test results and code quality. Does NOT write tests (that is the Tester's role). The gatekeeper. Runs automated tools (lint/test) first. If they pass, reads Developer output against standards and either approves or returns with specific feedback.
+The standards gatekeeper. Issues the static-quality verdict: runs the linter, type-checker, existing test suite, and Dev-OS mechanical scanners first, then reads Developer output against `CODING_STANDARDS.md` and either approves or returns specific feedback. Does NOT write tests (Tester) and does NOT perform threat review (Security).
 
 Checks:
 - Code matches coding standards conventions
 - No forbidden patterns used
-- Tests exist for new logic
-- No hardcoded secrets or credentials
+- Tests exist for new logic (the Tester owns writing them)
+- Mechanical scanners pass (`env-check.sh`, `db-check.sh`, `ui-taste-check.sh`, `humanize-check.sh` as applicable)
 - No TODOs left without a linked issue
 - TypeScript (or equivalent) types are not bypassed
 
@@ -103,7 +107,7 @@ Returns a structured verdict: **APPROVED** or **CHANGES REQUESTED** with numbere
 ### Tester Agent
 **File:** `agents/tester.md`
 
-Owns all test creation and execution. Reports failures to Developer. Works from the feature spec, not from the implementation.
+Writes and runs the tests. Owns all test creation and execution. Reports failures to Developer. Works from the feature spec, not from the implementation.
 
 - Writes tests before or alongside code (TDD when possible)
 - Covers happy path, edge cases, and failure states
@@ -129,12 +133,13 @@ Database architecture and security. Manages all schema changes, migrations, and 
 ### DevOps Agent
 **File:** `agents/devops.md`
 
-Infrastructure and deployment. Works with CI/CD, environment config, and deployment pipelines.
+Infrastructure, deployment, and reliability. Works with CI/CD, environment config, deployment pipelines, infrastructure-as-code, and observability. Target of `/deploy` and `/sre`.
 
 - Never touches production without explicit human approval
-- Always produces a **plan** before executing
+- Always produces a **plan** and dry-run output before executing
 - Manages environment variables safely (never logs secrets)
-- Writes infrastructure as code (GitHub Actions, Docker, etc.)
+- Writes infrastructure as code (GitHub Actions, Docker, Terraform, Kubernetes, etc.)
+- Designs SLOs/SLIs, alerting, and observability pipelines, and drafts incident runbooks
 - Validates that the deployment checklist in `.agents/skills/deployment-checklist/SKILL.md` is complete
 
 ---
@@ -142,7 +147,7 @@ Infrastructure and deployment. Works with CI/CD, environment config, and deploym
 ### Security Agent
 **File:** `agents/security.md`
 
-Scans for vulnerabilities. Runs after Developer but before DevOps.
+Threat review. Scans for vulnerabilities and reviews security-relevant logic. Runs after Developer but before DevOps. Owns all security verdicts; QA does not duplicate them.
 
 Checks:
 - OWASP Top 10 patterns
@@ -158,77 +163,15 @@ Returns a risk report with severity levels: **CRITICAL**, **HIGH**, **MEDIUM**, 
 
 ---
 
-### Memory Manager Agent
-**File:** `agents/memory-manager.md`
-
-Maintains project context and prevents knowledge loss across sessions. Manages state tracking, episodic memory, and context compaction. The Memory Manager owns `docs/CURRENT_STATE.md` and `docs/LESSONS.md`; the Orchestrator updates them when the Memory Manager is not active.
-
-- Owns `docs/CURRENT_STATE.md` as the single source of truth for project status
-- Owns `docs/LESSONS.md` as the persistent lessons-learned store
-- Performs context compaction when conversations approach context limits
-- Creates session handoff documents for seamless continuity
-- Does NOT write production code — manages information only
-
----
-
-### Release Manager Agent
-**File:** `agents/release-manager.md`
-
-Owns versioning, changelogs, release notes, and post-deployment documentation.
-
-- Follows Semantic Versioning (MAJOR.MINOR.PATCH)
-- Generates and updates `docs/CHANGELOG.md` from conventional commits
-- Writes human-readable release notes
-- Updates documentation after deployments
-- Does NOT write production code or deploy infrastructure
-
----
-
 ### UI Designer Agent
 **File:** `agents/ui-designer.md`
 
-Enforces the Mandatory Design Gate. Pulls archetypes, design tokens, and components from `ui-ux-pro-max` and crafts `DESIGN.md` at the project root before frontend development starts.
+Enforces the Mandatory Design Gate. Applies the `anti-ai-ui` skill and a matched design system to craft `DESIGN.md` at the project root before frontend development starts.
 
-- Queries `ui-ux-pro-max` for project-matched archetypes (colors, fonts, rhythm, elevation)
+- Matches a design system from the catalog (`devos design match` / `devos design apply`); uses the optional `ui-ux-pro-max` data (`design-data` pack) when installed
 - Authors `DESIGN.md` at project root with strict WCAG contrast compliance
 - Eliminates generic AI aesthetics and arbitrary spacing
 - Does NOT write backend code or database migrations
-
----
-
-### Executive Proxy Agent
-**File:** `agents/executive-proxy.md`
-
-Tech lead proxy for Autonomous Mode (`devos run` / `/auto`). Coordinates the specialist multi-agent team across all 10 SDLC stages on behalf of non-technical startup founders and CEOs.
-
-- Oversees end-to-end MVP delivery from initial concept to tested, working software
-- Enforces strict delegation across the entire team (Architect → UI Designer → DBA → Developer → Tester → QA → Security → Release Manager)
-- Ensures delivery of `docs/TESTING_GUIDE.md` with universal test password `devos123`
-- Never acts as a monolithic solo worker
-
----
-
-### Telemetry Agent
-**File:** `agents/telemetry.md`
-
-Observability and failure analysis specialist. Monitors `.agents/telemetry/events.jsonl`, performs root cause analysis on runtime errors, and synthesizes sanitized feedback reports.
-
-- Tracks hook rejections, circuit-breaker trips, and test failures locally
-- Performs RCA diagnostics to isolate framework edge cases
-- Synthesizes bug fixes and PRs to `https://github.com/olitech1010/dev-os`
-- Bound by strict privacy rules: NEVER logs proprietary code or credentials
-
----
-
-### Eval Engineer Agent
-**File:** `agents/eval-engineer.md`
-
-Quality benchmark and regression prevention engineer inspired by ECC and DeepSeek Harness patterns.
-
-- Maintains capability evals and regression suites in `.agents/evals/`
-- Measures pass@k rates on automated workflows using `.agents/skills/eval-harness/SKILL.md`
-- Validates cross-harness parity across Claude, Antigravity, Cursor, OpenCode, and Codex
-- Issues formal `EVAL_PASSED` or `EVAL_REGRESSED` verdicts with actionable scorecards (`devos eval`)
 
 ---
 
@@ -243,36 +186,49 @@ Product strategist and user advocate. Sits alongside the Architect during incept
 
 ---
 
-### Technical Writer Agent
+### Tech Writer Agent (Docs & Release)
 **File:** `agents/tech-writer.md`
 
-Documentation architect. Owns developer manuals, OpenAPI/Swagger references, and architecture decision records.
+Documentation and release owner. Owns developer manuals, OpenAPI/Swagger references, architecture decision records, versioning, changelogs, and release notes. Sole owner of the Humanizer gate. Target of `/tech-writer` and `/humanize`.
 
 - Maintains `docs/` and Architecture Decision Records (ADRs)
-- Ensures all prose passes `.agents/scripts/humanize-check.sh`
-- Does NOT write application production code
-
----
-
-### Site Reliability Engineer (SRE) Agent
-**File:** `agents/sre.md`
-
-Reliability and observability specialist. Works alongside DevOps to manage infrastructure-as-code and monitoring pipelines.
-
-- Authors Terraform, Docker, and Kubernetes deployment descriptors
-- Designs SLOs/SLIs and incident response runbooks
-- Produces dry-run plans for all infrastructure changes
+- Follows Semantic Versioning (MAJOR.MINOR.PATCH) and chooses the bump
+- Generates and updates `docs/CHANGELOG.md` from conventional commits and writes human-readable release notes
+- Applies the `humanizer` skill and makes all prose pass `.agents/scripts/humanize-check.sh`
+- Does NOT write application production code or deploy infrastructure
 
 ---
 
 ### Senior Tech Lead Agent
 **File:** `agents/tech-lead.md`
 
-Senior staff engineer and circuit breaker arbitrator. Automatically intervenes to break deadlocks when multi-agent loops reach an impasse.
+Senior staff engineer and circuit breaker arbiter. Read-only: diagnoses deadlocks and issues a written, binding decision that the Developer applies. Never writes code patches.
 
-- Resolves Developer ↔ QA/Tester loops that reach 3 iterations
-- Issues binding, authoritative patches and architectural decisions
-- Escalates to the Human only when business requirements are fundamentally ambiguous
+- Invoked by the **Circuit Breaker** protocol after 3 failed fix iterations
+- Gets exactly one arbitration attempt per trip: a written root-cause verdict with a fix specification, a revised plan, or an "ambiguous requirement" finding
+- If the arbitrated fix still fails its gate, or the cause is an ambiguous business requirement, the loop halts and escalates to the Human
+
+---
+
+### Maintainer Pack
+Not installed by default. These agents and their commands serve people who develop Dev-OS itself; they live in `.agents/maintainer/` and install with the `maintainer` pack.
+
+- **Telemetry** (installed to `.agents/agents/telemetry.md` by the maintainer pack, `/telemetry`): read-only analysis of `.agents/telemetry/events.jsonl` and sanitized RCA reports. Local event logging itself is done by the core `telemetry` skill and hooks, which stay installed.
+- **Eval Engineer** (`maintainer/agents/eval-engineer.md`, `/eval`): capability eval suites, pass@k measurement, and `EVAL_PASSED` / `EVAL_REGRESSED` scorecards (skill `eval-harness`).
+
+---
+
+### Migration from 4.x
+Dev-OS 5.0 merged several agents. Old names keep working through this alias map, which the CLI applies to command targets and to `devos update` migrations:
+
+| 4.x agent | 5.0 owner | Where its duties went |
+|---|---|---|
+| `executive-proxy` | `orchestrator` | **Autonomous Mode (/auto)** section of the Orchestrator |
+| `sre` | `devops` | SLOs, alerting, observability, IaC, and incident runbooks |
+| `release-manager` | `tech-writer` | Semver, changelog, release notes, and the Humanizer gate |
+| `memory-manager` | `orchestrator` | The Orchestrator invokes the `shared-memory` skill for state, lessons, compaction, and handoff |
+
+`telemetry` and `eval-engineer` were not merged; they moved to the maintainer pack.
 
 ---
 
@@ -293,7 +249,7 @@ Senior staff engineer and circuit breaker arbitrator. Automatically intervenes t
 Dev-OS enforces a defense-in-depth quality pipeline to eliminate runtime failures, security leaks, and AI slop:
 
 1. **Layer 1: Design & Architecture Gate** (Pre-Authoring)
-   - UI Designer extracts tokens from `ui-ux-pro-max` and authors `DESIGN.md` at project root.
+   - UI Designer applies the `anti-ai-ui` skill and authors `DESIGN.md` at project root.
    - Enforced mechanically by `.agents/hooks/pre-tool-use.sh` before any UI component is authored.
 2. **Layer 2: Mechanical Scanners** (Zero-Dependency Automated Tools)
    - Secret Scanning: `gitleaks` (API keys, private keys, access tokens).
@@ -315,7 +271,7 @@ Dev-OS uses a **Staged Review** commit model:
 - Agents write and modify code but **never auto-commit**.
 - After completing changes, the Developer presents a summary of all modifications.
 - The Human reviews the changes (including testing UI/logic in the browser).
-- The Human triggers the commit via `/commit` or `.agents/scripts/commit.sh`.
+- The Human commits by running `.agents/scripts/commit.sh` from their own terminal. `/commit` only stages files and proposes a message; agent shells cannot run the commit itself (Hard Rule 8).
 - This ensures the Human can inspect, test, and make corrections before anything is committed.
 
 ### Standard Feature Delivery
@@ -327,19 +283,19 @@ Dev-OS uses a **Staged Review** commit model:
    a. QA → reviews code quality and standards
    b. Tester → writes and runs tests
    c. Security → scans for vulnerabilities
-5. Orchestrator → collects all verdicts. If any agent rejects, route back to Developer (Circuit Breaker: max 3 loops)
+5. Orchestrator → collects all verdicts. If any agent rejects, route back to Developer (see **Circuit Breaker** below)
 6. HUMAN CHECKPOINT → review changes, test in browser, approve
-7. Developer → commits via `.agents/scripts/commit.sh`
+7. HUMAN → commits via `.agents/scripts/commit.sh` (agents never auto-commit)
 8. DevOps → prepares and executes deployment plan (requires Human approval)
 ```
 
 ### Bug Fix Delivery
 ```
 1. Researcher → reproduces and investigates root cause
-2. Developer → implements fix (commits per .agents/skills/git-ops/SKILL.md)
+2. Developer → implements fix (does NOT commit — presents for review)
 3. Tester → writes regression test first, then verifies fix
-4. QA → approves
-5. HUMAN CHECKPOINT
+4. QA → approves (failed gates route back to Developer under the **Circuit Breaker**)
+5. HUMAN CHECKPOINT → human commits via `.agents/scripts/commit.sh`
 6. DevOps → deploys
 ```
 
@@ -362,7 +318,7 @@ Dev-OS uses a **Staged Review** commit model:
 5. QA → approves the rollback
 6. HUMAN CHECKPOINT → approve rollback deployment
 7. DevOps → deploys the rollback
-8. Orchestrator → has the incident logged in `docs/LESSONS.md` (via the Memory Manager, or directly when the Memory Manager is not active)
+8. Orchestrator → logs the incident in `docs/LESSONS.md` (via the `shared-memory` skill)
 ```
 
 ### Exploratory Refactoring
@@ -375,6 +331,141 @@ Dev-OS uses a **Staged Review** commit model:
 6. If discarded: Developer deletes the exploration branch
 ```
 
+### TRIVIAL Fast Path
+Small, low-risk changes skip the heavyweight gates so that a typo does not cost a full delivery cycle.
+
+**Qualifies only when ALL are true:**
+- The diff is under roughly 30 changed lines.
+- No new or upgraded dependency.
+- No database schema, migration, or seed change.
+- No authentication, authorization, secrets, or input-validation change.
+- No public API, CLI flag, exported interface, or config contract change.
+
+If any condition fails, or the change grows past these limits mid-task, stop and re-triage as STANDARD.
+
+```
+1. Orchestrator triages TRIVIAL (or a solo agent self-classifies) and states which criteria it meets
+2. Developer → makes the change
+3. Developer → self-check: linter, type-checker, the tests covering the touched code, and the
+   mechanical scanner for the touched file type (humanize-check.sh for docs, ui-taste-check.sh for UI)
+4. HUMAN CHECKPOINT → reviews the diff and self-check output; human commits via `.agents/scripts/commit.sh`
+```
+
+**Exemptions:** the Implementation Plan Gate (Rule 22), the task-board declaration (Rule 23), the parallel QA/Tester/Security gate, and, for copy- or typo-only edits to existing UI files, the Design Gate (Rule 15). Every other Hard Rule still applies, including the commit gate and secrets rules. If a runtime hook still blocks a qualifying edit, report the block to the human; do not work around it.
+
+**Mechanical enforcement (`pre-tool-use.sh`).** The hook lets an edit past the Design Gate and Orchestration Gate only when all of these hold:
+- It is an `Edit` call. `Write`, `MultiEdit` and shell writes never qualify.
+- The file already exists and `old_string` is non-empty.
+- The edit is under 30 lines and 6000 bytes; `replace_all` counts once per occurrence.
+- The path is not a dependency manifest or lockfile, a schema/migration/`.sql`/prisma file, or a path matching `auth|login|session|permission|policy|middleware`.
+
+The session also has a cumulative 30-line budget, tracked in `.git/devos-trivial-budget` and reset each session. Once the budget is spent, the gates apply normally. Projects that are not git repositories get no fast path. A block message ends with `TRIVIAL fast path not applied: <reason>`. Humans can disable the fast path with `DEVOS_TRIVIAL_FASTPATH=off`.
+
+### Circuit Breaker (canonical)
+This is the single definition referenced by Hard Rule 10 and by every agent prompt.
+
+- **Iteration:** one Developer fix attempt followed by the gate run that fails it (QA, Tester, Security, or a mechanical check).
+- **Trip:** 3 failed iterations on the same task.
+
+```
+1. Orchestrator (also in auto mode) → HALTS the loop; no 4th Developer attempt
+2. Orchestrator → compiles a diagnostic summary: each attempt, the failing gate output, and suspected cause
+3. Tech Lead → exactly ONE arbitration attempt: a written, binding root-cause verdict and fix specification
+   (or a revised plan), never a code patch; the Developer applies it and the failing gate runs once more
+4. If that gate run passes → resume the normal protocol
+5. If it fails, or the Tech Lead finds an ambiguous business requirement → HALT and escalate to the
+   Human with the diagnostic summary. No further iterations without Human guidance.
+```
+
+When no Tech Lead is available (solo sessions), step 3 is skipped and the trip escalates straight to the Human. Each trip is logged to telemetry and, once resolved, to `docs/LESSONS.md`.
+
+### Arbitration
+Used by `/tech-lead`, and by the Circuit Breaker at step 3.
+```
+1. Orchestrator → hands the Tech Lead the diagnostic summary, failing gate output, and relevant files
+2. Tech Lead → reads the trajectory and code (read-only), isolates the root cause
+3. Tech Lead → issues one written, binding decision: fix specification, revised plan, or "ambiguous requirement" (no code patches)
+4. Developer → applies the decision; the failing gate runs once
+5. Failure or ambiguity → HUMAN CHECKPOINT (see Circuit Breaker step 5)
+```
+
+### Product Planning
+Used by `/pm`.
+```
+1. PM → analyzes the user problem, personas, and use cases
+2. PM → authors Given-When-Then acceptance criteria and the MVP boundary in `docs/`
+3. HUMAN CHECKPOINT → approve or revise the stories
+4. Architect / Orchestrator → feed approved stories into Project Inception or `brainstorming` → `writing-plans`
+```
+
+### Documentation
+Used by `/tech-writer` and `/humanize`.
+```
+1. Tech Writer → reads the code or change being documented
+2. Tech Writer → drafts or updates files in `docs/` (ADRs in `docs/adr/`; changelog and release notes for releases)
+3. Tech Writer → runs `.agents/scripts/humanize-check.sh` on every modified document
+4. HUMAN CHECKPOINT → review; human commits via `.agents/scripts/commit.sh`
+```
+Documentation-only changes need no implementation plan or Design Gate.
+
+### Infrastructure
+Used by `/sre` and `/deploy`. Always CRITICAL.
+```
+1. DevOps → produces a written plan and dry-run output (terraform plan, docker build, etc.)
+2. Security → reviews secrets handling, exposure, and permissions in the plan
+3. HUMAN CHECKPOINT → approves the plan before anything is applied
+4. DevOps → executes exactly the approved plan, then verifies with the deployment checklist
+5. Any deviation from the plan → halt and return to step 1
+```
+
+### Autonomous SDLC
+Used by `/auto` and `devos run`. The Orchestrator runs the stages in the **Autonomous Mode (/auto)** section of `.agents/agents/orchestrator.md` and `.agents/skills/autonomous-sdlc/SKILL.md` (Inception → Design → Data → Task DAG → Implementation → Testing → QA/Security/Humanizer gate → Delivery summary). Every Hard Rule still applies: gates are not skipped, the Circuit Breaker governs fix loops, and nothing is committed or deployed without the Human.
+
+### Spec-Driven Delivery
+Used by `/spec`. For a feature large enough to need written requirements, a design, and a traceable task list. All three files live in `docs/specs/<slug>/` (`<slug>` is kebab-case) and follow `.agents/skills/spec-driven/SKILL.md`.
+```
+1. Orchestrator → picks the slug and confirms no spec with that slug exists yet
+2. Architect (PM for user stories) → requirements.md: user stories plus EARS acceptance criteria
+   ("WHEN <trigger> THE SYSTEM SHALL <response>"), one `### Rn: title` heading per requirement
+3. HUMAN CHECKPOINT 1 → approve or revise the requirements. No design work starts before approval
+4. Architect → design.md: components, data model, interfaces, error handling, testing strategy,
+   each part tracing to R ids. Researcher verifies any library API (Rule 11); DBA, Security, and
+   UI Designer review the schema, auth, and UI parts they own
+5. HUMAN CHECKPOINT 2 → approve or revise the design
+6. Architect → tasks.md: `### Tn: title` tasks with `depends:`, `covers:`, and `verify:` lines;
+   then `devos spec check <slug>` (coverage) and `devos spec waves <slug>` (parallel waves)
+7. HUMAN CHECKPOINT 3 → approve the task list. The approved tasks.md is the Rule 22 plan
+8. Orchestrator → records the tasks on `docs/TASK_BOARD.md` wave by wave; each task then runs
+   through Standard Feature Delivery (Developer → parallel gate → Human commit)
+```
+A change to requirements after checkpoint 1 sends the spec back to that checkpoint; design and tasks are re-checked against the new R ids.
+
+### Direct Command
+Used by commands with `workflow: direct` (for example `/review`, `/secure`, `/test`, `/research`, `/status`, `/commit`).
+```
+1. Orchestrator → routes the command to the named agent exactly once, with $ARGUMENTS
+2. Agent → performs the single task and returns its report or verdict
+3. Orchestrator → relays the result to the Human; any follow-up work is triaged separately
+```
+No gates run beyond the Hard Rules themselves.
+
+### Workflow Key
+Command frontmatter `workflow:` values map to these protocols:
+
+| `workflow:` | Protocol |
+|---|---|
+| `standard` | Standard Feature Delivery |
+| `bugfix` | Bug Fix Delivery |
+| `inception` | Project Inception (Grill-Me) |
+| `trivial` | TRIVIAL Fast Path |
+| `arbitration` | Arbitration |
+| `product-planning` | Product Planning |
+| `documentation` | Documentation |
+| `infrastructure` | Infrastructure |
+| `autonomous-sdlc` | Autonomous SDLC |
+| `spec-driven` | Spec-Driven Delivery |
+| `direct` | Direct Command |
+
 ### Solo Session Protocol (Minimum Viable Gate)
 When an AI assistant operates as a solo working agent in an interactive session without an active Orchestrator:
 1. **Session-Start Freshness**: Run `git fetch --all --prune` and check `git status -sb` before scoping or modifying files to prevent working against stale commits.
@@ -384,7 +475,7 @@ When an AI assistant operates as a solo working agent in an interactive session 
 5. **Staged Review**: Present a clear summary of all modified files and test results to the human for review.
 6. **Commit via Gate**: Route commits through `.agents/scripts/commit.sh` (never raw `git commit`).
 7. **Session-End State Obligation**: Update `docs/CURRENT_STATE.md` with active tasks, status, and summary before closing the session. If an incident or notable bug fix occurred, log it in `docs/LESSONS.md`.
-8. **Mandatory Escalation Boundary**: If changes require database schema alterations (DBA), security-critical logic (Security), or if any debugging loop reaches 3 iterations, HALT and escalate to the human and multi-agent workflow.
+8. **Mandatory Escalation Boundary**: If changes require database schema alterations (DBA) or security-critical logic (Security), HALT and escalate to the human and multi-agent workflow. If a fix loop trips the **Circuit Breaker** (3 failed iterations) and no Tech Lead is available, skip arbitration: halt and escalate to the human.
 
 ---
 
@@ -395,54 +486,55 @@ All agents can reference these skills from `skills/`. Each skill is a directory 
 | Skill | Purpose | Primary Agent |
 |-------|---------|---------------|
 | `grill-me/` | Project inception interrogation | Architect |
-| `design/` | UI/UX design principles | Developer |
-| `token-optimization/` | Minimize AI token costs | All agents |
-| `git-workflow/` | Branch strategy and PR standards | All agents |
-| `git-ops/` | Autonomous commit, push, PR | Developer, DevOps |
-| `deployment-checklist/` | Pre-deployment verification | DevOps |
 | `project-requirements/` | Requirements template | Architect |
-| `frontend-ui-engineering/` | Distinctive visual design | Developer |
+| `brainstorming/` | Design-before-code workflow; writes specs to `docs/specs/` | Architect, Developer |
+| `writing-plans/` | Bite-sized, test-first implementation plans in `docs/plans/` | Architect, Developer |
+| `spec-driven/` | Requirements (EARS), design, and traceable tasks in `docs/specs/<slug>/` | Architect, PM |
+| `anti-ai-ui/` | Required design skill: eliminates AI UI cliches and enforces authentic craft (absorbs `design`, `frontend-ui-engineering`, `web-design-guidelines`) | UI Designer, Developer, QA |
+| `ui-ux-pro-max/` | Optional design data (`design-data` pack) | UI Designer |
+| `token-optimization/` | Minimize AI token costs | All agents |
+| `git-ops/` | Human-gated commit, push, and PR flow via `commit.sh`, branch strategy, and commit messages (absorbs `git-workflow`, `git-commit`) | Developer, DevOps |
+| `deployment-checklist/` | Pre-deployment verification | DevOps |
 | `vercel-react-best-practices/` | React/Next.js performance | Developer |
-| `ui-ux-pro-max/` | Comprehensive UI/UX reference | Developer |
-| `brainstorming/` | Design-before-code workflow | Architect, Developer |
-| `backend-patterns/` | Backend architecture patterns | Developer |
+| `backend-dev-guidelines/` | Backend architecture patterns (absorbs `backend-patterns` and related skills) | Developer |
 | `agent-browser/` | Browser automation CLI | Developer, Tester |
 | `stacks/` | Stack-specific coding standards | Developer |
-| `shared-memory/` | Structured episodic & decision memory vault | Memory Manager, Orchestrator |
+| `shared-memory/` | Project state, lessons learned, context compaction, session handoff, and the episodic memory vault | Orchestrator |
 | `task-board/` | Deterministic DAG task board state governance | Orchestrator |
-| `humanizer/` | De-fluff AI writing tells from documentation | Release Manager, QA |
+| `humanizer/` | De-fluff AI writing tells from documentation | Tech Writer |
 | `testing-guide/` | Interactive testing guide with devos123 passwords | Tester, QA |
-| `autonomous-sdlc/` | Autonomous SDLC modes (interactive, guided, auto, audit) | Executive Proxy, Orchestrator |
-| `telemetry/` | Local failure logging and RCA feedback | Telemetry Agent |
-| `anti-ai-ui/` | Eliminates AI UI clichés and enforces authentic craft | UI Designer, Developer, QA |
-| `eval-harness/` | Benchmark capability evaluations, pass@k metrics, and agent scorecards | Eval Engineer |
+| `autonomous-sdlc/` | Autonomous SDLC modes (interactive, guided, auto, audit) | Orchestrator |
+| `telemetry/` | Local failure logging (core); RCA analysis via the maintainer Telemetry agent | Orchestrator, Telemetry (maintainer) |
+| `eval-harness/` | Benchmark capability evaluations, pass@k metrics, and agent scorecards (`maintainer` pack) | Eval Engineer (maintainer) |
+
+Merged skill names keep working: the CLI resolves them through the `aliases` map in `.agents/packs.json`.
 
 ---
 
 ## Hard Rules (All Agents)
 
 1. **No agent executes destructive actions without a dry-run plan first.** Destructive = delete, drop, truncate, overwrite, deploy.
-2. **No agent stores or logs secrets.** If a secret is needed, prompt the human to supply it at runtime.
+2. **No secrets stored, logged, or hardcoded.** API keys, credentials, and access tokens are never written into code, config, logs, or telemetry; reference them via `process.env.*` (or the stack equivalent). If a secret is needed, prompt the human to supply it at runtime.
 3. **No agent silently ignores a constraint.** If a standard cannot be met, surface it — don't work around it.
 4. **Agents do not argue with each other.** Conflicts escalate to the Orchestrator, then to the human.
 5. **When in doubt, ask.** A question takes 5 seconds. A wrong assumption costs hours.
-6. **Commit early, commit often.** Follow `.agents/skills/git-ops/SKILL.md` — agents commit after each logical unit of work via `.agents/scripts/commit.sh`.
+6. **Staged Review — agents never auto-commit.** Agents keep changes small (one logical unit at a time), then stop and present a summary for human review. Only the human commits, via `.agents/scripts/commit.sh` (see Commit Model: Staged Review and `.agents/skills/git-ops/SKILL.md`).
 7. **All documentation goes in `/docs`.** Any reports, implementation plans, PRDs, requirements, or other documentation must be saved into the `/docs/` folder in the project root.
-8. **Mechanical Commit Gate.** Raw `git commit` commands without routing through `.agents/scripts/commit.sh` or setting `DEVOS_COMMIT_APPROVED=true` are strictly forbidden and blocked by Git pre-commit hooks.
-9. **Never hardcode secrets.** API keys, credentials, or access tokens must never be written into code or config files; always reference `process.env.*`.
-10. **Circuit Breaker.** If any agent loop (e.g., Developer ↔ QA, Developer ↔ Tester) exceeds 3 iterations on the same task without resolution, the Orchestrator MUST halt the loop, compile a diagnostic summary of all attempts, and invoke the **Senior Tech Lead Agent** for an authoritative tie-breaking resolution. If the Tech Lead cannot resolve the issue or identifies an ambiguous business requirement, escalate immediately to the Human for guidance.
+8. **Mechanical Commit Gate.** Only a human commits, by running `.agents/scripts/commit.sh` from their own terminal; the script reads an `approve` token, the commit type, and the message from `/dev/tty`. Agent shells can never commit: `commit.sh`, the git `pre-commit` hook, and the git `pre-merge-commit` hook all refuse when an agent-shell marker is set (`CLAUDECODE`, `CLAUDE_CODE_ENTRYPOINT`, `GEMINI_CLI`, `CODEX_SANDBOX`, `CODEX_SANDBOX_NETWORK_DISABLED`, `CODEX_THREAD_ID`, `CURSOR_AGENT`, `AI_AGENT`), even when `DEVOS_COMMIT_APPROVED=true` is exported. Raw `git commit` without `commit.sh` is blocked by the pre-commit hook. Headless commits (`DEVOS_HEADLESS_COMMIT=1 .agents/scripts/commit.sh "<type>: <subject>"`) are for CI pipelines only and require `CI=true`. Projects installed before these hooks existed must re-run `.agents/scripts/install-hooks.sh` (or `devos update`) to get them.
+9. *(Merged into Rule 2. The number is kept so existing rule citations stay stable.)*
+10. **Circuit Breaker.** After 3 failed fix iterations on the same task (one iteration = one Developer fix attempt followed by the failing gate run), the loop halts. The Tech Lead gets exactly one arbitration attempt; if that fails or the requirement is ambiguous, halt and escalate to the Human. Full definition: **Circuit Breaker (canonical)** under Workflow Protocols.
 11. **Verify Before Implementing.** Agents must confirm library APIs, version compatibility, and patterns via the Researcher agent or official documentation before using unfamiliar features. No hallucinated API usage.
 12. **No Heavy Dependencies Without Approval.** Adding new dependencies with >5MB install size or >50 transitive dependencies requires explicit Human approval.
 13. **Session-End State Obligation.** Before concluding any working session that modifies code, dependencies, or configuration, the active agent MUST update `docs/CURRENT_STATE.md` with the completed/in-progress task, current status, and active branch. If an incident or notable failure was resolved, log it in `docs/LESSONS.md`.
 14. **Session-Start Freshness Check.** At session start, always run `git fetch --all --prune` and check `git status -sb` before scoping or beginning any task to prevent duplicate or regressive work on stale clones.
-15. **Mandatory Design Gate.** Creating or modifying frontend UI files (`*.tsx`, `*.jsx`, `*.vue`, `*.svelte`, `*.html`, `*.css`) without an established and approved `DESIGN.md` at the project root is strictly forbidden and mechanically blocked by runtime hooks. The UI Designer must first extract tokens from `ui-ux-pro-max` and produce `DESIGN.md`.
-16. **Mechanical Humanizer Gate.** All documentation, PR summaries, PRDs, and marketing copy in `/docs/` must pass the Humanizer scan (`.agents/scripts/humanize-check.sh`) before acceptance. Robotic AI writing tells (not-X-but-Y, forced triads, inflated fluff) are forbidden.
+15. **Mandatory Design Gate.** Creating or modifying frontend UI files (`*.tsx`, `*.jsx`, `*.vue`, `*.svelte`, `*.html`, `*.css`) without an established and approved `DESIGN.md` at the project root is strictly forbidden and mechanically blocked by runtime hooks. The UI Designer must first apply the required `anti-ai-ui` skill and produce `DESIGN.md` (the `ui-ux-pro-max` data in the optional `design-data` pack may inform tokens when installed).
+16. **Mechanical Humanizer Gate.** Owned by the Tech Writer. All documentation, PR summaries, PRDs, and marketing copy in `/docs/` must pass the Humanizer scan (`.agents/scripts/humanize-check.sh`) before acceptance. Robotic AI writing tells (not-X-but-Y, forced triads, inflated fluff) are forbidden.
 17. **Universal Test Credentials.** All development seed fixtures, test accounts, and interactive walkthroughs (`docs/TESTING_GUIDE.md`) must use `devos123` as the universal password to eliminate authentication friction.
 18. **Anti-Amnesia Delegation Mandate.** The Orchestrator and active agents must never act as a monolithic solo worker bypassing specialist agents and skills. Every task must be properly triaged and routed.
 19. **Distinctive Craft & Anti-AI UI Gate.** All frontend UI code (`*.tsx`, `*.jsx`, `*.vue`, `*.svelte`, `*.html`) must adhere to `.agents/skills/anti-ai-ui/SKILL.md` and pass `.agents/scripts/ui-taste-check.sh` before acceptance. Raw emojis as icons, sparkle icon clichés, cookie-cutter profile pills, lazy indigo-purple gradients, generic "Holy Trinity" card grids, and placeholder slop ("John Doe") are strictly forbidden.
 20. **Environment & Config Parity Gate.** All environment variables referenced in code (`process.env.*`, `os.environ[...]`, `env(...)`) must be documented in `.env.example` with dummy placeholder values and pass `.agents/scripts/env-check.sh`. Committing live credentials or private keys to `.env.example` or code is strictly forbidden.
 21. **Database & Migration Safety Gate.** All database migrations (`*.sql`) must execute `ALTER TABLE <table> ENABLE ROW LEVEL SECURITY;` on created tables, maintain foreign key indexes, and avoid destructive actions (`DROP TABLE`, `DROP COLUMN`, `TRUNCATE`) without explicit dry-run approval and annotation (`-- devos:approved-destructive`). Migrations must pass `.agents/scripts/db-check.sh`.
 
-22. **Implementation Plan Gate.** The Developer MUST NOT write any production code without an approved implementation plan in `docs/superpowers/plans/` (produced by the `brainstorming` → `writing-plans` workflow). This is enforced as a mechanical gate in `scripts/sdlc-runner.js` Stage 5. If no plan exists, the Developer is blocked and must request the Orchestrator trigger the brainstorming skill first.
+22. **Implementation Plan Gate.** The Developer MUST NOT write any production code without an approved implementation plan: either a plan in `docs/plans/` (produced by the `brainstorming` → `writing-plans` workflow; see `.agents/skills/writing-plans/SKILL.md`) or an approved spec task list at `docs/specs/<slug>/tasks.md` (produced by the **Spec-Driven Delivery** workflow; see `.agents/skills/spec-driven/SKILL.md`). This is enforced as a mechanical gate in `scripts/sdlc-runner.js` Stage 5. If no plan exists, the Developer is blocked and must request the Orchestrator trigger the brainstorming skill first. Work that qualifies for the TRIVIAL Fast Path is exempt.
 
-23. **Orchestrator Persistence & Delegation Enforcement.** Orchestrator mode is locked per session in `.agents/memory/session.json` and re-asserted every turn by `.agents/hooks/user-prompt-submit.sh`. When delegation is required (`guided`/`auto` mode), the Orchestration Gate in `.agents/hooks/pre-tool-use.sh` blocks solo production-code writes until an `[ IN_PROGRESS ]` task with an `Assignee:` is declared in `docs/TASK_BOARD.md`. Modes may only change via `devos mode <mode>`; implicit mode switching is forbidden. Intentional solo work requires `DEVOS_SOLO_APPROVED=true`.
+23. **Orchestrator Persistence & Delegation Enforcement.** Orchestrator mode is locked per session in `.agents/memory/session.json` and re-asserted every turn by `.agents/hooks/user-prompt-submit.sh`. When delegation is required (`guided`/`auto` mode), the Orchestration Gate in `.agents/hooks/pre-tool-use.sh` blocks solo production-code writes until an `[ IN_PROGRESS ]` task with an `Assignee:` is declared in `docs/TASK_BOARD.md`. Modes may only change via `devos mode <mode>`; implicit mode switching is forbidden. Intentional solo work requires `DEVOS_SOLO_APPROVED=true`. Work that qualifies for the TRIVIAL Fast Path is exempt from the task-board declaration.

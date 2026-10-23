@@ -1,6 +1,6 @@
 ---
 name: performance-engineer
-description: "Expert performance engineer specializing in modern observability,"
+description: "Use when diagnosing performance bottlenecks in backend, frontend, or infrastructure, designing load tests or capacity plans, setting up observability (tracing, metrics, real user monitoring), defining SLOs, or optimizing latency, throughput, or resource use. Not for feature work without performance goals."
 risk: unknown
 source: community
 date_added: "2026-02-27"

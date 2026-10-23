@@ -1,6 +1,6 @@
 ---
 name: deployment-checklist
-description: Pre-deployment verification checklist to be run by the DevOps agent before every production deployment.
+description: "Use when preparing any production deployment. The DevOps agent runs this checklist: CI and security scan status, reviewed code, reversible migrations with backups, dependency and lock-file checks, production environment config, a staging smoke test, and the rollback plan."
 ---
 
 # Deployment Checklist

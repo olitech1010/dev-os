@@ -1,9 +1,6 @@
 ---
 name: telemetry
-description: |
-  Observability, local failure logging, and automated RCA reporting for Dev-OS.
-  Maintains .agents/telemetry/events.jsonl, enforces strict zero-secret sanitization,
-  and synthesizes actionable diagnostic reports and pull requests to olitech1010/dev-os.
+description: "Use when logging a Dev-OS workflow failure or gate event to .agents/telemetry/events.jsonl, sanitizing log entries so no secrets are stored, or producing a root-cause report. Logging stays local; any upstream bug report or pull request is drafted for the human to review and send."
 license: MIT
 metadata:
   version: "1.0.0"
@@ -58,7 +55,7 @@ Each log entry in `.agents/telemetry/events.jsonl` follows this JSON structure:
 
 ## 3. Telemetry Agent Responsibilities
 
-The **Telemetry Agent** (`.agents/agents/telemetry.md`):
+The **Telemetry Agent** is a maintainer-only agent installed to `.agents/agents/telemetry.md` only when the `maintainer` pack is installed (`devos pack add maintainer`). Local event logging in this skill works without it. When installed, the agent:
 1. Reads `.agents/telemetry/events.jsonl` during diagnostic sessions (`devos doctor` or `devos telemetry report`).
 2. Synthesizes an RCA report categorizing failure patterns (framework defects vs quality gate enforcement).
 3. If an upstream Dev-OS bug is identified (e.g., regex edge case in a hook, outdated command syntax), drafts an actionable fix or pull request for submission to `https://github.com/olitech1010/dev-os`.

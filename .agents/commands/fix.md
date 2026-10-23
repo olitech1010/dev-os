@@ -4,6 +4,7 @@ description: Fix a specific bug using the Bug Fix workflow
 agent: developer
 triage_level: STANDARD
 workflow: bugfix
+argument-hint: "<bug description or issue link>"
 ---
 
 Fix the specified bug following the Bug Fix Delivery workflow.

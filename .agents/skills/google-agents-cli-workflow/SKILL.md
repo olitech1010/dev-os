@@ -1,15 +1,8 @@
 ---
 name: google-agents-cli-workflow
-description: >
-  This skill should be used when the user wants to "develop an agent",
-  "build an agent using ADK", "run the agent locally", "debug agent code",
-  "test an agent", "deploy an agent", "publish an agent", "monitor an agent",
-  or needs the ADK (Agent Development Kit) development lifecycle and coding
-  guidelines. Entrypoint for building ADK agents.
-  Always active — provides the full workflow (scaffold, build, evaluate,
-  deploy, publish, observe), code preservation rules, model selection
-  guidance, and troubleshooting steps for ADK or any agent development.
+description: "Use when developing an agent with Google agents-cli and ADK: planning, scaffolding, running locally, debugging, evaluating, deploying, publishing, or monitoring an agent. Entry point for the ADK lifecycle with code-preservation rules, model selection, and troubleshooting. Several upstream phase skills it mentions are not shipped with Dev-OS."
 metadata:
+  source: https://github.com/google/agents-cli
   author: Google
   license: Apache-2.0
   version: 1.0.0
@@ -17,9 +10,12 @@ metadata:
     bins:
       - agents-cli
     install: "uv tool install google-agents-cli"
+license: Apache-2.0
 ---
 
 # Agent Development Workflow & Guidelines
+
+> **Dev-OS note:** Dev-OS ships only `google-agents-cli-workflow` and `google-agents-cli-adk-code` (optional `google-adk` pack). The sibling skills `google-agents-cli-scaffold`, `-eval`, `-deploy`, `-publish`, and `-observability` referenced below are **not shipped**. Install them from upstream with `uvx google-agents-cli setup` if needed, or use the `agents-cli` command help and https://adk.dev docs instead.
 
 **agents-cli** is a CLI and skills toolkit for building, evaluating, and deploying agents on Google Cloud. It works with any coding agent — Antigravity CLI, Claude Code, Codex, or others — and with the agent framework of your choice (the [Agent Development Kit (ADK)](https://adk.dev/) by default). Install with `uvx google-agents-cli setup`.
 
@@ -40,12 +36,12 @@ Re-read the relevant skill **before** each phase — not after you've already st
 |-------|-------|--------------|
 | 0 — Understand | — | No skill needed — read `.agents-cli-spec.md` if present, else clarify goals with the user |
 | 1 — Study samples | — | Check the Notable Samples catalog in `references/samples.md` — clone and study matching samples before scaffolding |
-| 2 — Scaffold | `/google-agents-cli-scaffold` | Before creating or enhancing a project |
+| 2 — Scaffold | `/google-agents-cli-scaffold` (not shipped) | Before creating or enhancing a project |
 | 3 — Build | `/google-agents-cli-adk-code` | Before writing agent code — API patterns, tools, callbacks, state |
-| 4 — Evaluate | `/google-agents-cli-eval` | Before running any eval — dataset schema, metrics, eval-fix loop |
-| 5 — Deploy | `/google-agents-cli-deploy` | Before deploying — target selection, troubleshooting 403/timeouts |
-| 6 — Publish | `/google-agents-cli-publish` | After deploying, if registering with Gemini Enterprise (optional) |
-| 7 — Observe | `/google-agents-cli-observability` | After deploying — traces, logging, monitoring setup |
+| 4 — Evaluate | `/google-agents-cli-eval` (not shipped) | Before running any eval — dataset schema, metrics, eval-fix loop |
+| 5 — Deploy | `/google-agents-cli-deploy` (not shipped) | Before deploying — target selection, troubleshooting 403/timeouts |
+| 6 — Publish | `/google-agents-cli-publish` (not shipped) | After deploying, if registering with Gemini Enterprise (optional) |
+| 7 — Observe | `/google-agents-cli-observability` (not shipped) | After deploying — traces, logging, monitoring setup |
 
 ---
 
@@ -90,7 +86,7 @@ Do NOT proceed to planning, scaffolding, or coding. Ask the user the questions b
 - If **Cloud Run** or **GKE** chosen → **Session storage?** In-memory (default), Cloud SQL (persistent), or Agent Platform Sessions (managed).
 - If **deployment with CI/CD** chosen → **Git repository?** Does one already exist, or should one be created? If creating, public or private?
 
-Once you have the user's answers, write the spec to `.agents-cli-spec.md` using the template in `references/spec-template.md`, then get the user's approval. See `/google-agents-cli-scaffold` for how these choices map to CLI flags.
+Once you have the user's answers, write the spec to `.agents-cli-spec.md` using the template in `references/spec-template.md`, then get the user's approval. See `/google-agents-cli-scaffold` (not shipped) for how these choices map to CLI flags.
 
 Once you have a clear understanding, proceed to **Phase 1**.
 
@@ -112,7 +108,7 @@ Otherwise, scaffold **before writing any code**:
 - **No project yet** → `agents-cli scaffold create <name>`
 - **Existing code to import** → `agents-cli scaffold enhance .` (adds the agents-cli structure)
 
-Use `/google-agents-cli-scaffold` for the full workflow — it covers architecture choices (deployment target, agent type, session storage) and project creation or enhancement.
+Use `/google-agents-cli-scaffold` (not shipped) for the full workflow — it covers architecture choices (deployment target, agent type, session storage) and project creation or enhancement.
 
 ## Phase 3: Build and Implement
 
@@ -139,7 +135,7 @@ follow those, adapting the sample's `infra/terraform/` and `.env` into your proj
 
 **This is the most important phase.** Evaluation validates agent behavior end-to-end.
 
-**MANDATORY:** Activate `/google-agents-cli-eval` before running evaluation.
+**MANDATORY:** Activate `/google-agents-cli-eval` (not shipped) before running evaluation.
 It contains the dataset schema, config format, and critical gotchas. Do NOT skip this.
 
 **Do NOT skip this phase.** After building the agent, you MUST proceed to evaluation.
@@ -169,18 +165,18 @@ Once evaluation thresholds are met:
    ```bash
    agents-cli scaffold enhance . --deployment-target <target>
    ```
-   See `/google-agents-cli-deploy` for the deployment target decision matrix (Agent Runtime vs Cloud Run vs GKE).
+   See `/google-agents-cli-deploy` (not shipped) for the deployment target decision matrix (Agent Runtime vs Cloud Run vs GKE).
 3. Deploy when ready: `agents-cli deploy`
 
 **IMPORTANT**: Never deploy without explicit human approval.
 
 ## Phase 6: Publish (optional)
 
-Not all agents require this — currently supporting Gemini Enterprise. See `/google-agents-cli-publish` for registration modes, flags, and troubleshooting.
+Not all agents require this — currently supporting Gemini Enterprise. See `/google-agents-cli-publish` (not shipped) for registration modes, flags, and troubleshooting.
 
 ## Phase 7: Observe
 
-After deploying, use observability tools to monitor agent behavior in production. See `/google-agents-cli-observability` for Cloud Trace, prompt-response logging, BigQuery Analytics, and third-party integrations.
+After deploying, use observability tools to monitor agent behavior in production. See `/google-agents-cli-observability` (not shipped) for Cloud Trace, prompt-response logging, BigQuery Analytics, and third-party integrations.
 
 ---
 
@@ -241,7 +237,7 @@ Before finalizing any code replacement, verify the following:
     for m in client.models.list(): print(m.name)
     "
     ```
-  - Do NOT use older models unless explicitly requested. For model docs, fetch `https://adk.dev/agents/models/google-gemini/index.md`. See also [stable model versions](https://cloud.google.com/vertex-ai/generative-ai/docs/learn/model-versions).
+  - Do NOT use older models unless explicitly requested. For model docs, fetch the external page https://adk.dev/agents/models/google-gemini/index.md (a web URL, not a local file). See also [stable model versions](https://cloud.google.com/vertex-ai/generative-ai/docs/learn/model-versions).
 
 - **Running Python Commands:**
   - Always use `uv` to execute Python commands (e.g., `uv run python script.py`)
@@ -274,13 +270,13 @@ When something breaks, follow this sequence — don't skip steps or shotgun fixe
 - **Environment Variables:**
   - `.env` files and env var assignments (e.g., `GOOGLE_CLOUD_PROJECT`, `GOOGLE_CLOUD_LOCATION`) are typically required for the agent to function — never remove or modify them unless the user explicitly asks
   - If a `.env` file exists in the project root, treat it as essential configuration
-  - For secrets and API keys, prefer GCP Secret Manager over plain `.env` entries — see `/google-agents-cli-deploy` for secret management guidance
+  - For secrets and API keys, prefer GCP Secret Manager over plain `.env` entries — see `/google-agents-cli-deploy` (not shipped) for secret management guidance
 
 ---
 
 ## Using a Temporary Scaffold as Reference
 
-When you need specific infrastructure files (Terraform, CI/CD, Dockerfile) but don't want to modify the current project, use `/google-agents-cli-scaffold` to create a temporary project in `/tmp/` and copy over what you need.
+When you need specific infrastructure files (Terraform, CI/CD, Dockerfile) but don't want to modify the current project, use `/google-agents-cli-scaffold` (not shipped) to create a temporary project in `/tmp/` and copy over what you need.
 
 ---
 

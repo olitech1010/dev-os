@@ -251,13 +251,16 @@ function extractKeywords(id, name, category, description, readmeSummary) {
 }
 
 function sync() {
-  console.log('🔄 Dev-OS Design Catalog Synchronizer');
+  console.log('Dev-OS Design Catalog Synchronizer');
   console.log(`Source repository: ${REPO_URL}`);
 
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'devos-design-sync-'));
   try {
-    console.log(`📥 Fetching latest catalog into temporary cache...`);
-    spawnSync('git', ['clone', '--depth', '1', REPO_URL, tmpDir], { stdio: 'ignore' });
+    console.log(`Fetching latest catalog into temporary cache...`);
+    const clone = spawnSync('git', ['clone', '--depth', '1', REPO_URL, tmpDir], { stdio: 'ignore', timeout: 120000 });
+    if (clone.error || clone.status !== 0) {
+      throw new Error(`git clone of ${REPO_URL} failed${clone.error ? `: ${clone.error.message}` : ` (exit ${clone.status})`}`);
+    }
 
     const sourceDesignDir = path.join(tmpDir, 'design-md');
     if (!fs.existsSync(sourceDesignDir)) {
@@ -276,7 +279,7 @@ function sync() {
       return fs.statSync(fullPath).isDirectory() && fs.existsSync(path.join(fullPath, 'DESIGN.md'));
     });
 
-    console.log(`📦 Found ${brandFolders.length} brand design systems.`);
+    console.log(`[ OK ] Found ${brandFolders.length} brand design systems.`);
 
     const index = [];
 
@@ -317,7 +320,7 @@ function sync() {
     index.sort((a, b) => a.name.localeCompare(b.name));
 
     fs.writeFileSync(INDEX_FILE, JSON.stringify(index, null, 2) + '\n', 'utf8');
-    console.log(`✅ Successfully cataloged ${index.length} design systems in ${INDEX_FILE}`);
+    console.log(`[ OK ] Successfully cataloged ${index.length} design systems in ${INDEX_FILE}`);
 
     // Print breakdown by category
     const categoryCounts = {};
@@ -325,7 +328,7 @@ function sync() {
       categoryCounts[item.category] = (categoryCounts[item.category] || 0) + 1;
     }
 
-    console.log('\n📊 Category Breakdown:');
+    console.log('\nCategory Breakdown:');
     for (const [cat, count] of Object.entries(categoryCounts)) {
       console.log(`  - ${cat.padEnd(30)}: ${count} systems`);
     }

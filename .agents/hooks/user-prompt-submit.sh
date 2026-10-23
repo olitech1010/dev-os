@@ -4,9 +4,23 @@
 # Re-injects the Orchestrator directive, locked mode, and delegation mandate on EVERY turn.
 # This is the mechanical counter to prompt-context decay: instructions loaded once at
 # session start fade as context grows, so role and mode are re-asserted each turn.
+#
+# Interface: Claude Code sends JSON on stdin ({hook_event_name:"UserPromptSubmit", prompt, ...});
+# it is drained, not used. Stdout is injected into the model's context. Always exits 0.
 
-# Consume any piped payload without acting on it.
-if [ ! -t 0 ]; then cat >/dev/null 2>&1 || true; fi
+# Drain any piped payload without acting on it; a timed read cannot hang on an open pipe.
+# Plugin mode (DEVOS_PLUGIN_MODE=1): stand down outside Dev-OS projects. See lib/common.sh.
+_DEVOS_HD="${BASH_SOURCE[0]%/*}"; [ "$_DEVOS_HD" = "${BASH_SOURCE[0]}" ] && _DEVOS_HD=.
+if [ -f "$_DEVOS_HD/lib/common.sh" ]; then
+    . "$_DEVOS_HD/lib/common.sh"
+    devos_plugin_gate
+fi
+
+if [ ! -t 0 ]; then IFS= read -r -d '' -t 2 _DISCARD || true; fi
+
+if [ -n "$CLAUDE_PROJECT_DIR" ] && [ -d "$CLAUDE_PROJECT_DIR" ]; then
+    cd "$CLAUDE_PROJECT_DIR" 2>/dev/null || true
+fi
 
 SESSION_FILE=".agents/memory/session.json"
 MODE="interactive"

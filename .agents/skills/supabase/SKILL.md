@@ -2,8 +2,10 @@
 name: supabase
 description: "Use when doing ANY task involving Supabase. Triggers: Supabase products (Database, Auth, Edge Functions, Realtime, Storage, Vectors, Cron, Queues); client libraries and SSR integrations (supabase-js, @supabase/ssr) in Next.js, React, SvelteKit, Astro, Remix; auth issues (login, logout, sessions, JWT, cookies, getSession, getUser, getClaims, RLS); Supabase CLI or MCP server; schema changes, migrations, security audits, Postgres extensions (pg_graphql, pg_cron, pg_vector)."
 metadata:
+  source: https://github.com/supabase/agent-skills
   author: supabase
   version: "0.1.2"
+license: MIT
 ---
 
 # Supabase
@@ -133,3 +135,6 @@ Do NOT use `apply_migration` to change a local database schema — it writes a m
 
 - **Skill Feedback** → [references/skill-feedback.md](references/skill-feedback.md)
   **MUST read when** the user reports that this skill gave incorrect guidance or is missing information.
+
+- **Next.js + Supabase Auth** → [references/nextjs-supabase-auth/GUIDE.md](references/nextjs-supabase-auth/GUIDE.md)
+  Read when wiring Supabase Auth into a Next.js App Router app: `@supabase/ssr` server and browser clients, middleware session refresh, protected routes, and auth callbacks. Formerly the `nextjs-supabase-auth` skill.

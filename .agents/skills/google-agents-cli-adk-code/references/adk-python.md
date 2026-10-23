@@ -767,7 +767,7 @@ Requires `pip install google-adk[a2a]`.
 
 ```python
 # Expose an agent as an A2A service
-# Prefer scaffolding over manual code — scaffold a normal `adk` agent; A2A is built in (see /google-agents-cli-scaffold)
+# Prefer scaffolding over manual code — scaffold a normal `adk` agent; A2A is built in (see /google-agents-cli-scaffold, not shipped)
 from google.adk.a2a.utils.agent_to_a2a import to_a2a
 from a2a.types import AgentCard
 to_a2a(root_agent, port=8001)

@@ -46,7 +46,7 @@ Use $ARGUMENTS to reference user input after the command.
 - **Usage**: `/review src/components/Button.tsx`
 
 ### `/commit`
-- **Description**: Trigger the autonomous commit workflow.
+- **Description**: Stage changes and propose a Conventional Commit message. The agent cannot commit; you run `.agents/scripts/commit.sh` from your own terminal to finish.
 - **Target Agent**: Developer
 - **Triage Level**: TRIVIAL
 - **Workflow**: direct
@@ -105,7 +105,7 @@ Use $ARGUMENTS to reference user input after the command.
 - **Description**: Trigger DevOps for deployment planning and execution.
 - **Target Agent**: DevOps
 - **Triage Level**: CRITICAL
-- **Workflow**: direct
+- **Workflow**: infrastructure
 - **Usage**: `/deploy production`
 
 ### `/task`
@@ -117,7 +117,7 @@ Use $ARGUMENTS to reference user input after the command.
 
 ### `/auto`
 - **Description**: Launch autonomous SDLC mode to build an MVP from an idea hands-off.
-- **Target Agent**: Executive Proxy
+- **Target Agent**: Orchestrator (Autonomous Mode)
 - **Triage Level**: STANDARD
 - **Workflow**: autonomous-sdlc
 - **Usage**: `/auto Build an offline-first markdown note taking application with full-text search`
@@ -138,20 +138,20 @@ Use $ARGUMENTS to reference user input after the command.
 
 ### `/humanize`
 - **Description**: Audit and scrub AI writing tells from documentation and marketing copy.
-- **Target Agent**: Release Manager
+- **Target Agent**: Tech Writer
 - **Triage Level**: STANDARD
-- **Workflow**: standard
+- **Workflow**: documentation
 - **Usage**: `/humanize docs/README.md`
 
-### `/telemetry`
-- **Description**: Inspect local failure logs and generate RCA diagnostics.
+### `/telemetry` (maintainer pack)
+- **Description**: Inspect local failure logs and generate RCA diagnostics. Installed only with the `maintainer` pack.
 - **Target Agent**: Telemetry
 - **Triage Level**: TRIVIAL
 - **Workflow**: direct
 - **Usage**: `/telemetry`, `/telemetry report`, or `/telemetry issue --dry-run`
 
-### `/eval`
-- **Description**: Run capability benchmarks, measure pass@k reliability, and generate agent scorecards.
+### `/eval` (maintainer pack)
+- **Description**: Run capability benchmarks, measure pass@k reliability, and generate agent scorecards. Installed only with the `maintainer` pack.
 - **Target Agent**: Eval Engineer
 - **Triage Level**: STANDARD
 - **Workflow**: direct
@@ -163,6 +163,48 @@ Use $ARGUMENTS to reference user input after the command.
 - **Triage Level**: TRIVIAL
 - **Workflow**: direct
 - **Usage**: `/mode` or `/mode auto`
+
+### `/sre`
+- **Description**: Design infrastructure-as-code, SLOs, alerting, and incident runbooks.
+- **Target Agent**: DevOps
+- **Triage Level**: CRITICAL
+- **Workflow**: infrastructure
+- **Usage**: `/sre Add SLOs and alerting for the checkout API`
+
+### `/pm`
+- **Description**: Formulate user stories, acceptance criteria, and the MVP boundary.
+- **Target Agent**: PM
+- **Triage Level**: STANDARD
+- **Workflow**: product-planning
+- **Usage**: `/pm Team invitations by email`
+
+### `/spec`
+- **Description**: Write a feature spec in `docs/specs/<slug>/`: requirements with EARS acceptance criteria, a design, and a dependency-ordered task list, with a human checkpoint after each phase. The approved `tasks.md` serves as the implementation plan.
+- **Target Agent**: Architect
+- **Triage Level**: STANDARD
+- **Workflow**: spec-driven
+- **Usage**: `/spec password-reset by email`
+
+### `/tech-writer`
+- **Description**: Author technical documentation, ADRs, changelogs, and release notes.
+- **Target Agent**: Tech Writer
+- **Triage Level**: TRIVIAL
+- **Workflow**: documentation
+- **Usage**: `/tech-writer Document the new billing API`
+
+### `/tech-lead`
+- **Description**: Arbitrate a deadlock or Circuit Breaker trip with one written, binding decision (read-only, no code patches).
+- **Target Agent**: Tech Lead
+- **Triage Level**: CRITICAL
+- **Workflow**: arbitration
+- **Usage**: `/tech-lead Login test keeps failing after 3 fixes`
+
+### `/skill`
+- **Description**: Audit, list, sync, or discover agent skills.
+- **Target Agent**: DevOps
+- **Triage Level**: TRIVIAL
+- **Workflow**: direct
+- **Usage**: `/skill audit`
 
 ## Creating Custom Commands
 

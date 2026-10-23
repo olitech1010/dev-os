@@ -3,7 +3,8 @@ name: deploy
 description: Prepare deployment plan and run checklist
 agent: devops
 triage_level: CRITICAL
-workflow: direct
+workflow: infrastructure
+argument-hint: "<target environment>"
 ---
 
 Prepare a deployment plan for the specified target.

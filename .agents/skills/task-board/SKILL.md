@@ -1,6 +1,6 @@
 ---
 name: task-board
-description: Rules and state transitions for managing the deterministic DAG task board in docs/TASK_BOARD.md across multi-agent workflows.
+description: "Use when creating, updating, or reading docs/TASK_BOARD.md, the task DAG the Orchestrator maintains. Defines task states, allowed transitions, dependencies, and ownership."
 ---
 
 # Task Board & DAG Workflow Protocol
@@ -21,6 +21,6 @@ BACKLOG ➔ QUEUED ➔ IN_PROGRESS ➔ PARALLEL_GATE ➔ HUMAN_CHECKPOINT ➔ DO
    - **QA**: Code standards & cleanliness
    - **Tester**: Test coverage & regression suites
    - **Security**: Secret scans & vulnerability audit
-3. **Circuit Breaker**: If any agent loop exceeds 3 iterations without resolution, the task status MUST be set to `BLOCKED`, and the Orchestrator halts all subtasks to escalate to the human.
+3. **Circuit Breaker**: Follow "Circuit Breaker (canonical)" in `.agents/AGENTS.md`: after 3 failed fix iterations the Tech Lead gets exactly one arbitration attempt; if that fails, set the task to `BLOCKED` and the Orchestrator halts all subtasks and escalates to the human.
 4. **Human Checkpoint**: No task can transition from `PARALLEL_GATE` to `DONE` without explicit human approval and commit token verification via `.agents/scripts/commit.sh`.
 5. **Session-End Synchronization**: The active task state in `docs/TASK_BOARD.md` must match `docs/CURRENT_STATE.md`.

@@ -4,6 +4,7 @@ description: Deep research on a library, API, or technical topic
 agent: researcher
 triage_level: TRIVIAL
 workflow: direct
+argument-hint: "<library, API, or topic>"
 ---
 
 Conduct thorough research on the specified topic.

@@ -1,14 +1,28 @@
 ---
 name: deploy-to-vercel
-description: Deploy applications and websites to Vercel. Use when the user requests deployment actions like "deploy my app", "deploy and give me the link", "push this live", or "create a preview deployment".
+description: "Use when the user asks to deploy an app or site to Vercel (\"deploy my app\", \"push this live\", \"create a preview deployment\"), including token-based CLI auth, environment variables, and CI deploys. Every upload, push, link, or deploy waits for explicit human confirmation; preview by default, production only on request."
 metadata:
   author: vercel
   version: "3.0.0"
+  source: https://github.com/vercel-labs/agent-skills
+license: MIT
 ---
 
 # Deploy to Vercel
 
 Deploy any project to Vercel. **Always deploy as preview** (not production) unless the user explicitly asks for production.
+
+## Human Confirmation Gate (Dev-OS)
+
+Deploying sends the user's code to a third party. Before ANY of the following, state exactly what will be sent where (directory or tarball, team, preview or production) and **ask the human, then wait for an explicit yes**:
+
+- `git push` that triggers a deploy;
+- `vercel link` (creates or attaches a remote Vercel project);
+- `vercel deploy` (any flags);
+- running `resources/deploy.sh` or `resources/deploy-codex.sh`, which package the project and upload the tarball to a remote Vercel endpoint;
+- `npm install -g vercel` or any other global install.
+
+Never treat a team choice, an earlier approval, or silence as confirmation for a later step. If the human does not confirm, stop and report. Commits go through `.agents/scripts/commit.sh` (the Dev-OS commit gate), never raw `git commit`. This gate also applies to every flow in `references/vercel-cli-with-tokens/GUIDE.md`. See also the `deployment-checklist` skill.
 
 The goal is to get the user into the best long-term setup: their project linked to Vercel with git-push deploys. Every method below tries to move the user closer to that state.
 
@@ -32,7 +46,7 @@ vercel teams list --format json 2>/dev/null
 
 ### Team selection
 
-If the user belongs to multiple teams, present all available team slugs as a bulleted list and ask which one to deploy to. Once the user picks a team, proceed immediately to the next step — do not ask for additional confirmation.
+If the user belongs to multiple teams, present all available team slugs as a bulleted list and ask which one to deploy to. Once the user picks a team, continue to the next step; the Human Confirmation Gate above still applies before any link, push, or deploy.
 
 Pass the team slug via `--scope` on all subsequent CLI commands (`vercel deploy`, `vercel link`, `vercel inspect`, etc.):
 
@@ -62,10 +76,10 @@ This is the ideal state. The project is linked and has git integration.
    trigger a deployment. Want me to proceed?
    ```
 
-2. **Commit and push:**
+2. **Commit through the gate, then push (after the human confirms):**
    ```bash
-   git add .
-   git commit -m "deploy: <description of changes>"
+   git add <specific-files>
+   ./.agents/scripts/commit.sh   # human-approved commit gate; never raw git commit
    git push
    ```
    Vercel automatically builds from the push. Non-production branches get preview deployments; the production branch (usually `main`) gets a production deployment.
@@ -108,7 +122,7 @@ The CLI is working but the project isn't linked yet. This is the opportunity to 
 
 1. **Ask the user which team to deploy to.** Present the team slugs from Step 1 as a bulleted list. If there's only one team (or just a personal account), skip this step.
 
-2. **Once a team is selected, proceed directly to linking.** Tell the user what will happen but do not ask for separate confirmation:
+2. **Once a team is selected, tell the user what linking will do and wait for confirmation** (Human Confirmation Gate):
    ```
    Linking this project to <team name> on Vercel. This will create a Vercel
    project to deploy to and enable automatic deployments on future git pushes.
@@ -147,7 +161,7 @@ The Vercel CLI isn't set up at all.
    ```
    The user completes auth in their browser. If running in a non-interactive environment where login is not possible, skip to the **no-auth fallback** below.
 
-3. **Ask which team to deploy to** — present team slugs from `vercel teams list --format json` as a bulleted list. If only one team / personal account, skip. Once selected, proceed immediately.
+3. **Ask which team to deploy to** — present team slugs from `vercel teams list --format json` as a bulleted list. If only one team / personal account, skip. Linking still requires confirmation.
 
 4. **Link the project** with the selected team scope (use `--repo` if a git remote exists, plain `vercel link` otherwise):
    ```bash
@@ -162,6 +176,8 @@ The Vercel CLI isn't set up at all.
 ### No-Auth Fallback — claude.ai sandbox
 
 **When to use:** Last resort when the CLI can't be installed or authenticated in the claude.ai sandbox. This requires no authentication — it returns a **Preview URL** (live site) and a **Claim URL** (transfer to your Vercel account).
+
+**Before running the script, ask the human and wait for confirmation.** The script tars the project and uploads it to a remote Vercel endpoint; anyone with the preview URL can view the result. Confirm the path being uploaded and that it contains no secrets (`.env` is excluded, but check for other credential files).
 
 ```bash
 bash /mnt/skills/user/deploy-to-vercel/resources/deploy.sh [path]
@@ -202,7 +218,7 @@ The script auto-detects the framework from `package.json`, packages the project 
    vercel deploy [path] -y --no-wait
    ```
 
-3. **If `vercel` is not installed, or the CLI fails with "No existing credentials found"**, use the fallback script:
+3. **If `vercel` is not installed, or the CLI fails with "No existing credentials found"**, ask the human and wait for confirmation, then use the fallback script (it uploads a tarball of the project to a remote endpoint):
    ```bash
    skill_dir="<path-to-skill>"
 
@@ -230,11 +246,11 @@ The script handles framework detection, packaging, and deployment. It waits for 
 
 You have full shell access. Do NOT use the `/mnt/skills/` path. Follow the decision flow above using the CLI directly.
 
-For the no-auth fallback, run the deploy script from the skill's installed location:
+For the no-auth fallback, after the human confirms the upload, run the deploy script from the skill's installed location:
 ```bash
-bash ~/.claude/skills/deploy-to-vercel/resources/deploy.sh [path]
+bash .agents/skills/deploy-to-vercel/resources/deploy.sh [path]
 ```
-The path may vary depending on where the user installed the skill.
+In a Dev-OS project the skill lives at `.agents/skills/deploy-to-vercel/`; the path may differ in other installs.
 
 ### Sandboxed environments (claude.ai)
 
@@ -294,3 +310,7 @@ the command with escalated permissions — want me to proceed?
 ### CLI Auth Failure
 
 If `vercel login` or `vercel deploy` fails with authentication errors, fall back to the no-auth deploy script (claude.ai or Codex variant, depending on the environment).
+
+## References
+
+- `references/vercel-cli-with-tokens/GUIDE.md`: read when the CLI must authenticate with an access token instead of `vercel login` (CI, sandboxes, `VERCEL_TOKEN`), or when managing environment variables, linking by project name, or deploying to a specific team non-interactively. Formerly the `vercel-cli-with-tokens` skill. The Human Confirmation Gate above applies to it.

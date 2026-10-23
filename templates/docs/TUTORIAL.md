@@ -14,22 +14,26 @@ Dev-OS is an AI-augmented Engineering Operating System. Instead of a single AI a
    - **AI Coding Harness:** Google Antigravity & Gemini (`ANTIGRAVITY.md`, `GEMINI.md`, Agent Skills Standard) [Recommended], Claude Code, Cursor, OpenCode, Codex, or All Platforms.
    - **SDLC Mode:** `interactive` (default pair programming), `guided` (checkpoint approvals), `auto` (autonomous hands-off MVP builder for founders/CEOs), or `audit`.
    - **Autonomous Goal:** Target MVP idea if running in `auto` mode (recorded into `docs/TASK_BOARD.md`).
-   - **Skills Depth:** Lean Stack Pack (token-optimized) vs Full Skills Arsenal (all 66 specialist skills).
+   - **Skills Depth:** Lean Stack Pack (token-optimized) vs Full Skills Arsenal (every specialist skill).
    - **Anonymous Failure Telemetry:** On (buffers execution failures locally in `.agents/telemetry/events.jsonl` with zero secret exposure) vs Off.
    - **Verification & Secret Gate:** Automatically verifies, installs, or updates Gitleaks, installs git pre-commit hook, and wires runtime lifecycle hooks (with zero-dependency built-in regex scanner fallback).
 2. **Check health**: Run `devos doctor` — it confirms all required checks pass out of the box. No manual hook or secret scanner installation is needed.
 
 ## 3. Understanding the Agent Roster
 
-You communicate primarily with the **Orchestrator** (or the **Executive Proxy** when in autonomous mode).
+You communicate primarily with the **Orchestrator**, which also leads autonomous mode (`/auto`).
 The Orchestrator delegates to specialist agents:
 - **Architect**: Explores requirements and edge cases using `grill-me`.
 - **UI Designer**: Crafts `DESIGN.md` at project root before frontend development starts (Mandatory Design Gate).
-- **DBA & DevOps**: Database migrations, seed fixtures, infrastructure, and deployment pipelines.
+- **PM**: User stories, acceptance criteria, and MVP scope.
+- **DBA & DevOps**: Database migrations, seed fixtures, infrastructure, deployment pipelines, SLOs, and runbooks.
 - **Developer**: Writes code and presents work for staged review.
 - **QA, Tester, Security**: The parallel quality gate. Tester authors unit tests and `docs/TESTING_GUIDE.md` (universal password: `devos123`).
-- **Telemetry & Eval Engineer**: Local failure diagnostics and test benchmark harnesses.
-- **Memory Manager & Release Manager**: Handles state tracking (`CURRENT_STATE.md`, `LESSONS.md`), changelogs, and document de-fluffing.
+- **Researcher**: Verifies library versions, APIs, and CVEs before code is written.
+- **Tech Writer**: Docs, ADRs, versioning, changelogs, release notes, and the Humanizer gate.
+- **Tech Lead**: Read-only arbiter when the Circuit Breaker trips.
+
+The Orchestrator keeps project memory (`CURRENT_STATE.md`, `LESSONS.md`) through the `shared-memory` skill. Telemetry analysis and eval benchmarks are in the optional `maintainer` pack.
 
 For a full breakdown, see `../.agents/AGENTS.md`.
 
@@ -68,13 +72,15 @@ Dev-OS maintains its own context to prevent token overload and "forgetting".
 
 ## 7. Commit Workflow (commit.sh)
 
-Agents cannot run raw `git commit`. Changes are staged with `git add`, then the human runs `.agents/scripts/commit.sh`. The script:
-1. Prompts for the human approval token.
-2. Prompts for the commit type and message.
-3. Exports `DEVOS_COMMIT_APPROVED`.
-4. Runs `git commit`, which passes through the Git pre-commit hook.
+Agents cannot commit at all. An agent stages its changes with `git add`, presents a summary, and asks you to commit. You run `.agents/scripts/commit.sh` from your own terminal. The script:
+1. Refuses if it is running inside an AI agent shell (`CLAUDECODE`, `GEMINI_CLI`, `CODEX_*`, `CURSOR_AGENT`, `AI_AGENT`, and related markers).
+2. Refuses if nothing is staged.
+3. Prompts on the terminal for the approval token (`approve`), the commit type, and the message.
+4. Runs `git commit` with `DEVOS_COMMIT_APPROVED=true` for that one command, so the pre-commit hook lets it through and runs the secret, environment, database, UI, and documentation scans.
 
-Note: the script does **not** stage files — run `git add` before invoking it.
+The script does not stage files; run `git add` before invoking it. Merge commits skip `pre-commit`, so a separate `pre-merge-commit` hook refuses merges from agent shells. CI pipelines that must commit use `DEVOS_HEADLESS_COMMIT=1` with `CI=true` and pass the message as an argument.
+
+Projects set up with an older Dev-OS keep their old hooks until you re-run `.agents/scripts/install-hooks.sh` or `devos update`.
 
 ## 8. Best Practices and Tips
 

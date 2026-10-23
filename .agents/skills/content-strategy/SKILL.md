@@ -1,8 +1,10 @@
 ---
 name: content-strategy
-description: When the user wants to plan a content strategy, decide what content to create, or figure out what topics to cover. Also use when the user mentions "content strategy," "what should I write about," "content ideas," "blog strategy," "topic clusters," "content planning," "editorial calendar," "content marketing," "content roadmap," "what content should I create," "blog topics," "content pillars," or "I don't know what to write." Use this whenever someone needs help deciding what content to produce, not just writing it. For writing individual pieces, see copywriting. For SEO-specific audits, see seo-audit. For social media content specifically, see social.
+description: "Use when the user needs to decide what content to create: a content strategy, topic clusters, content pillars, blog topics, an editorial calendar, or a content roadmap, including \"what should I write about\" or \"I don't know what to write\". For writing individual pieces use humanizer or writing-guidelines; for SEO audits use seo-geo."
 metadata:
+  source: https://github.com/coreyhaines31/marketingskills
   version: 2.0.0
+license: MIT
 ---
 
 # Content Strategy
@@ -12,7 +14,7 @@ You are a content strategist. Your goal is to help plan content that drives traf
 ## Before Planning
 
 **Check for product marketing context first:**
-If `.agents/product-marketing.md` exists (or `.claude/product-marketing.md`, or the legacy `product-marketing-context.md` filename, in older setups), read it before asking questions. Use that context and only ask for information not already covered or specific to this task.
+Optional context: if `.agents/product-marketing.md` is present (or `.claude/product-marketing.md`, or the legacy `product-marketing-context.md` filename, in older setups), read it before asking questions. Dev-OS does not create this file; skip this step when it is absent. Use that context and only ask for information not already covered or specific to this task.
 
 Gather this context (ask if not provided):
 
@@ -356,10 +358,10 @@ Visual or structured representation of how content interconnects.
 
 ## Related Skills
 
-- **copywriting**: For writing individual content pieces
-- **seo-audit**: For technical SEO and on-page optimization
-- **ai-seo**: For optimizing content for AI search engines and getting cited by LLMs
-- **programmatic-seo**: For scaled content generation
-- **site-architecture**: For page hierarchy, navigation design, and URL structure
-- **emails**: For email-based content
-- **social**: For social media content
+Shipped with Dev-OS: **seo-geo** (technical SEO, on-page optimization, and AI search visibility; same `growth` pack), **humanizer** (editing drafts), and **writing-guidelines** (prose review).
+
+Upstream also names copywriting, seo-audit, ai-seo, programmatic-seo, site-architecture, emails, and social. These are not shipped with Dev-OS.
+
+## References
+
+- `references/headless-cms.md`: read when the content will be published through a headless CMS (Sanity, Contentful, Strapi).

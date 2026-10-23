@@ -1,6 +1,9 @@
 ---
 name: seo-geo
-description: SEO & GEO (Generative Engine Optimization) for websites. Analyze keywords, generate schema markup, optimize for AI search engines (ChatGPT, Perplexity, Gemini, Copilot, Claude) and traditional search (Google, Bing). Use when user wants to improve search visibility, search optimization, search ranking, AI visibility, ChatGPT ranking, Google AI Overview, indexing, JSON-LD, meta tags, or keyword research.
+description: "Use when the user wants to improve search visibility for a website in traditional search (Google, Bing) or AI answer engines (ChatGPT, Perplexity, Gemini, Copilot, Claude, Google AI Overviews), or asks about meta tags, Open Graph, sitemaps, robots.txt, hreflang, JSON-LD schema, EEAT, indexing, or keyword research."
+metadata:
+  source: https://github.com/ReScienceLab/opc-skills
+license: MIT
 ---
 
 # SEO/GEO Optimization Skill
@@ -236,9 +239,8 @@ See [references/platform-algorithms.md](./references/platform-algorithms.md) for
 ## Skill Dependencies
 
 This skill works best with:
-- **twitter skill** - Search SEO experts for latest tips
-- **reddit skill** - Search r/SEO, r/bigseo for discussions
 - **WebSearch** - Keyword research and competitor analysis
+- Upstream also suggests twitter and reddit skills; these are not shipped with Dev-OS.
 
 ## References
 
@@ -248,3 +250,4 @@ This skill works best with:
 - [references/seo-checklist.md](./references/seo-checklist.md) - Complete SEO audit checklist
 - [references/tools-and-apis.md](./references/tools-and-apis.md) - Tools and API reference
 - [examples/opc-skills-case-study.md](./examples/opc-skills-case-study.md) - Real-world optimization example
+- [references/seo-aeo-best-practices/GUIDE.md](./references/seo-aeo-best-practices/GUIDE.md) - Implementation-level SEO and AEO for a site you are building: metadata, Open Graph, sitemaps, robots.txt, hreflang, structured data, EEAT, and AI-answer readiness, with its own detail files. Read when writing the code rather than auditing a live site. Formerly the `seo-aeo-best-practices` skill.

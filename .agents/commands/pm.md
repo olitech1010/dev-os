@@ -4,6 +4,7 @@ description: Formulate product user stories and acceptance criteria
 agent: pm
 triage_level: STANDARD
 workflow: product-planning
+argument-hint: "<feature or requirement idea>"
 ---
 
 Formulate product requirements, user personas, and user stories.

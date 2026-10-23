@@ -1,6 +1,6 @@
 ---
 name: shadcn-ui
-description: Expert guidance for integrating and building applications with shadcn/ui components, including component discovery, installation, customization, and best practices.
+description: "Use when adding, customizing, or composing shadcn/ui components in a React or Next.js project: finding the right component, installing it with the shadcn CLI or MCP, theming, and following shadcn conventions."
 allowed-tools:
   - "shadcn*:*"
   - "mcp_shadcn*"
@@ -8,6 +8,9 @@ allowed-tools:
   - "Write"
   - "Bash"
   - "web_fetch"
+metadata:
+  source: https://github.com/google-labs-code/stitch-skills
+license: Apache-2.0
 ---
 
 # shadcn/ui Component Integration

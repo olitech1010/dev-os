@@ -25,6 +25,9 @@ npm-debug.log*
 # Dev-OS temporary backups
 .agents/_backup/
 
+# Local tool binaries (gitleaks installed by install-hooks.sh)
+.agents/bin/
+
 # Local telemetry logs & reports
 .agents/telemetry/*.jsonl
 .agents/telemetry/reports/
@@ -47,3 +50,7 @@ docs/superpowers/
 .agents/memory/context.json
 
 
+
+# Build output (devos build-plugin writes dist/claude-plugin/)
+dist/
+.agents/manifest.json

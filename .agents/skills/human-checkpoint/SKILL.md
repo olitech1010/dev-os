@@ -1,6 +1,6 @@
 ---
 name: human-checkpoint
-description: Protocols for communicating with the human and gating actions.
+description: "Use when about to take any action that needs human approval (commits, pushes, deploys, destructive operations, architecture decisions) and when reporting to the human. Defines how to ask, what to show, and how to wait."
 ---
 
 # Human Checkpoint

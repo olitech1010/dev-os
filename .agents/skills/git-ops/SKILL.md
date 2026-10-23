@@ -1,6 +1,6 @@
 ---
 name: git-ops
-description: Git workflow rules enforcing the strict human-in-the-loop commit gate. Defines feature branching, review steps, and required human approvals before committing or pushing.
+description: "Use when branching, staging, preparing a commit message, committing, pushing, or opening a pull request. Enforces the human-in-the-loop commit gate (.agents/scripts/commit.sh, never raw git commit), Conventional Commits, and the branch and PR workflow."
 ---
 
 # Git Operations (GitOps) Skill
@@ -22,12 +22,12 @@ When assigned a task:
    - If instructed to start a feature: `git checkout -b feat/your-feature-name`
 3. **Execute**: Write the code and run tests/linting.
 4. **QA Gate**: Pass output to the QA Agent. You MUST NOT commit yet.
-5. **Commit & Human Gate**: Once QA approves, you MUST use the `.agents/scripts/commit.sh` script to mechanically enforce the human checkpoint.
+5. **Commit & Human Gate**: Once QA approves, hand the commit to the human. Agents cannot commit at all: `commit.sh` and the git pre-commit and pre-merge-commit hooks refuse whenever an agent-shell marker is set (`CLAUDECODE`, `GEMINI_CLI`, `CODEX_*`, `CURSOR_AGENT`, `AI_AGENT`, and similar).
    - Stage your files: `git add <specific-files>`
-   - Execute the script: `./.agents/scripts/commit.sh`
-   - The script will pause and prompt the human for approval. Once the human approves via the prompt, the script will handle the commit formatting and execution.
-   - **DO NOT run `git commit` directly.**
-6. **Push**: `git push origin HEAD`
+   - Propose a Conventional Commit message and present the staged summary.
+   - Ask the human to run `./.agents/scripts/commit.sh` from their own terminal. The script prompts for an `approve` token, the type, and the message on `/dev/tty`.
+   - **DO NOT run `git commit` or `commit.sh` yourself.**
+6. **Push**: only when the human explicitly asks: `git push origin HEAD`
 7. **Repeat** for the next logical unit.
 
 ## Commit Message Standard (Conventional Commits)
@@ -51,3 +51,8 @@ Types:
 2. **Never commit secrets**. If an API key or password is in the code, remove it, use an environment variable, and then run the commit script.
 3. **Never force-push (`-f`)**. If your push is rejected, pull with rebase (`git pull --rebase origin main`), resolve conflicts, and try pushing again.
 4. **Never commit broken code** to `main`. If you are on `main`, stop and switch to a branch.
+
+## References
+
+- `references/git-commit/GUIDE.md`: read when preparing a commit: detecting type and scope from the staged diff, writing the Conventional Commit message, and grouping files into logical commits before handing off to `.agents/scripts/commit.sh`. Formerly the `git-commit` skill.
+- `references/git-workflow/GUIDE.md`: read when choosing a branch name, following the simplified GitHub flow, or writing a pull request. Formerly the `git-workflow` skill.

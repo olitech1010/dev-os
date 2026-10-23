@@ -1,623 +1,412 @@
-# Dev-OS — Engineering OS
+# Dev-OS
 
-*A multi-agent Engineering Operating System for AI-assisted software development*
+*A multi-agent engineering OS for AI coding assistants*
 
 **by Clement Olives · Olives Technologies**
 
-![Version](https://img.shields.io/badge/version-v4.5.0-blue.svg)
+![Version](https://img.shields.io/badge/version-v5.0.0-blue.svg)
 ![npm](https://img.shields.io/badge/npm-%40olives%2Fdevos-red.svg)
 ![License](https://img.shields.io/badge/license-MIT-green.svg)
-![Status](https://img.shields.io/badge/status-production--ready-brightgreen.svg)
 
 ```bash
 npx @olives/devos init
 ```
 
----
+Dev-OS installs a team of specialist agents, slash commands, skills and runtime gates into your project. You talk to an Orchestrator; it routes work to a Developer, QA, Tester, Security and the other specialists, and nothing reaches git history until a human commits it from their own terminal. The gates are mechanical: hook scripts and git hooks block the action, so they do not depend on the model remembering a rule. The CLI is a single zero-dependency Node script (`bin/devos.js`).
 
-## Table of Contents
+## Contents
 
-- [1. Executive Summary](#1-executive-summary)
-- [2. Quick Start & Complete Setup Guide](#2-quick-start--complete-setup-guide)
-  - [Prerequisites](#prerequisites)
-  - [Step 1: Install Dev-OS Into Your Project](#step-1-install-dev-os-into-your-project)
-  - [Step 2: Install Mechanical Pre-Commit Hooks](#step-2-install-mechanical-pre-commit-hooks)
-  - [Step 3: Secret Scanner Verification](#step-3-secret-scanner-verification)
-  - [Step 4: Verify Installation](#step-4-verify-installation)
-  - [CLI Command Reference](#cli-command-reference)
-- [3. Agent Roster & Team Architecture](#3-agent-roster--team-architecture)
-- [4. How to Prompt Dev-OS: Prompt the What, Not the How](#4-how-to-prompt-dev-os-prompt-the-what-not-the-how)
-  - [What Dev-OS Handles Automatically](#what-dev-os-handles-automatically)
-  - [The Golden Prompt Formula](#the-golden-prompt-formula)
-  - [Case Study: Restaurant POS & Voice Ordering](#case-study-restaurant-pos--voice-ordering)
-- [5. Slash Commands Reference](#5-slash-commands-reference)
-  - [Command List & Usage](#command-list--usage)
-  - [Creating Custom Slash Commands](#creating-custom-slash-commands)
-- [6. Workflow Protocols & Delivery Cycles](#6-workflow-protocols--delivery-cycles)
-  - [The 5-Layer Quality Gate Architecture](#the-5-layer-quality-gate-architecture)
-  - [Standard Feature Delivery (Parallel Quality Gate)](#standard-feature-delivery-parallel-quality-gate)
-  - [Bug Fix Delivery Workflow](#bug-fix-delivery-workflow)
-  - [Rollback Protocol](#rollback-protocol)
-  - [Exploratory Refactoring](#exploratory-refactoring)
-  - [Project Inception (Grill-Me)](#project-inception-grill-me)
-- [7. Commit Model & Mechanical Gate Protocol](#7-commit-model--mechanical-gate-protocol)
-  - [Staged Review Model](#staged-review-model)
-  - [How `commit.sh` Works](#how-commitsh-works)
-  - [Mechanical Pre-Commit Hook & Secret Scanning](#mechanical-pre-commit-hook--secret-scanning)
-- [8. Memory System & Context Management](#8-memory-system--context-management)
-  - [Working Memory (`CURRENT_STATE.md`)](#working-memory-current_statemd)
-  - [Episodic Memory (`LESSONS.md`)](#episodic-memory-lessonsmd)
-  - [Pinned Safety Rules](#pinned-safety-rules)
-  - [Circuit Breaker Protocol (Rule #10)](#circuit-breaker-protocol-rule-10)
-- [9. System Architecture Diagrams](#9-system-architecture-diagrams)
-- [10. Directory Structure](#10-directory-structure)
-- [11. Best Practices & Troubleshooting](#11-best-practices--troubleshooting)
-- [12. Documentation](#12-documentation)
+1. [Quick start](#quick-start)
+2. [Upgrading from 4.x](#upgrading-from-4x)
+3. [Agent roster](#agent-roster)
+4. [Commands](#commands)
+5. [Workflows](#workflows)
+6. [Gates and hooks](#gates-and-hooks)
+7. [Skills and packs](#skills-and-packs)
+8. [Multi-harness support](#multi-harness-support)
+9. [Claude Code plugin](#claude-code-plugin)
+10. [Memory and state files](#memory-and-state-files)
+11. [Troubleshooting](#troubleshooting)
+12. [Contributing and publishing](#contributing-and-publishing)
 
 ---
 
-## 1. Executive Summary
+## Quick start
 
-**Dev-OS** is an AI-augmented Engineering Operating System that turns AI coding assistants into a structured, multi-agent development team. Instead of interacting with a generic chatbot that makes unvalidated commits or leaks secrets, Dev-OS enforces a rigorous software development lifecycle.
+Requirements: Node.js 18 or later, Git, and Bash. Gitleaks is optional; without it the pre-commit hook falls back to a built-in secret scanner.
 
-### Why Dev-OS?
-
-- **Zero Direct Commit Bypass:** AI agents cannot execute raw `git commit` or `git push`. All code changes route through QA verification, human inspection, and mechanical pre-commit gates.
-- **Specialized Agent Roster:** 19 dedicated agent personas (Developer, QA, Tester, Security, DBA, DevOps, Architect, Researcher, Memory Manager, Release Manager, Orchestrator, UI Designer, Executive Proxy, Telemetry, Eval Engineer, PM, Technical Writer, SRE, and Senior Tech Lead) handle distinct stages of delivery.
-- **Parallel Quality Gates:** QA (standards & anti-AI UI), Tester (unit/integration tests), and Security (vulnerabilities) evaluate code concurrently.
-- **Persistent Memory & State:** Prevents agent "amnesia" through state tracking (`CURRENT_STATE.md`), lessons learned (`LESSONS.md`), and pinned safety rules.
-- **Slash Command Interface:** 19 pre-configured commands (`/review`, `/commit`, `/test`, `/secure`, `/research`, `/design`, `/auto`, `/pm`, `/tech-writer`, `/sre`, `/tech-lead`, etc.) for zero-friction task execution.
-
----
-
-## 2. Quick Start & Complete Setup Guide
-
-Follow this step-by-step walkthrough to set up and verify Dev-OS in any repository.
-
-### Prerequisites
-
-- **Git** (v2.20+)
-- **Bash** (v4.0+)
-- **Node.js** (v18+)
-- **Secret Scanner** (Gitleaks is automatically detected, installed, or updated by `devos init`; built-in zero-dependency scanner active as fallback).
-
-### Step 1: Install Dev-OS Into Your Project
-
-Run the installer **from the root of your own project** (new or existing). Pick any of the three options:
-
-**Option A — npm registry (recommended):**
+Run the installer from the root of your project:
 
 ```bash
-# One-off run (no install)
-npx @olives/devos init
-
-# Or install globally, then use the `devos` command anywhere
-npm install -g @olives/devos
-devos init
+npx @olives/devos init                                # interactive
+npx @olives/devos init --existing --stack nextjs      # non-interactive, existing project
+npx github:olitech1010/dev-os init                    # straight from GitHub
 ```
 
-> [!NOTE]
-> The npm package is named **`@olives/devos`** under the official Olives organization on npm. Once installed, the command you type is simply `devos`.
+`init` makes no network calls by default (`DEVOS_OFFLINE=1` also skips every optional network step). Pass `--install-gitleaks` to install Gitleaks. With no `--harness`, configuration for every supported harness is written.
 
-**Option B — straight from GitHub (no registry needed):**
+Verify the install:
 
 ```bash
-npx github:olitech1010/dev-os init
+npx @olives/devos doctor
 ```
 
-**Option C — clone and link (development / offline):**
+The report ends with a summary like this, and `doctor` exits non-zero when a required check fails, so it can gate CI:
 
-```bash
-git clone https://github.com/olitech1010/dev-os.git
-cd dev-os && npm link
-cd /path/to/your-project && devos init
 ```
-
-The interactive wizard guides you through 8 targeted configuration steps:
-
-1. **Environment Type:** Fresh project (clean workspace with documentation and standards) vs Existing project (inject `.agents/` team without altering existing code).
-2. **Technology Stack:** `nextjs`, `laravel`, `django`, `react-native`, `express`, `fastapi`, or `universal` template.
-3. **AI Coding Platform / Harness:** Google Antigravity & Gemini (`ANTIGRAVITY.md`, `GEMINI.md`, Agent Skills Standard) [Recommended], Claude Code, Cursor, OpenCode, Codex / Windsurf, or All Platforms.
-4. **Default SDLC Execution Mode:** `interactive` (default pair programming), `guided` (checkpoint approvals), `auto` (hands-off MVP builder for founders/CEOs), or `audit` (read-only diagnostics).
-5. **Autonomous Goal / Product Idea:** If `auto` mode is selected, record the target MVP or feature goal into `docs/TASK_BOARD.md` and `.agents/manifest.json`.
-6. **Capability Scope & Specialist Skills:** Lean Stack Pack (core + target stack skills — token-optimized) [Recommended] vs Full Skills Arsenal (all 66 specialist skills).
-7. **Anonymous Failure Telemetry & Local RCA Buffer:** On [Recommended] (anonymously buffers execution errors and root cause analyses into `.agents/telemetry/events.jsonl` with zero secret exposure) vs Off.
-8. **Automated Verification & Secret Scanner Gate:** Enable [Recommended] (automatically installs git pre-commit hook, wires runtime lifecycle hooks, and configures secret scanning with automated Gitleaks installation and built-in fallback) vs Disable.
-
-Non-interactive setup with flags:
-
-```bash
-npx @olives/devos init --existing --stack nextjs --platform antigravity --mode auto
-```
-
-### Automated Hook, Gate & Secret Scanner Setup
-
-`devos init` takes care of all setup out of the box without requiring manual steps:
-- **Git Repository & Mechanical Pre-Commit Hook:** Automatically initializes git if needed and installs `.git/hooks/pre-commit` to physically block raw `git commit` commands and prevent secret leaks.
-- **Secret Scanning with Fallback:** Verifies or automatically installs `gitleaks` via Homebrew when available, and provides an active built-in zero-dependency regex scanner covering AWS, GitHub, OpenAI, Anthropic, Google, and private keys.
-- **Runtime Lifecycle Hooks:** Automatically configures `.agents/hooks/` and `.claude/hooks.json` to enforce session start synchronization and tool validations.
-- **Script Permissions:** Configures executable permissions (`chmod 755`) for all enforcement scripts.
-
-### Step 2: Verify Installation
-
-Run the built-in diagnostic tool to confirm environment readiness:
-
-```bash
-devos doctor
-```
-
-Expected output:
-```
-Diagnostic Summary: 9/9 required checks passed.
+  [ PASS ] Claude Code hook wiring (.claude/settings.json PreToolUse)
+  [ PASS ] Claude Code skills (.claude/skills/ in sync with .agents/skills/)
+  [ WARN ] Mandatory Design Gate (DESIGN.md) (Missing)
+  [ PASS ] Mechanical pre-commit hook (.git/hooks/pre-commit)
+Diagnostic Summary: 12/12 required checks passed.
 [ OK ] Dev-OS environment is fully operational.
 ```
 
-`doctor` exits with a non-zero code when a required check fails, so it can gate CI pipelines. Optional items (the pre-commit hook and Claude Code integration) are reported as `[ WARN ]` without failing the run.
+Then open your assistant and describe the outcome, not the process. Dev-OS supplies the roles, gates and order of work:
 
-### CLI Command Reference
+```text
+/auto Build an issue tracker for a five-person support team.
+Features: inbox, assignment, SLA timers, weekly report
+Integrations: Postgres, email login
+Seed data: sample tickets documented in /docs
+```
 
-| Command | Aliases | Description |
-|---|---|---|
-| `devos init` | `setup` | Install or update Dev-OS in the current project (8-step interactive wizard) |
-| `devos update` | `upgrade` | Safely refresh `.agents/`, skills, commands, harnesses, and memory templates |
-| `devos run <goal>` | `auto` | Autonomous SDLC runner for hands-off MVP builds from an idea prompt |
-| `devos doctor` | `check` | Diagnose setup, permissions, commit gate, hooks, and multi-harness readiness |
-| `devos telemetry` | — | Inspect or manage anonymous failure buffer (`status`, `report`, `enable`, `disable`, `clear`) |
-| `devos pack` | `packs` | Inspect and install stack capability packs (`pack list`, `pack add <name>`) |
-| `devos skill` | `skills` | Discovers and installs individual skills (`skill list`, `skill add <name>`, `skill find <query>`) |
-| `devos memory` | — | Inspect episodic memory vault (`memory list`, `memory doctor`, `memory handoff`) |
-| `devos list` | `agents` | Show installed agent personas and specialist skills |
-| `devos status` | — | One-screen summary of the project's Dev-OS configuration and health |
-| `devos version` | `-v` | Print CLI version and environment info |
-| `devos help` | `-h` | Full command reference |
+For a single change, a plain request or a command such as `/fix Login button does nothing on mobile Safari` is enough.
 
-| Flag | Description |
+---
+
+## Upgrading from 4.x
+
+Run `devos update` (alias `upgrade`) in each project. It migrates a 4.x install in place.
+
+**What changes**
+
+- The roster shrinks to the agents listed below. `executive-proxy` merged into `orchestrator`, `sre` into `devops`, `release-manager` into `tech-writer`, and `memory-manager` duties moved to the `shared-memory` skill. Commands that still name an old agent route to its new owner.
+- `telemetry` and `eval-engineer`, with `/telemetry` and `/eval`, moved to the opt-in maintainer pack.
+- Merged skills are retired and their primaries installed. Old skill names resolve through the `aliases` map in `.agents/packs.json`, so `devos skill add git-commit` prints `[ WARN ] git-commit was merged into git-ops` and installs `git-ops`.
+- Claude Code hooks move into `.claude/settings.json`. A legacy `.claude/hooks.json` that Dev-OS wrote is backed up and removed.
+- Root `AGENTS.md` becomes the canonical instructions file. `.codex/instructions.md`, `OPENCODE.md`, `.opencode/opencode.json` and `.opencode/rules/devos-rules.md` are retired; OpenCode config moves to `opencode.json` at the project root.
+- The git hook installer adds a `pre-merge-commit` hook.
+
+**What is preserved**
+
+- Retired agents and commands are removed only when Dev-OS generated them and nobody edited them. Edited files stay in place with a `[ WARN ]`.
+- An edited `.claude/agents` or `.claude/commands` file, or a file of yours that shares a Dev-OS name, is kept.
+- Customized skills are kept.
+- Your own text outside the Dev-OS markers in managed files, your own hooks in `.agents/hooks/`, an existing `opencode.json` (Dev-OS merges into it), installed packs, and a recorded `--no-hooks` choice.
+
+**Backups.** Every update copies `.agents/` to `.agents/_backup/<timestamp>/` first, and the migration copies every file it touches to `.agents/_backup/migration-<timestamp>/`.
+
+**`--force`.** `devos update --force` regenerates edited agent and command files and overwrites customized skills, after backing them up. Use it only when you want the stock versions back.
+
+The full list is in [CHANGELOG.md](CHANGELOG.md).
+
+---
+
+## Agent roster
+
+Personas live in `.agents/agents/` and are generated into `.claude/agents/` with their own `tools` and `model` frontmatter, so reviewers and arbiters get narrower tool sets than builders. The default install currently has 13 agents:
+
+| Agent | Role |
 |---|---|
-| `-s, --stack <name>` | Target stack: `nextjs`, `laravel`, `django`, `react-native`, `express`, `fastapi`, `universal` |
-| `-p, --platform <name>` | Target AI harness: `antigravity`, `claude`, `cursor`, `opencode`, `codex`, `all` |
-| `-m, --mode <name>` | Execution mode: `interactive`, `guided`, `auto`, `audit` |
-| `--all-skills` | Install all 66 specialist skills |
-| `--all-harnesses` | Generate configuration files for all supported AI coding platforms |
-| `--fresh` / `--existing` | Non-interactive fresh or existing project initialization |
-| `--no-claude` | Skip generating `.claude/` (Claude Code commands & agents) |
-| `--no-hooks` | Skip wiring runtime lifecycle hooks (`.claude/hooks.json`) |
-| `--no-telemetry` | Disable anonymous failure telemetry |
-| `--telemetry` | Explicitly enable anonymous failure telemetry |
-| `--json` | Machine-readable output for `doctor`, `list`, and `status` |
-| `-q, --quiet` | Suppress the banner and non-essential output |
+| `orchestrator` | Triages work (TRIVIAL, STANDARD, CRITICAL), delegates, runs the loop, keeps project memory through the `shared-memory` skill, and leads Autonomous Mode (`/auto`). Never writes production code or commits. |
+| `architect` | Turns an idea into requirements with the `grill-me` skill and leads Spec-Driven Delivery. Does not write code. |
+| `pm` | User stories, Given-When-Then acceptance criteria, MVP boundaries. |
+| `ui-designer` | Owns the Design Gate: applies `anti-ai-ui` and a matched design system to produce `DESIGN.md`. |
+| `developer` | Implements features and fixes. Presents staged changes for review and never commits. |
+| `dba` | Schemas, migrations and RLS policies. Dry-run plan before anything destructive. |
+| `tester` | Writes and runs tests from the spec. Reports failures, does not fix code. |
+| `qa` | Runs lint, type-check, tests and scanners, then returns APPROVED or CHANGES REQUESTED. |
+| `security` | OWASP, auth, input handling, secrets and dependency review, with severity-rated findings. |
+| `researcher` | Confirms library versions, API signatures, CVEs and deprecations. Never writes code. |
+| `devops` | CI/CD, infrastructure as code, SLOs, observability and incident runbooks. Plan and dry run before any change. |
+| `tech-writer` | Docs, ADRs, semver, changelog and release notes. Sole owner of the Humanizer gate. |
+| `tech-lead` | Read-only arbiter for the circuit breaker: one binding written decision, never a patch. |
+
+**Maintainer pack** (`devos pack add maintainer`, sources in `.agents/maintainer/`), for people developing Dev-OS itself:
+
+| Agent | Role |
+|---|---|
+| `telemetry` | Read-only root-cause analysis over `.agents/telemetry/events.jsonl`. Local event logging stays in the core `telemetry` skill. |
+| `eval-engineer` | Capability eval suites, pass@k measurement and scorecards. |
 
 ---
 
-## 3. Agent Roster & Team Architecture
+## Commands
 
-Dev-OS organizes AI capabilities into 15 distinct specialist roles. Every agent operates under strict boundary constraints defined in `.agents/agents/`.
+### Slash commands
 
-| Agent | Prompt File | Primary Responsibility | Key Rule |
+Sources are in `.agents/commands/`; `devos init` and `devos update` generate `.claude/commands/` from them. Edit the sources, never the generated files.
+
+| Command | Agent | Workflow | Use |
 |---|---|---|---|
-| **Orchestrator** | `agents/orchestrator.md` | Tech lead. Triages tasks, delegates to specialists, manages loops. | **NEVER** writes code or runs `git commit` directly. |
-| **Architect** | `agents/architect.md` | System design & interrogation. | Uses `grill-me` skill to turn vague ideas into `PROJECT_REQUIREMENTS.md`. |
-| **UI Designer** | `agents/ui-designer.md` | Enforces Mandatory Design Gate before frontend implementation. | Extracts tokens from `ui-ux-pro-max` and authors `DESIGN.md` at project root. |
-| **DBA** | `agents/dba.md` | Database architecture & migrations. | Writes schema migrations and RLS policies. Requires dry-run plan before execution. |
-| **Developer** | `agents/developer.md` | Feature implementation and bug fixing. | Writes code, never auto-commits. Presents work for Staged Review. |
-| **Tester** | `agents/tester.md` | Test creation and execution. | Owns test creation and interactive `docs/TESTING_GUIDE.md` (universal password: `devos123`). |
-| **QA** | `agents/qa.md` | Quality gatekeeper. Reviews code quality, standards, and test results. | Does **NOT** write tests. Approves or requests changes with itemized feedback. |
-| **Security** | `agents/security.md` | Security vulnerability scanner. | Audits OWASP Top 10, auth logic, input sanitization, dependencies, and secret leaks. |
-| **DevOps** | `agents/devops.md` | Infrastructure & CI/CD deployment. | Follows deployment checklists. **NEVER** touches production without explicit human approval. |
-| **Researcher** | `agents/researcher.md` | Facts and documentation lookup. | Confirms package versions, API signatures, CVEs, and deprecations before Dev implements. |
-| **Memory Manager** | `agents/memory-manager.md` | State tracking & context preservation. | Maintains `CURRENT_STATE.md` and `LESSONS.md`. Handles context compaction and handoffs. |
-| **Release Manager** | `agents/release-manager.md` | Release engineering & changelogs. | Manages semver bumps, updates `CHANGELOG.md`, and scrubs AI writing tells from documentation. |
-| **Executive Proxy** | `agents/executive-proxy.md` | Autonomous SDLC coordinator for startup founders & CEOs. | Coordinates all 10 SDLC stages during autonomous runs (`devos run` / `/auto`). |
-| **Telemetry** | `agents/telemetry.md` | Observability and RCA failure diagnosis. | Analyzes local failure logs in `.agents/telemetry/events.jsonl` with zero secret exposure. |
-| **Eval Engineer** | `agents/eval-engineer.md` | Quality benchmark and regression testing. | Maintains capability evals, measures `pass@k` rates, and verifies cross-harness parity. |
-| **Product Manager** | `agents/pm.md` | Product strategy, personas & user stories. | Formulates Given-When-Then acceptance criteria and defends MVP boundaries. |
-| **Technical Writer** | `agents/tech-writer.md` | Documentation architecture & ADRs. | Synchronizes API specs and ensures docs pass the humanizer scanner. |
-| **SRE** | `agents/sre.md` | Site reliability & cloud infrastructure. | Authors Terraform/IaC, sets SLOs/alerts, and manages disaster recovery runbooks. |
-| **Senior Tech Lead** | `agents/tech-lead.md` | Circuit breaker deadlock arbitrator. | Resolves 3-iteration failures with authoritative patches before human escalation. |
-
----
-
-## 4. How to Prompt Dev-OS: Prompt the What, Not the How
-
-Dev-OS is designed as an operating system where safety gates, multi-agent delegation, and engineering standards run mechanically. You do not need to spend prompt tokens micromanaging the process.
-
-### What Dev-OS Handles Automatically
-
-- **Multi-Agent Routing:** The Orchestrator and Executive Proxy automatically delegate tasks across the 15 specialist agents (Architect, UI Designer, DBA, Developer, Tester, QA, Security, Release Manager).
-- **Mandatory Design Gate:** Frontend files are blocked by pre-tool hooks until `DESIGN.md` is authored at the project root with typography, color, and spacing tokens extracted from `ui-ux-pro-max`.
-- **Distinctive Craft & Anti-AI UI Gate:** Eliminates low-effort AI UI clichés (emojis as icons, sparkle embellishments, cookie-cutter profile pills, lazy indigo-purple gradients, generic "Holy Trinity" card grids, and placeholder data like "John Doe"). Enforces tactile button depression, high-contrast focus rings, and authentic domain entities via `.agents/scripts/ui-taste-check.sh`.
-- **Zero Hardcoded Secrets:** Credentials and keys are blocked by git pre-commit hooks and runtime scripts. Agents pause and prompt for `.env` variables before executing migrations.
-- **Automated Verification:** The Tester agent writes unit and integration suites, plus the step-by-step interactive walkthrough guide in `docs/TESTING_GUIDE.md` (universal password: `devos123`).
-
-### The Golden Prompt Formula
-
-Use this template when triggering autonomous mode (`devos run` or `/auto`):
-
-```text
-/auto Build a [product] for [target user].
-Features: [key capabilities and user workflows]
-Integrations: [database / auth / payments / external APIs]
-Seed data: [initial sample records or files in /docs]
-```
-
-### Case Study: Restaurant POS & Voice Ordering
-
-Instead of an over-instructed prompt telling the AI how to behave, write this:
-
-```text
-/auto Build a single-location restaurant management and POS web app in Next.js and Supabase.
-
-Core capabilities:
-- Staff POS with an interactive voice AI assistant named "Olives" (via Gemini) to record orders hands-free.
-- Customer QR code scan-to-order at tables with Paystack checkout.
-- Marketing & sales: Ad banner carousel, custom bulk event order inquiries, and gift packages.
-- Daily, weekly, monthly, and annual sales reports, with full admin CRUD for menus and pricing.
-- Seed data: Initial menu items and prices documented in /docs.
-```
-
----
-
-## 5. Slash Commands Reference
-
-Slash commands provide pre-configured, metadata-driven shortcuts for common agent tasks. They bypass manual prompt typing and route directly to the target agent.
-
-### Command List & Usage
-
-| Command | Target Agent | Triage Level | Description & Usage Example |
-|---|---|---|---|
-| `/review` | **QA** | `STANDARD` | Run comprehensive code review on staged or specified files.<br>`/review src/components/AuthForm.tsx` |
-| `/commit` | **Developer** | `TRIVIAL` | Execute human-approved commit via `.agents/scripts/commit.sh` (stage with `git add` first — the script does not stage).<br>`/commit feat: add user profile page` |
-| `/test` | **Tester** | `STANDARD` | Generate and run unit/integration tests for target module.<br>`/test src/services/payment.ts` |
-| `/secure` | **Security** | `STANDARD` | Perform security scan for vulnerabilities and secret leaks.<br>`/secure` |
-| `/research` | **Researcher** | `TRIVIAL` | Search documentation, verify API signatures, check CVEs.<br>`/research Next.js 15 App Router server actions` |
-| `/status` | **Orchestrator** | `TRIVIAL` | Generate project state update from `CURRENT_STATE.md`.<br>`/status` |
-| `/fix` | **Developer** | `STANDARD` | Trigger Bug Fix delivery workflow for specified issue.<br>`/fix Login button fails on mobile Safari` |
-| `/architect` | **Architect** | `STANDARD` | Run `grill-me` inception interview to produce `PROJECT_REQUIREMENTS.md`.<br>`/architect Build real-time analytics dashboard` |
-| `/refactor` | **Developer** | `STANDARD` | Refactor the specified code scope through the standard delivery workflow.<br>`/refactor Rewrite database client to use Drizzle ORM` |
-| `/deploy` | **DevOps** | `CRITICAL` | Execute pre-deployment checklist and present deployment plan.<br>`/deploy staging` |
-| `/pm` | **PM** | `STANDARD` | Generate user personas, Given-When-Then stories, and MVP bounds.<br>`/pm Design checkout flow for mobile` |
-| `/tech-writer` | **Tech Writer** | `TRIVIAL` | Author developer documentation, API specs, and ADRs.<br>`/tech-writer Document auth middleware` |
-| `/sre` | **SRE** | `CRITICAL` | Formulate Terraform IaC configs, alerting thresholds, and SLOs.<br>`/sre Configure Datadog alerting for ECS` |
-| `/tech-lead` | **Tech Lead** | `CRITICAL` | Arbitrate failing test/QA loops and provide definitive patch.<br>`/tech-lead Resolve JWT expiry loop` |
-
-### Creating Custom Slash Commands
-
-To add a new command, create a Markdown file in `.agents/commands/` with YAML frontmatter:
-
-```markdown
----
-name: my-command
-description: Short description for the command picker
-agent: target-agent-name
-triage_level: TRIVIAL | STANDARD | CRITICAL
-workflow: standard | bugfix | inception | direct
----
-
-Pre-configured prompt sent to the agent.
-Use $ARGUMENTS to reference arguments passed after the slash command.
-```
-
-After adding or editing commands, re-run `devos init` — it regenerates the native Claude Code versions in `.claude/commands/` from your `.agents/commands/` sources.
-
----
-
-## 6. Workflow Protocols & Delivery Cycles
-
-### The 5-Layer Quality Gate Architecture
-
-Dev-OS enforces a defense-in-depth quality pipeline to prevent runtime failures, credential leaks, and low-effort AI slop:
-
-| Layer | Gate Name | Enforcement Mechanism | What It Audits |
-|---|---|---|---|
-| **Layer 1** | **Design & Architecture Gate** | Pre-Tool Hook (`pre-tool-use.sh`) + UI Designer | Enforces `DESIGN.md` (archetype, typography, palette) before frontend UI authoring starts. |
-| **Layer 2** | **Mechanical Scanners** | Pre-Commit Hook + CLI (`gitleaks`, `ui-taste-check.sh`, `humanize-check.sh`, `env-check.sh`) | Scans for secret keys, emojis/sparkles/gradients, robotic AI writing in `/docs`, and `.env.example` sync. |
-| **Layer 3** | **Data & Migration Safety Gate** | DBA Agent + `db-check.sh` | Verifies mandatory Row Level Security (RLS) on created tables, foreign key indexes, and blocks destructive SQL. |
-| **Layer 4** | **Parallel Engineering Gate** | Concurrent Agent Review (QA + Tester + Security) | Code standards, TDD passing, interactive `docs/TESTING_GUIDE.md` (`devos123`), and OWASP audits. |
-| **Layer 5** | **Human Checkpoint Gate** | Staged Review via `commit.sh` | Human code inspection and browser walkthrough before Git commit. |
-
-### Standard Feature Delivery (Parallel Quality Gate)
-
-```
-1. Orchestrator receives task → breaks into subtasks
-2. Researcher → confirms library versions, APIs, and dependencies
-3. Developer → implements code changes (does NOT commit — presents for Staged Review)
-4. PARALLEL GATE (simultaneous execution):
-   ├─► QA → reviews code quality, conventions, and standards
-   ├─► Tester → writes and executes test suite
-   └─► Security → scans for vulnerabilities and secret exposures
-5. Orchestrator → collects verdicts. If any agent rejects, routes back to Developer (Circuit Breaker: max 3 loops)
-6. HUMAN CHECKPOINT → Human tests in browser / inspects code → Approves
-7. Developer → commits via .agents/scripts/commit.sh
-8. DevOps → prepares deployment plan (requires Human approval)
-```
-
-### Bug Fix Delivery Workflow
-
-```
-1. Researcher → reproduces bug and investigates root cause
-2. Developer → implements fix (presents changes for review)
-3. Tester → writes regression test first, verifies fix passes
-4. QA → approves code quality and standards
-5. HUMAN CHECKPOINT → Human tests fix in browser
-6. Developer → commits via commit.sh
-7. DevOps → deploys fix
-```
-
-### Rollback Protocol
-
-```
-1. DevOps → identifies failing deployment or critical regression
-2. Orchestrator → halts all in-progress work on affected branch
-3. Developer → reverts to last known good commit (`git revert` or branch reset)
-4. Tester → runs full regression suite to confirm stability
-5. QA → approves rollback state
-6. HUMAN CHECKPOINT → approve rollback deployment
-7. DevOps → deploys rollback
-8. Orchestrator → logs incident in `docs/LESSONS.md`
-```
-
-### Exploratory Refactoring
-
-```
-1. Developer → creates throwaway exploration branch (`explore/*`)
-2. Developer → experiments with structural changes (bypasses QA during exploration)
-3. Developer → presents findings and architecture diff to Orchestrator
-4. HUMAN CHECKPOINT → approve or discard exploration
-5. If Approved → Developer implements clean version on feature branch → Standard Feature Delivery
-6. If Discarded → Developer deletes exploration branch
-```
-
-### Project Inception (Grill-Me)
-
-```
-1. Orchestrator receives high-level project idea
-2. Architect → runs `.agents/skills/grill-me/SKILL.md` in single-shot execution
-   ↳ Extrapolates technical constraints, edge cases, and non-technical needs
-   ↳ Generates `docs/PROJECT_REQUIREMENTS.md`
-3. HUMAN CHECKPOINT → review, modify, and approve requirements
-4. Orchestrator → initiates delivery based on approved spec
-```
-
----
-
-## 7. Commit Model & Mechanical Gate Protocol
-
-### Staged Review Model
-
-Dev-OS operates under a **Staged Review** model to give humans complete control before any code enters Git history:
-
-1. **No Auto-Commits:** AI agents modify code files locally but **never run `git commit` directly**.
-2. **Human Inspection:** After implementation, the Developer presents a summary of changes.
-3. **Browser / Logic Testing:** The human tests the application UI, functionality, and logic in the browser.
-4. **Triggered Commit:** Once satisfied, the human triggers `/commit` or runs `.agents/scripts/commit.sh`.
-
-### How `commit.sh` Works
-
-The script [commit.sh](.agents/scripts/commit.sh) enforces human verification and conventional commits (stage your changes with `git add` first — the script does not stage):
-
-```bash
-# Workflow executed by commit.sh:
-1. Prompts for Human Approval Token ("approve")
-2. Prompts for Commit Type (feat, fix, docs, refactor, perf, style, test, chore)
-3. Prompts for Commit Message
-4. Exports environment variable: export DEVOS_COMMIT_APPROVED=true
-5. Executes: git commit -m "$type: $message"
-```
-
-### Mechanical Pre-Commit Hook & Secret Scanning
-
-When `git commit` executes, Git triggers `.git/hooks/pre-commit`:
-
-```
-git commit
-   │
-   ▼
-.git/hooks/pre-commit
-   │
-   ├── 1. Check DEVOS_COMMIT_APPROVED token
-   │      ↳ If missing: [ FAIL ] ABORT ("Direct 'git commit' disabled. Use commit.sh")
-   │
-   └── 2. Run Gitleaks Secret Scan
-          ↳ If secret/key found: [ FAIL ] ABORT ("Hardcoded secret detected")
-          ↳ If clean: [ OK ] COMMIT SUCCESSFUL
-```
-
----
-
-## 8. Memory System & Context Management
-
-To prevent agents from "forgetting" instructions during long sessions, Dev-OS implements a **3-tier memory system**:
-
-```
- ┌────────────────────────────────────────────────────────┐
- │ 1. Pinned Safety Rules (In System Prompt - Never Lost)  │
- ├────────────────────────────────────────────────────────┤
- │ 2. Working Memory (docs/CURRENT_STATE.md - Task State) │
- ├────────────────────────────────────────────────────────┤
- │ 3. Episodic Memory (docs/LESSONS.md - Incident Logs)   │
- └────────────────────────────────────────────────────────┘
-```
-
-### Working Memory (`CURRENT_STATE.md`)
-
-Location: `docs/CURRENT_STATE.md`  
-Maintained by: **Memory Manager** (the Orchestrator updates it when the Memory Manager is not active)  
-
-Tracks active task, branch name, current triage level, agent statuses, recent decisions, blockers, and context summaries across phase transitions.
-
-### Episodic Memory (`LESSONS.md`)
-
-Location: `docs/LESSONS.md`  
-Maintained by: **Memory Manager** (all agents contribute entries; the Orchestrator updates it when the Memory Manager is not active)  
-
-Logs significant errors, root causes, and resolutions. Before starting work in any domain (Auth, Database, Git, UI), agents query `LESSONS.md` to avoid repeating past mistakes.
-
-### Pinned Safety Rules
-
-The following hard rules are pinned in agent system prompts and can **never** be truncated:
-
-1. **Mechanical Commit Gate:** All commits must route through `.agents/scripts/commit.sh`. Raw `git commit` is forbidden.
-2. **Zero Hardcoded Secrets:** Never write API keys or credentials into code files; use `process.env.*`.
-3. **No Destructive Actions Without Plan:** `DROP`, `TRUNCATE`, `DELETE`, or deployment actions require a dry-run plan.
-4. **Human Checkpoint:** Human approval is mandatory before any commit, deployment, or database migration.
-
-### Circuit Breaker Protocol (Rule #10)
-
-> [!WARNING]
-> If any agent loop (e.g., Developer ↔ QA, Developer ↔ Tester) exceeds **3 iterations** on the same task without resolution:
-> 1. Orchestrator **HALTS** the loop immediately.
-> 2. Compiles a diagnostic summary of all failed attempts and logs.
-> 3. Invokes the **Senior Tech Lead Agent** for an authoritative tie-breaking resolution and definitive patch.
-> 4. Only escalates to the **Human** if the Tech Lead identifies fundamentally ambiguous business requirements.
-
----
-
-## 9. System Architecture Diagrams
-
-### Agent Communication & Hierarchy
-
-```mermaid
-flowchart TD
-    Human(Human Lead) --> Orchestrator
-
-    subgraph CE["Core Execution"]
-        Developer
-        Tester
-        DevOps
-        DBA
-    end
-
-    subgraph QV["Quality and Validation"]
-        QA
-        Security
-        Researcher
-    end
-
-    subgraph SM["Strategy and Memory"]
-        Architect
-        MemoryManager[Memory Manager]
-        ReleaseManager[Release Manager]
-    end
-
-    Orchestrator --> CE
-    Orchestrator --> QV
-    Orchestrator --> SM
-```
-
-### Slash Command Routing Pipeline
-
-```mermaid
-flowchart LR
-    UserCommand["/command [args]"] --> Orchestrator
-    Orchestrator --> ReadYAML["Parse .agents/commands/[command].md"]
-    ReadYAML --> ExtractConfig["Extract Target Agent & Workflow"]
-    ExtractConfig --> Dispatch["Dispatch Pre-configured Prompt"]
-    Dispatch --> Agent[Target Specialist Agent]
-```
-
----
-
-## 10. Directory Structure
-
-```
-dev-os/
-├── .agents/                    # Core Dev-OS Agentic System
-│   ├── AGENTS.md               # Master system rules and agent roster
-│   ├── README.md               # Agents directory guide
-│   ├── agents/                 # System prompts for 11 agents
-│   │   ├── architect.md
-│   │   ├── dba.md
-│   │   ├── developer.md
-│   │   ├── devops.md
-│   │   ├── memory-manager.md
-│   │   ├── orchestrator.md
-│   │   ├── qa.md
-│   │   ├── release-manager.md
-│   │   ├── researcher.md
-│   │   ├── security.md
-│   │   └── tester.md
-│   ├── commands/               # Slash command definitions
-│   │   ├── README.md
-│   │   ├── architect.md
-│   │   ├── commit.md
-│   │   ├── deploy.md
-│   │   ├── fix.md
-│   │   ├── refactor.md
-│   │   ├── research.md
-│   │   ├── review.md
-│   │   ├── secure.md
-│   │   ├── status.md
-│   │   └── test.md
-│   ├── scripts/                # Mechanical enforcement tools
-│   │   ├── commit.sh           # Human checkpoint & commit wrapper
-│   │   └── install-hooks.sh    # Pre-commit hook installer
-│   └── skills/                 # Specialist agent skills (60 skills)
-├── bin/
-│   └── devos.js                # Dev-OS CLI (installer, doctor, list, status)
-├── scripts/
-│   └── smoke-test.js           # End-to-end install & integrity test (npm test)
-├── docs/                       # Project documentation & memory
-│   ├── ARCHITECTURE.md         # Full architecture specification
-│   ├── CHANGELOG.md            # Semantic version log (canonical)
-│   ├── CURRENT_STATE.md        # Active project state tracker
-│   ├── GETTING_STARTED.md      # Installation & CLI walkthrough
-│   ├── LESSONS.md              # Episodic memory store
-│   ├── SLASH_COMMANDS.md       # Complete slash command reference
-│   └── TUTORIAL.md             # Detailed user onboarding guide
-├── CHANGELOG.md                # Pointer to docs/CHANGELOG.md
-├── CODING_STANDARDS.md         # Universal coding standards template
-├── LICENSE                     # MIT
-├── VERSION
-├── package.json                # npm package: @olives/devos (bin: devos)
-└── README.md                   # All-in-one Master Readme (This file)
-```
-
-Installed into *target* projects (by `devos init`): `.agents/`, `.claude/commands/`, `.claude/agents/`, `CLAUDE.md`, `CODING_STANDARDS.md`, `docs/` (fresh projects only), and a `.gitignore` rule for `.agents/_backup/`.
-
----
-
-## 10. Best Practices & Troubleshooting
-## 11. Best Practices & Troubleshooting
-
-### Golden Rules
-
-1. **Let agents loop, but watch the circuit breaker**. The 3-loop limit is there to protect your tokens. If an agent loops 3 times without passing QA, step in and give manual guidance.
-2. **Commit early, commit often**. Agents commit after each logical unit of work. Don't let changes accumulate.
-3. **Use `/status`** if you ever lose track of what the agents are doing. It pulls the current state from `CURRENT_STATE.md`.
-4. **Never bypass `commit.sh`**. If a commit fails due to Gitleaks, revoke the exposed secret immediately on your provider platform.
-5. **Always dry-run migrations and infrastructure**. Review the plan before saying yes.
-
-### Common Issues & Resolutions
-
-| Symptom | Probable Cause | Immediate Action |
+| `/auto <goal>` | orchestrator | autonomous-sdlc | Build an MVP or feature hands-off, with every gate intact |
+| `/architect <idea>` | architect | inception | Requirements grilling into `docs/PROJECT_REQUIREMENTS.md` |
+| `/spec <slug>` | architect | spec-driven | Requirements, design and tasks with three human checkpoints |
+| `/pm <idea>` | pm | product-planning | User stories and acceptance criteria |
+| `/design [keywords]` | ui-designer | standard | Match a brand design system and write `DESIGN.md` |
+| `/redesign [scope]` | orchestrator | standard | Refactor existing UI to an updated `DESIGN.md` |
+| `/fix <bug>` | developer | bugfix | Bug Fix Delivery |
+| `/refactor <scope>` | developer | standard | Refactor with the QA gate |
+| `/test <target>` | tester | direct | Write and run tests |
+| `/review [path]` | qa | direct | QA review of current changes |
+| `/secure [path]` | security | direct | Security scan of current changes |
+| `/research <topic>` | researcher | direct | Library, API or topic research |
+| `/commit [scope]` | developer | direct | Stage files and propose a message; the human runs the commit |
+| `/deploy <env>` | devops | infrastructure | Deployment plan and checklist |
+| `/sre <request>` | devops | infrastructure | IaC, SLOs and runbooks |
+| `/tech-writer <scope>` | tech-writer | documentation | Docs and ADRs |
+| `/humanize <path>` | tech-writer | documentation | Remove AI writing tells |
+| `/tech-lead <context>` | tech-lead | arbitration | Break a deadlock or a tripped circuit breaker |
+| `/status [focus]` | orchestrator | direct | Project state and task progress |
+| `/task [list\|start\|done\|add]` | orchestrator | direct | Manage `docs/TASK_BOARD.md` |
+| `/mode [mode]` | orchestrator | direct | Inspect or switch the locked session mode |
+| `/skill [audit\|list\|sync\|...]` | devops | direct | Manage skills |
+
+The maintainer pack adds `/eval` and `/telemetry`.
+
+### CLI reference
+
+Run `devos help` for the authoritative list. Every command also works as `npx @olives/devos <command>`.
+
+| Command | Aliases | What it does |
 |---|---|---|
-| `DEV-OS GATE ERROR: Direct 'git commit' is disabled` | `git commit` run directly without `commit.sh` | Run `.agents/scripts/commit.sh` instead of raw `git commit`. |
-| `GITLEAKS ERROR: Hardcoded secret detected` | Staged file contains an API key or password | Remove the secret from code, use `process.env.KEY_NAME`, and revoke exposed key on provider. |
-| Agent loops continuously without completing | Agent encountered edge case or failing test | Circuit Breaker will trip after 3 loops. Inspect `docs/CURRENT_STATE.md` or intervene manually. |
-| `gitleaks: command not found` warning | Gitleaks binary not installed on host OS | Run `devos update` to auto-install Gitleaks, or rely on active built-in regex scanner. |
+| `init` | `setup` | Install Dev-OS into the current project |
+| `update` | `upgrade` | Refresh `.agents/`, skills, commands, harness files and hooks; migrate 4.x |
+| `doctor` | `check` | Diagnose setup, hooks, skill links, memory and task board |
+| `status` | | One-screen summary of configuration and health |
+| `list` | `agents` | Installed agents and skills |
+| `run "<idea>"` | `auto` | Autonomous SDLC runner |
+| `mode` | | `status`, `<interactive\|guided\|auto\|audit>`, `lock`, `unlock` |
+| `pack` | `packs` | `pack list`, `pack add <name>` |
+| `skill` | `skills` | `list`, `add`, `update`, `sync`, `check`, `audit`, `find` |
+| `spec waves <slug>` | | Print the parallel waves of `docs/specs/<slug>/tasks.md` |
+| `spec check <slug>` | | Verify requirement coverage and task structure; exits 1 on gaps |
+| `build-plugin` | | Build the Claude Code plugin (default `dist/claude-plugin/`) |
+| `memory` | | `list`, `handoff`, `doctor` for the memory vault |
+| `design` | | `list`, `match "<query>"`, `apply <id>`, `sync` for design systems |
+| `scaffold` | | Recreate missing `CURRENT_STATE`, `TASK_BOARD`, `LESSONS` and `context.json` |
+| `telemetry` | | Local failure telemetry: `status`, `enable`, `disable`, `report`, `export`, `clear`, and more |
+| `eval` | `benchmark` | Capability evals and scorecards |
+| `version` | | CLI, Node and environment info |
+
+Common flags:
+
+| Flag | Meaning |
+|---|---|
+| `-s, --stack <name>` | `nextjs`, `laravel`, `django`, `react-native`, `express`, `fastapi`, `universal` |
+| `--harness <list>` | Comma list of `claude`, `cursor`, `opencode`, `antigravity`, `gemini`, `codex` |
+| `-p, --platform <name>` | Older single-platform form; also accepts `all` |
+| `--all-harnesses` | Write files for every harness |
+| `-m, --mode <name>` | `interactive`, `guided`, `auto`, `audit` |
+| `--fresh` / `--existing` | Non-interactive init |
+| `--all-skills` | Install every skill instead of the stack packs |
+| `--no-hooks` | Skip `.claude/settings.json` hooks and the git commit gate |
+| `--no-claude` | Skip `.claude/` generation |
+| `--install-gitleaks` | Install or upgrade Gitleaks through `install-hooks.sh` |
+| `-f, --force` | Overwrite customized files during update, after a backup |
+| `--json` | JSON output for diagnostics, listings and `spec` |
+| `--out <dir>`, `--print-path` | `build-plugin` output options |
+| `-q, --quiet` | Suppress banners |
+
+Value flags accept `--flag value` or `--flag=value`.
 
 ---
 
-## 12. Documentation
+## Workflows
 
-For deep dives beyond this README:
+The full protocols are in `.agents/AGENTS.md` under Workflow Protocols. Each command's `workflow:` frontmatter maps to one of them.
 
-- [Getting Started & CLI Guide](docs/GETTING_STARTED.md) — all installation options and the full CLI walkthrough
-- [Tutorial](docs/TUTORIAL.md) — narrative onboarding for first-time users
-- [Architecture](docs/ARCHITECTURE.md) — system diagrams and design rationale
-- [Slash Commands Reference](docs/SLASH_COMMANDS.md) — per-command schema and usage
-- [Changelog](docs/CHANGELOG.md) — release history
+**Standard Feature Delivery.** Orchestrator splits the task, Researcher confirms APIs and packages, Developer implements without committing, then QA, Tester and Security run in parallel. Any rejection routes back to the Developer under the circuit breaker. The human reviews and commits; DevOps deploys only with human approval. Production code needs an approved plan in `docs/plans/` or an approved `docs/specs/<slug>/tasks.md` (Hard Rule 22).
 
-### Publishing to npm (maintainers)
+**Bug Fix Delivery.** Researcher reproduces and finds the root cause, Developer fixes, Tester writes the regression test first, QA approves, the human commits.
+
+**TRIVIAL Fast Path.** A typo or small fix skips the plan gate, the task-board declaration and the parallel gate; the Developer runs a self-check (linter, type-checker, relevant tests, the scanner for the file type) and the human reviews. It qualifies only when the diff is under roughly 30 lines and touches no dependency, schema or migration, auth or secrets, or public API. The PreToolUse hook enforces this mechanically:
+
+- Only an `Edit` to a file that already exists, with a non-empty `old_string`, qualifies. `Write`, `MultiEdit`, `NotebookEdit` and shell writes never do.
+- The edit must be under 30 lines and 6000 bytes.
+- Dependency manifests and lockfiles, schema, migration, `.sql` and Prisma files, and paths matching `auth|login|session|permission|policy|middleware` are excluded.
+- A per-session budget of 30 changed lines is kept in the git directory as `devos-trivial-budget`. Once it is spent, the gates apply normally. Projects that are not git repositories get no fast path.
+- A refused edit ends with `TRIVIAL fast path not applied: <reason>`. Set `DEVOS_TRIVIAL_FASTPATH=off` to disable the fast path.
+
+**Spec-Driven Delivery** (`/spec`). For features that need written requirements. Everything lives in `docs/specs/<slug>/`, and init adds a template at `docs/specs/_template/`.
+
+1. `requirements.md`: user stories and EARS criteria, one `### Rn: title` per requirement. Human checkpoint.
+2. `design.md`: components, data model, interfaces, errors and testing, each tracing to R ids. Human checkpoint.
+3. `tasks.md`: `### Tn: title` tasks, each with exactly one `depends:`, `covers:` and `verify:` line. Run `devos spec check <slug>` for coverage and `devos spec waves <slug>` for the parallel waves. Human checkpoint.
+
+The approved `tasks.md` counts as the implementation plan. Tasks then go onto the task board wave by wave and each one runs through Standard Feature Delivery.
+
+**Circuit breaker** (Hard Rule 10). One iteration is a Developer fix attempt plus the gate run that fails it. After three failed iterations on the same task the loop halts. The Tech Lead gets exactly one arbitration attempt: a written root-cause verdict and fix specification, applied by the Developer and checked by one more gate run. If that fails, or the requirement is ambiguous, work stops and goes to the human. With no Tech Lead (solo sessions) the trip goes straight to the human.
+
+Other protocols in `.agents/AGENTS.md`: Project Inception, Product Planning, Documentation, Infrastructure, Autonomous SDLC, Rollback, Dependency Update and Exploratory Refactoring.
+
+---
+
+## Gates and hooks
+
+### Claude Code hook events
+
+`init` and `update` merge these into `.claude/settings.json` and keep your own settings and hooks. Each script reads Claude Code's JSON on stdin and blocks with exit code 2 and a reason on stderr.
+
+| Event | Script | What it enforces |
+|---|---|---|
+| SessionStart | `session-start.sh` | Runs the freshness fetch, locks the session mode in `.agents/memory/session.json`, writes the session stamp. After compaction it re-injects the mode, active task, Hard Rules pointer and circuit breaker. |
+| UserPromptSubmit | `user-prompt-submit.sh` | Re-asserts the Orchestrator role and locked mode every turn. |
+| PreToolUse (`Bash\|Edit\|Write\|MultiEdit\|NotebookEdit`) | `pre-tool-use.sh` | Blocks destructive commands (`rm -rf`, destructive git, SQL `DROP`/`TRUNCATE`), raw commits, UI files without `DESIGN.md`, and solo production writes when delegation is required. Applies the TRIVIAL fast path. |
+| PostToolUse (`Edit\|Write\|MultiEdit`) | `post-tool-use.sh` | Runs `ui-taste-check.sh`, `env-check.sh` or `db-check.sh` on the edited file and reports findings. The edit is not undone. Opt out: `DEVOS_POST_CHECKS=off`. |
+| Stop | `stop.sh` | Asks for a `docs/CURRENT_STATE.md` update when tracked code changed. Opt out: `DEVOS_STOP_GATE=off`. |
+| SubagentStop | `subagent-stop.sh` | A subagent that edited tracked code must leave a note in `.agents/memory/handoffs/`. Opt out: `DEVOS_HANDOFF_GATE=off`. |
+| SessionEnd | `session-end.sh` | Prints a state reminder only; never blocks. |
+
+`settings.json` also gets `permissions.deny` rules for `git commit`, `git push --force` and reading `.env` files.
+
+### Commit model
+
+Agents write code and stage it; only a human commits.
+
+- The human runs `.agents/scripts/commit.sh` from their own terminal. It reads an `approve` token, the commit type and the message from `/dev/tty`, so piped input cannot answer it. Stage files with `git add` first.
+- Agent shells can never commit. `commit.sh`, the git `pre-commit` hook and the `pre-merge-commit` hook all refuse when an agent-shell variable is set (`CLAUDECODE`, `CLAUDE_CODE_ENTRYPOINT`, `GEMINI_CLI`, `CODEX_SANDBOX`, `CODEX_SANDBOX_NETWORK_DISABLED`, `CODEX_THREAD_ID`, `CURSOR_AGENT`, `AI_AGENT`). Exporting `DEVOS_COMMIT_APPROVED=true` does not get around this.
+- A raw `git commit` without `commit.sh` is refused by the pre-commit hook.
+- Headless commits are for CI only: `DEVOS_HEADLESS_COMMIT=1 .agents/scripts/commit.sh "<type>: <subject>"` works only with `CI=true`.
+- The pre-commit hook then runs Gitleaks (or the built-in scanner), `env-check.sh`, and, for matching staged files, `db-check.sh`, `ui-taste-check.sh` and `humanize-check.sh`.
+
+`/commit` stages and proposes a message; it never runs the commit. Git hooks are not version-controlled, so after upgrading run `devos update` or `.agents/scripts/install-hooks.sh` to refresh them. Details: [templates/docs/PRE_COMMIT_HOOK.md](templates/docs/PRE_COMMIT_HOOK.md), installed into fresh projects as `docs/PRE_COMMIT_HOOK.md`.
+
+### Known limits
+
+- The PreToolUse hook is a guard, not a sandbox. It parses command text, so `bash script.sh`, `python -c ...` and other interpreters running a file or string are not inspected. The git hooks and `commit.sh` are the backstop for commits; nothing backstops an arbitrary destructive script.
+- The `DEVOS_COMMIT_APPROVED` token stops accidental raw commits by humans. It is not a security boundary against a human, who can export it by hand.
+- Runtime hooks are wired for Claude Code only. In other harnesses the rules arrive as instructions, and `commit.sh` plus the git hooks are the enforced part.
+- Escape hatches exist for humans (`DEVOS_DESTRUCTIVE_APPROVED`, `DEVOS_SOLO_APPROVED` and the opt-outs above). They are read from the hook's environment, never from command text.
+
+---
+
+## Skills and packs
+
+Skills live in `.agents/skills/<name>/SKILL.md` and are grouped into packs in `.agents/packs.json`. `init` installs the `core` pack plus the pack for your stack; `--all-skills` installs everything. The repository currently ships 53 skills.
+
+| Kind | Packs |
+|---|---|
+| Core (always installed) | `core`: brainstorming, writing-plans, spec-driven, grill-me, autonomous-sdlc, humanizer, anti-ai-ui, task-board, shared-memory, git-ops, code-reviewer, qa, security-review, telemetry and others |
+| Stack | `nextjs`, `laravel`, `python`, `mobile` |
+| Optional | `agentic`, `creative`, `design-data`, `codex`, `google-adk`, `growth`, `web-tools` |
+| Maintainer | `maintainer`: the telemetry and eval-engineer agents, `/eval`, `/telemetry`, and the `eval-harness` and `workflow-metrics` skills |
 
 ```bash
-npm test               # end-to-end smoke test must pass
-npm pack --dry-run     # inspect the tarball contents
-npm login              # one-time authentication
-npm publish            # publishes @olives/devos to the registry
+devos pack list               # packs with their skills, agents and commands
+devos pack add design-data
+devos skill add <name>        # merged 4.x names resolve through aliases
+devos skill audit             # broken references, weak descriptions, unpinned npx, oversized SKILL.md
 ```
 
+**Aliases.** The `aliases` map in `packs.json` keeps 4.x skill names working. For example `git-commit` and `git-workflow` resolve to `git-ops`, `design` and `web-design-guidelines` to `anti-ai-ui`, and `backend-patterns` to `backend-dev-guidelines`. A merged skill's content lives under its primary's `references/<old-name>/GUIDE.md`.
+
 ---
+
+## Multi-harness support
+
+Root `AGENTS.md` is the canonical cross-harness file. Dev-OS owns the block between its markers and regenerates it on update; keep your own notes outside the markers. The per-harness files are thin pointers that keep a Hard Rules digest.
+
+| Harness | Files Dev-OS writes | How the rules load |
+|---|---|---|
+| Claude Code | `CLAUDE.md`, `.claude/agents/`, `.claude/commands/`, `.claude/skills/`, `.claude/settings.json` | `CLAUDE.md` imports `@AGENTS.md`; hooks run from `settings.json` |
+| Codex | `AGENTS.md` | Codex reads `AGENTS.md` directly |
+| Windsurf (`codex` target) | `.windsurfrules` | Points at `AGENTS.md` |
+| Cursor | `.cursor/rules/devos.mdc`, `.cursorrules` | Cursor reads `AGENTS.md`; the rule has `alwaysApply: true` |
+| OpenCode | `opencode.json` at the project root | `"instructions": [".agents/AGENTS.md"]`, merged into an existing file |
+| Gemini CLI | `GEMINI.md` | Imports `@./AGENTS.md` |
+| Google Antigravity | `ANTIGRAVITY.md` | Pointer to `AGENTS.md` |
+
+`.codex/instructions.md` and `OPENCODE.md` are retired. `devos update` removes them only when Dev-OS generated them, after a backup.
+
+**Claude Code skills.** Every installed skill gets `.claude/skills/<name>`, a relative symlink to `../../.agents/skills/<name>`. On Windows, or when a symlink cannot be created, the skill is copied and its hash recorded. A real directory of yours at that path is never replaced, and `devos doctor` reports missing, broken or stale links.
+
+---
+
+## Claude Code plugin
+
+Dev-OS also ships as a Claude Code plugin with the default agents, the commands, the core skills and the lifecycle hooks:
+
+```text
+/plugin marketplace add olitech1010/dev-os
+/plugin install devos@olives-devos
+```
+
+This needs `@olives/devos` 5.0.0 published to npm, because the marketplace entry in `.claude-plugin/marketplace.json` uses a `command` source that builds the pinned version on your machine. That source type needs Claude Code v2.1.229 or later. The install shows you the build command and asks you to accept it before running anything, and Claude Code re-runs it once per session (the pinned version is cached under `~/.devos/claude-plugin/`). The plugin's hooks only act in projects that have been set up with `devos init` (they look for `.agents/manifest.json`); in any other repository they do nothing. To build the plugin locally instead:
+
+```bash
+devos build-plugin --out dist/claude-plugin
+claude --plugin-dir dist/claude-plugin
+```
+
+Two cautions:
+
+- **Do not enable the plugin in a project that already has the Dev-OS hooks wired in `.claude/settings.json`.** Every gate would run twice.
+- Plugin agents ignore `permissionMode`, `hooks` and `mcpServers`, and a plugin cannot add permission rules or git hooks. `npx @olives/devos init` stays the primary install; the plugin suits trying Dev-OS out or using it where a project install is not possible.
+
+---
+
+## Memory and state files
+
+| File | Owner | Purpose |
+|---|---|---|
+| `docs/CURRENT_STATE.md` | Orchestrator | Active task, status and branch. Must be updated before a session that changed code ends (Hard Rule 13; the Stop hook checks it). |
+| `docs/LESSONS.md` | Orchestrator | Incidents, root causes and fixes. Agents read it before working in a domain. |
+| `docs/TASK_BOARD.md` | Orchestrator | Task DAG. In `guided` and `auto` mode, solo production writes need an `[ IN_PROGRESS ]` task with an `Assignee:`. |
+| `.agents/memory/session.json` | Hooks | Locked mode for the session. Change it with `devos mode <mode>`. |
+| `.agents/memory/decisions/` | Agents | ADRs |
+| `.agents/memory/handoffs/` | Subagents | Handoff notes; the SubagentStop hook requires one after code changes |
+| `.agents/memory/context.json` | Orchestrator | Compact project context |
+| `.agents/manifest.json` | CLI | Installed version, packs, harnesses, hooks choice, and a sha256 for each generated file |
+| `.agents/telemetry/events.jsonl` | `telemetry` skill | Local failure log; no secrets |
+
+Run `devos scaffold` to recreate missing state files, and `devos memory doctor` to check the vault.
+
+---
+
+## Troubleshooting
+
+| Symptom | Cause | Fix |
+|---|---|---|
+| `[ FAIL ]` "Direct 'git commit' is disabled" | Raw `git commit` | Run `.agents/scripts/commit.sh` from your own terminal |
+| `commit.sh` refuses in an agent session | An agent-shell variable is set | Expected. Commit from a separate terminal |
+| Secret scan blocks the commit | A key is staged | Remove it, read it from `process.env`, and revoke the key with the provider |
+| UI edit blocked by the Design Gate | No `DESIGN.md` at the project root | Run `/design`, or let the UI Designer write it |
+| Code edit blocked by the Orchestration Gate | `guided` or `auto` mode with no active task | Declare an `[ IN_PROGRESS ]` task with an `Assignee:` in `docs/TASK_BOARD.md`, or switch with `devos mode interactive` |
+| A small edit was not fast-pathed | One of the TRIVIAL limits failed | Read the reason after `TRIVIAL fast path not applied:` |
+| Claude keeps working when it tries to stop | Stop hook wants `docs/CURRENT_STATE.md` updated after code changes | Update it, or set `DEVOS_STOP_GATE=off` |
+| `doctor` warns about skill links | `.claude/skills/` drifted | `devos skill sync` or `devos update` |
+| Hooks seem to run twice | Plugin enabled on top of a project install | Disable the plugin |
+| An edited agent or command was not updated | Dev-OS keeps edited files | `devos update --force` (backs up first) |
+| Gitleaks not found | Not installed | `devos init --install-gitleaks`, or rely on the built-in scanner |
+
+---
+
+## Contributing and publishing
+
+This repository is the Dev-OS source. Edit `.agents/` sources, never generated `.claude/` output, and keep `bin/devos.js` free of dependencies. Read `.agents/AGENTS.md` before changing workflows. First-party files use no emojis and report status with `[ OK ]`, `[ WARN ]` and `[ FAIL ]`.
+
+```bash
+npm test                 # smoke test (scripts/smoke-test.js)
+npm run eval             # eval runner (scripts/eval-runner.js)
+npm run build:plugin     # devos build-plugin
+.agents/scripts/humanize-check.sh README.md
+```
+
+Publishing to npm (maintainers):
+
+```bash
+npm pack --dry-run       # inspect the tarball
+npm publish              # prepublishOnly runs the smoke test
+```
+
+After publishing a new version, update the pinned version in `.claude-plugin/marketplace.json`.
+
+Further reading, installed into fresh projects under `docs/`: [Getting Started](templates/docs/GETTING_STARTED.md), [Tutorial](templates/docs/TUTORIAL.md), [Architecture](templates/docs/ARCHITECTURE.md), [Slash Commands](templates/docs/SLASH_COMMANDS.md).
 
 ## License
 
-[MIT License](LICENSE) — Copyright (c) 2026 Clement Olives — Olives Technologies.
+[MIT](LICENSE). Copyright (c) 2026 Clement Olives, Olives Technologies.
+
+Dev-OS bundles skills adapted from third-party open-source projects. [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) lists each one with its upstream source and license.

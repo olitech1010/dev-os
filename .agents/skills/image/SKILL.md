@@ -1,8 +1,10 @@
 ---
 name: image
-description: "When the user wants to create, generate, edit, or optimize images for marketing — blog heroes, social graphics, product mockups, profile banners, listing visuals, or brand assets. Also use when the user mentions 'AI image generation,' 'generate an image,' 'create a graphic,' 'product mockup,' 'hero image,' 'social media graphic,' 'banner image,' 'cover photo,' 'profile banner,' 'listing screenshot,' 'Flux,' 'Flux Kontext,' 'Midjourney,' 'DALL-E,' 'GPT Image,' 'ChatGPT Images,' 'Ideogram,' 'Gemini image,' 'Nano Banana,' 'Recraft,' 'Stable Diffusion,' 'Canva,' 'Figma,' 'image optimization,' 'compress images,' 'WebP,' or 'OG image.' Use this for general-purpose marketing image creation and optimization. For paid ad image creative and platform-specific ad specs, see ad-creative. For video production, see video."
+description: "Use when the user wants to create, generate, edit, or optimize images: marketing visuals (blog heroes, social graphics, product mockups, banners, OG images), AI image prompts for tools such as Midjourney, DALL-E, GPT Image, Flux, Ideogram, Gemini, Recraft, or Stable Diffusion, or per-section website design reference images. Also covers image compression and formats (WebP, AVIF) and OG preview images."
 metadata:
+  source: https://github.com/coreyhaines31/marketingskills
   version: 2.0.1
+license: MIT
 ---
 
 # Image
@@ -12,7 +14,7 @@ You are an expert visual content producer who helps create marketing images usin
 ## Before Starting
 
 **Check for product marketing context first:**
-If `.agents/product-marketing.md` exists (or `.claude/product-marketing.md`, or the legacy `product-marketing-context.md` filename, in older setups), read it before asking questions. Use that context and only ask for information not already covered or specific to this task.
+Optional context: if `.agents/product-marketing.md` is present (or `.claude/product-marketing.md`, or the legacy `product-marketing-context.md` filename, in older setups), read it before asking questions. Dev-OS does not create this file; skip this step when it is absent. Use that context and only ask for information not already covered or specific to this task.
 
 Gather this context (ask if not provided):
 
@@ -331,10 +333,12 @@ Generate OG images programmatically for pages with dynamic content (blog posts, 
 
 ## Related Skills
 
-- **ad-creative**: For paid ad image creative, platform-specific ad specs, and scaled ad production
-- **video**: For AI video production and programmatic video
-- **social**: For what to post and content strategy
-- **cro**: For image placement and conversion optimization on landing pages
-- **seo-audit**: For image SEO (alt text, file names, lazy loading)
-- **aso**: For app store screenshot specs and optimization
-- **directory-submissions**: For Product Hunt gallery images and directory listing visuals
+Shipped with Dev-OS: **seo-geo** (image SEO, alt text, OG tags) and **content-strategy** (what to post), both in the optional `growth` pack, and **imagegen** (Codex image generation, optional `codex` pack).
+
+Upstream also refers to ad-creative, video, social, cro, seo-audit, aso, and directory-submissions. These are not shipped with Dev-OS; ignore the references unless the user has installed them separately.
+
+## References
+
+- `references/ai-image-prompting.md`: per-model prompting guides. Read when writing prompts for a specific generator.
+- `references/image-generation/GUIDE.md`: prompt construction for DALL-E, Midjourney, and Stable Diffusion across styles and use cases. Read when the task is writing or refining generation prompts. Formerly the `image-generation` skill.
+- `references/imagegen-frontend-web/GUIDE.md`: art direction for website design reference images, one horizontal image per page section, with detail files under its own `references/`. Read when generating landing-page or website design comps. Formerly the `imagegen-frontend-web` skill.

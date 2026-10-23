@@ -1,7 +1,7 @@
 # Lessons Learned
 
 > Persistent knowledge base for project incidents, decisions, and discoveries.
-> Maintained by the Memory Manager agent (or Orchestrator when Memory Manager is not active).
+> Maintained by the Orchestrator through the `shared-memory` skill.
 
 ---
 

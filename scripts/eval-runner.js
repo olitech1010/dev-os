@@ -14,6 +14,11 @@
  *   $ node scripts/eval-runner.js --list
  *   $ node scripts/eval-runner.js --scorecard
  *   $ node scripts/eval-runner.js --json
+ *   $ node scripts/eval-runner.js --reports-dir /tmp/evals   (write scorecards elsewhere)
+ *
+ * Scorecards are written to .agents/evals/reports/ by default. The smoke test sets
+ * DEVOS_EVAL_REPORTS_DIR to a temp dir so `npm test` never mutates the tracked
+ * latest-scorecard.json; only an explicit `npm run eval` refreshes it.
  */
 
 const { spawnSync } = require('child_process');
@@ -25,7 +30,16 @@ const ROOT = path.resolve(__dirname, '..');
 const CLI = path.join(ROOT, 'bin', 'devos.js');
 const EVALS_DIR = path.join(ROOT, '.agents', 'evals');
 const SUITES_DIR = path.join(EVALS_DIR, 'suites');
-const REPORTS_DIR = path.join(EVALS_DIR, 'reports');
+let REPORTS_DIR = process.env.DEVOS_EVAL_REPORTS_DIR
+  ? path.resolve(process.env.DEVOS_EVAL_REPORTS_DIR)
+  : path.join(EVALS_DIR, 'reports');
+
+// Child processes get a hard timeout so a hung hook or CLI fails the case instead
+// of stalling the run. CLI spawns run offline: harness parity checks generated
+// files, not network installs.
+const SPAWN_TIMEOUT_MS = 60000;
+const SPAWN_OPTS = { encoding: 'utf8', timeout: SPAWN_TIMEOUT_MS };
+const CLI_ENV = { ...process.env, DEVOS_OFFLINE: '1' };
 
 // Colors
 const useColor = Boolean(process.stdout.isTTY) && !process.env.NO_COLOR && process.env.TERM !== 'dumb';
@@ -49,7 +63,8 @@ function parseArgs(args) {
     scorecard: false,
     json: false,
     quiet: false,
-    help: false
+    help: false,
+    reportsDir: null
   };
 
   for (let i = 0; i < args.length; i++) {
@@ -68,6 +83,11 @@ function parseArgs(args) {
       flags.json = true;
     } else if (arg === '--quiet' || arg === '-q') {
       flags.quiet = true;
+    } else if (arg === '--reports-dir') {
+      flags.reportsDir = args[i + 1] || null;
+      i++;
+    } else if (arg.startsWith('--reports-dir=')) {
+      flags.reportsDir = arg.slice('--reports-dir='.length) || null;
     } else if (arg === '--help' || arg === '-h') {
       flags.help = true;
     }
@@ -102,6 +122,7 @@ function printHelp() {
   console.log(`  --scorecard           Display the latest evaluation scorecard`);
   console.log(`  --json                Output results as JSON`);
   console.log(`  --quiet, -q           Suppress verbose test logs`);
+  console.log(`  --reports-dir <dir>   Write/read scorecards in <dir> (env: DEVOS_EVAL_REPORTS_DIR)`);
   console.log(`  --help, -h            Show this help reference\n`);
 }
 
@@ -151,6 +172,9 @@ function executeGatesSuite(cItem) {
         fs.chmodSync(path.join(hooksDir, f), '755');
       }
     });
+    // pre-tool-use.sh parses its input through lib/hook-input.js
+    const hookLib = path.join(ROOT, '.agents', 'hooks', 'lib');
+    if (fs.existsSync(hookLib)) fs.cpSync(hookLib, path.join(hooksDir, 'lib'), { recursive: true });
     ['ui-taste-check.sh', 'humanize-check.sh', 'env-check.sh', 'db-check.sh', 'commit.sh'].forEach((f) => {
       const src = path.join(ROOT, '.agents', 'scripts', f);
       if (fs.existsSync(src)) {
@@ -161,13 +185,13 @@ function executeGatesSuite(cItem) {
 
     switch (cItem.id) {
       case 'gate-design-absence': {
-        const res = spawnSync('bash', [path.join(hooksDir, 'pre-tool-use.sh'), 'write_to_file', 'src/App.tsx'], { cwd: tmp, encoding: 'utf8' });
+        const res = spawnSync('bash', [path.join(hooksDir, 'pre-tool-use.sh'), 'write_to_file', 'src/App.tsx'], { ...SPAWN_OPTS, cwd: tmp });
         const blocked = res.status !== 0 && (res.stdout.includes('DESIGN.md') || res.stderr.includes('DESIGN.md'));
         return { ok: blocked, detail: blocked ? null : 'Failed to block UI file authoring when DESIGN.md was absent' };
       }
       case 'gate-design-presence': {
         fs.writeFileSync(path.join(tmp, 'DESIGN.md'), '# Design Specification\nArchetype: Technical Minimalist\n');
-        const res = spawnSync('bash', [path.join(hooksDir, 'pre-tool-use.sh'), 'write_to_file', 'src/App.tsx'], { cwd: tmp, encoding: 'utf8' });
+        const res = spawnSync('bash', [path.join(hooksDir, 'pre-tool-use.sh'), 'write_to_file', 'src/App.tsx'], { ...SPAWN_OPTS, cwd: tmp });
         const passed = res.status === 0;
         return { ok: passed, detail: passed ? null : `Pre-tool-use hook unexpectedly rejected valid UI edit: ${res.stderr || res.stdout}` };
       }
@@ -175,7 +199,7 @@ function executeGatesSuite(cItem) {
         const srcDir = path.join(tmp, 'src');
         fs.mkdirSync(srcDir, { recursive: true });
         fs.writeFileSync(path.join(srcDir, 'BadButton.tsx'), 'export const Button = () => <button>✨ Click me 🚀</button>;\n');
-        const res = spawnSync('bash', [path.join(scriptsDir, 'ui-taste-check.sh')], { cwd: tmp, encoding: 'utf8' });
+        const res = spawnSync('bash', [path.join(scriptsDir, 'ui-taste-check.sh')], { ...SPAWN_OPTS, cwd: tmp });
         const caught = res.status === 1;
         return { ok: caught, detail: caught ? null : 'UI taste check failed to reject raw emojis and sparkle clichés' };
       }
@@ -183,7 +207,7 @@ function executeGatesSuite(cItem) {
         const srcDir = path.join(tmp, 'src');
         fs.mkdirSync(srcDir, { recursive: true });
         fs.writeFileSync(path.join(srcDir, 'CleanCard.tsx'), 'export const Card = () => <div className="rounded border p-4 bg-slate-900 text-white"><h3>System Metric</h3></div>;\n');
-        const res = spawnSync('bash', [path.join(scriptsDir, 'ui-taste-check.sh')], { cwd: tmp, encoding: 'utf8' });
+        const res = spawnSync('bash', [path.join(scriptsDir, 'ui-taste-check.sh')], { ...SPAWN_OPTS, cwd: tmp });
         const passed = res.status === 0;
         return { ok: passed, detail: passed ? null : `UI taste check rejected clean code: ${res.stdout}` };
       }
@@ -192,7 +216,7 @@ function executeGatesSuite(cItem) {
         fs.mkdirSync(docsDir, { recursive: true });
         const filePath = path.join(docsDir, 'AI_SLOP.md');
         fs.writeFileSync(filePath, '# Overview\nLet us delve into this crucial game-changer.\nLet that sink in.\n');
-        const res = spawnSync('bash', [path.join(scriptsDir, 'humanize-check.sh'), filePath], { cwd: tmp, encoding: 'utf8' });
+        const res = spawnSync('bash', [path.join(scriptsDir, 'humanize-check.sh'), filePath], { ...SPAWN_OPTS, cwd: tmp });
         const caught = res.status === 1;
         return { ok: caught, detail: caught ? null : 'Humanizer check failed to catch robotic AI writing tells' };
       }
@@ -201,7 +225,7 @@ function executeGatesSuite(cItem) {
         fs.mkdirSync(docsDir, { recursive: true });
         const filePath = path.join(docsDir, 'CLEAN.md');
         fs.writeFileSync(filePath, '# System Configuration\nThe system runs as a background process listening on port 8080.\n');
-        const res = spawnSync('bash', [path.join(scriptsDir, 'humanize-check.sh'), filePath], { cwd: tmp, encoding: 'utf8' });
+        const res = spawnSync('bash', [path.join(scriptsDir, 'humanize-check.sh'), filePath], { ...SPAWN_OPTS, cwd: tmp });
         const passed = res.status === 0;
         return { ok: passed, detail: passed ? null : `Humanizer check rejected natural prose: ${res.stdout}` };
       }
@@ -210,7 +234,7 @@ function executeGatesSuite(cItem) {
         fs.mkdirSync(srcDir, { recursive: true });
         fs.writeFileSync(path.join(srcDir, 'api.js'), 'const token = process.env.UNTRACKED_SECRET_KEY;\n');
         fs.writeFileSync(path.join(tmp, '.env.example'), 'PORT=3000\n');
-        const res = spawnSync('bash', [path.join(scriptsDir, 'env-check.sh')], { cwd: tmp, encoding: 'utf8' });
+        const res = spawnSync('bash', [path.join(scriptsDir, 'env-check.sh')], { ...SPAWN_OPTS, cwd: tmp });
         const caught = res.status === 1;
         return { ok: caught, detail: caught ? null : 'Environment parity check failed to catch undocumented variable' };
       }
@@ -219,7 +243,7 @@ function executeGatesSuite(cItem) {
         fs.mkdirSync(srcDir, { recursive: true });
         fs.writeFileSync(path.join(srcDir, 'api.js'), 'const port = process.env.PORT || 3000;\n');
         fs.writeFileSync(path.join(tmp, '.env.example'), 'PORT=3000\n');
-        const res = spawnSync('bash', [path.join(scriptsDir, 'env-check.sh')], { cwd: tmp, encoding: 'utf8' });
+        const res = spawnSync('bash', [path.join(scriptsDir, 'env-check.sh')], { ...SPAWN_OPTS, cwd: tmp });
         const passed = res.status === 0;
         return { ok: passed, detail: passed ? null : `Environment parity check rejected valid .env.example: ${res.stdout}` };
       }
@@ -227,7 +251,7 @@ function executeGatesSuite(cItem) {
         const migDir = path.join(tmp, 'migrations');
         fs.mkdirSync(migDir, { recursive: true });
         fs.writeFileSync(path.join(migDir, '001_create_accounts.sql'), 'CREATE TABLE accounts (id uuid primary key, balance numeric);\n');
-        const res = spawnSync('bash', [path.join(scriptsDir, 'db-check.sh')], { cwd: tmp, encoding: 'utf8' });
+        const res = spawnSync('bash', [path.join(scriptsDir, 'db-check.sh')], { ...SPAWN_OPTS, cwd: tmp });
         const caught = res.status === 1;
         return { ok: caught, detail: caught ? null : 'Database safety check failed to catch table missing RLS' };
       }
@@ -235,7 +259,7 @@ function executeGatesSuite(cItem) {
         const migDir = path.join(tmp, 'migrations');
         fs.mkdirSync(migDir, { recursive: true });
         fs.writeFileSync(path.join(migDir, '001_create_accounts.sql'), 'CREATE TABLE accounts (id uuid primary key, balance numeric);\nALTER TABLE accounts ENABLE ROW LEVEL SECURITY;\n');
-        const res = spawnSync('bash', [path.join(scriptsDir, 'db-check.sh')], { cwd: tmp, encoding: 'utf8' });
+        const res = spawnSync('bash', [path.join(scriptsDir, 'db-check.sh')], { ...SPAWN_OPTS, cwd: tmp });
         const passed = res.status === 0;
         return { ok: passed, detail: passed ? null : `Database safety check rejected table with RLS: ${res.stdout}` };
       }
@@ -258,7 +282,7 @@ function executeHarnessParitySuite(cItem) {
   try {
     switch (cItem.id) {
       case 'harness-claude-artifacts': {
-        const res = spawnSync(process.execPath, [CLI, 'init', '--platform', 'claude', '--existing', '--quiet'], { cwd: tmp, encoding: 'utf8' });
+        const res = spawnSync(process.execPath, [CLI, 'init', '--platform', 'claude', '--existing', '--quiet'], { ...SPAWN_OPTS, cwd: tmp, env: CLI_ENV });
         const ok = res.status === 0 &&
           fs.existsSync(path.join(tmp, '.claude', 'commands')) &&
           fs.existsSync(path.join(tmp, '.claude', 'agents')) &&
@@ -266,43 +290,50 @@ function executeHarnessParitySuite(cItem) {
         return { ok, detail: ok ? null : `Claude harness artifacts missing: ${res.stderr || res.stdout}` };
       }
       case 'harness-antigravity-artifacts': {
-        const res = spawnSync(process.execPath, [CLI, 'init', '--platform', 'antigravity', '--existing', '--quiet'], { cwd: tmp, encoding: 'utf8' });
+        const res = spawnSync(process.execPath, [CLI, 'init', '--platform', 'antigravity', '--existing', '--quiet'], { ...SPAWN_OPTS, cwd: tmp, env: CLI_ENV });
         const ok = res.status === 0 &&
           fs.existsSync(path.join(tmp, 'ANTIGRAVITY.md')) &&
           fs.existsSync(path.join(tmp, 'GEMINI.md'));
         return { ok, detail: ok ? null : `Antigravity/Gemini artifacts missing: ${res.stderr || res.stdout}` };
       }
       case 'harness-cursor-artifacts': {
-        const res = spawnSync(process.execPath, [CLI, 'init', '--platform', 'cursor', '--existing', '--quiet'], { cwd: tmp, encoding: 'utf8' });
+        const res = spawnSync(process.execPath, [CLI, 'init', '--platform', 'cursor', '--existing', '--quiet'], { ...SPAWN_OPTS, cwd: tmp, env: CLI_ENV });
         const ok = res.status === 0 &&
           fs.existsSync(path.join(tmp, '.cursor', 'rules', 'devos.mdc')) &&
           fs.existsSync(path.join(tmp, '.cursorrules'));
         return { ok, detail: ok ? null : `Cursor artifacts missing: ${res.stderr || res.stdout}` };
       }
       case 'harness-opencode-artifacts': {
-        const res = spawnSync(process.execPath, [CLI, 'init', '--platform', 'opencode', '--existing', '--quiet'], { cwd: tmp, encoding: 'utf8' });
+        const res = spawnSync(process.execPath, [CLI, 'init', '--platform', 'opencode', '--existing', '--quiet'], { ...SPAWN_OPTS, cwd: tmp, env: CLI_ENV });
+        // OpenCode reads AGENTS.md plus the project-root opencode.json "instructions"
+        let cfg = null;
+        try { cfg = JSON.parse(fs.readFileSync(path.join(tmp, 'opencode.json'), 'utf8')); } catch (e) {}
         const ok = res.status === 0 &&
-          fs.existsSync(path.join(tmp, 'OPENCODE.md')) &&
-          fs.existsSync(path.join(tmp, '.opencode', 'rules', 'devos-rules.md'));
+          fs.existsSync(path.join(tmp, 'AGENTS.md')) &&
+          Boolean(cfg && cfg.$schema === 'https://opencode.ai/config.json' && Array.isArray(cfg.instructions) && cfg.instructions.length > 0) &&
+          !fs.existsSync(path.join(tmp, 'OPENCODE.md'));
         return { ok, detail: ok ? null : `OpenCode artifacts missing: ${res.stderr || res.stdout}` };
       }
       case 'harness-codex-artifacts': {
-        const res = spawnSync(process.execPath, [CLI, 'init', '--platform', 'codex', '--existing', '--quiet'], { cwd: tmp, encoding: 'utf8' });
+        const res = spawnSync(process.execPath, [CLI, 'init', '--platform', 'codex', '--existing', '--quiet'], { ...SPAWN_OPTS, cwd: tmp, env: CLI_ENV });
+        // Codex reads AGENTS.md; .codex/instructions.md is no longer written
         const ok = res.status === 0 &&
-          fs.existsSync(path.join(tmp, '.codex', 'instructions.md')) &&
+          fs.existsSync(path.join(tmp, 'AGENTS.md')) &&
+          !fs.existsSync(path.join(tmp, '.codex', 'instructions.md')) &&
           fs.existsSync(path.join(tmp, '.windsurfrules'));
         return { ok, detail: ok ? null : `Codex artifacts missing: ${res.stderr || res.stdout}` };
       }
       case 'harness-hard-rules-digest-parity': {
-        const res = spawnSync(process.execPath, [CLI, 'init', '--platform', 'all', '--existing', '--quiet'], { cwd: tmp, encoding: 'utf8' });
+        const res = spawnSync(process.execPath, [CLI, 'init', '--platform', 'all', '--existing', '--quiet'], { ...SPAWN_OPTS, cwd: tmp, env: CLI_ENV });
         if (res.status !== 0) return { ok: false, detail: 'Failed to initialize universal harness setup' };
         const claudeMd = fs.readFileSync(path.join(tmp, 'CLAUDE.md'), 'utf8');
         const agyMd = fs.readFileSync(path.join(tmp, 'ANTIGRAVITY.md'), 'utf8');
         const cursorMdc = fs.readFileSync(path.join(tmp, '.cursor', 'rules', 'devos.mdc'), 'utf8');
-        const openCodeMd = fs.readFileSync(path.join(tmp, 'OPENCODE.md'), 'utf8');
-        const codexMd = fs.readFileSync(path.join(tmp, '.codex', 'instructions.md'), 'utf8');
+        // AGENTS.md is what Codex, OpenCode, and Cursor read natively
+        const agentsMd = fs.readFileSync(path.join(tmp, 'AGENTS.md'), 'utf8');
+        const geminiMd = fs.readFileSync(path.join(tmp, 'GEMINI.md'), 'utf8');
         const ruleCheck = (text) => text.includes('commit.sh') && text.includes('Zero Secrets') && text.includes('Circuit Breaker');
-        const ok = ruleCheck(claudeMd) && ruleCheck(agyMd) && ruleCheck(cursorMdc) && ruleCheck(openCodeMd) && ruleCheck(codexMd);
+        const ok = ruleCheck(claudeMd) && ruleCheck(agyMd) && ruleCheck(cursorMdc) && ruleCheck(agentsMd) && ruleCheck(geminiMd);
         return { ok, detail: ok ? null : 'One or more harness configurations failed Hard Rules digest parity' };
       }
       default:
@@ -334,11 +365,13 @@ function executeMemoryPreservationSuite(cItem) {
       return { ok, detail: ok ? null : 'docs/TASK_BOARD.md missing mandatory DAG status columns' };
     }
     case 'memory-current-state-sync': {
-      const csPath = path.join(ROOT, 'docs', 'CURRENT_STATE.md');
-      if (!fs.existsSync(csPath)) return { ok: false, detail: 'docs/CURRENT_STATE.md not found' };
+      // Check the shipped scaffold, not the repo's own (gitignored) working copy
+      const csPath = path.join(ROOT, 'templates', 'scaffolds', 'docs', 'CURRENT_STATE.md');
+      if (!fs.existsSync(csPath)) return { ok: false, detail: 'templates/scaffolds/docs/CURRENT_STATE.md not found' };
       const content = fs.readFileSync(csPath, 'utf8');
-      const ok = content.includes('Current Task') && content.includes('Active Agents') && content.includes('Eval Engineer');
-      return { ok, detail: ok ? null : 'docs/CURRENT_STATE.md missing active task or Eval Engineer allocation' };
+      // The scaffold tracks the current task and the active-agent table (Orchestrator row at minimum)
+      const ok = content.includes('Current Task') && content.includes('Active Agents') && /\|\s*Orchestrator\s*\|/.test(content);
+      return { ok, detail: ok ? null : 'CURRENT_STATE.md scaffold missing Current Task, Active Agents, or the Orchestrator row' };
     }
     case 'memory-adr-template-integrity': {
       const adrPath = path.join(ROOT, '.agents', 'memory', 'decisions', 'ADR-000-template.md');
@@ -436,7 +469,7 @@ function executeWorkflowIntegritySuite(cItem) {
       return { ok, detail: ok ? null : 'Standard Feature Delivery workflow missing from .agents/AGENTS.md' };
     }
     case 'workflow-circuit-breaker-rule': {
-      const ok = content.includes('Circuit Breaker') && content.includes('3 iterations');
+      const ok = content.includes('Circuit Breaker') && /\b3 (failed fix )?iterations\b/.test(content);
       return { ok, detail: ok ? null : 'Circuit Breaker rule (3 iterations) missing from .agents/AGENTS.md' };
     }
     case 'workflow-solo-session-protocol': {
@@ -650,6 +683,7 @@ function runEvaluation(flags) {
 
 if (require.main === module) {
   const flags = parseArgs(process.argv.slice(2));
+  if (flags.reportsDir) REPORTS_DIR = path.resolve(flags.reportsDir);
   if (flags.help) {
     printHelp();
     process.exit(0);

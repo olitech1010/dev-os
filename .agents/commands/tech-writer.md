@@ -4,6 +4,7 @@ description: Author technical documentation and architecture decision records
 agent: tech-writer
 triage_level: TRIVIAL
 workflow: documentation
+argument-hint: "<documentation scope>"
 ---
 
 Author and update documentation for the system.

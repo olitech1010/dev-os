@@ -1,6 +1,6 @@
 ---
 name: token-optimization
-description: Rules for minimizing token consumption across all agent interactions without sacrificing output quality. Applies to all agents to keep context focused and costs low.
+description: "Use when working in any agent session, to keep context small: read only what the task needs, prefer targeted search over full-file reads, summarize instead of pasting, and avoid repeating loaded content."
 ---
 
 # Token Optimization Skill

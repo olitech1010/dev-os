@@ -4,6 +4,7 @@ description: Write and run tests for specified code
 agent: tester
 triage_level: STANDARD
 workflow: direct
+argument-hint: "<target code or feature>"
 ---
 
 Write and execute tests for the specified target.

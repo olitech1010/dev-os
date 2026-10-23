@@ -2,7 +2,7 @@
 
 /**
  * Dev-OS Autonomous SDLC Pipeline Runner (Zero External Dependencies)
- * Owned by the Executive Proxy Agent.
+ * Owned by the Orchestrator (Autonomous Mode, /auto).
  *
  * Executes the 10-stage multi-agent SDLC pipeline, tracks state in
  * .agents/memory/sdlc-state.json, and enforces mechanical gates between stages.
@@ -61,7 +61,7 @@ const STAGES = [
     index:       2,
     label:       'Design Gate',
     agent:       'UI Designer',
-    skill:       'ui-ux-pro-max / awesome-design-catalog',
+    skill:       'anti-ai-ui / awesome-design-catalog',
     deliverable: 'DESIGN.md',
     gate:        { file: 'docs/PROJECT_REQUIREMENTS.md', label: 'PROJECT_REQUIREMENTS.md' },
     description: 'UI Designer matches a real production design system from the catalog and writes DESIGN.md at project root.'
@@ -96,7 +96,7 @@ const STAGES = [
     gates: [
       { file: 'DESIGN.md',               label: 'DESIGN.md at project root (Mandatory Design Gate)' },
       { file: 'docs/TASK_BOARD.md',       label: 'docs/TASK_BOARD.md (Task Decomposition Gate)' },
-      { dir:  'docs/superpowers/plans',   label: 'Implementation plan in docs/superpowers/plans/ (brainstorming → writing-plans Gate)' }
+      { plan: true,                       label: 'Implementation plan in docs/plans/ or an approved docs/specs/<slug>/tasks.md (brainstorming -> writing-plans or spec-driven Gate)' }
     ],
     description: 'Developer implements features following DESIGN.md, TASK_BOARD.md, and the approved implementation plan. No raw git commit allowed.'
   },
@@ -144,11 +144,11 @@ const STAGES = [
     id:          'humanize',
     index:       10,
     label:       'Humanizer Audit',
-    agent:       'Release Manager',
+    agent:       'Tech Writer',
     skill:       'humanizer',
     deliverable: 'Clean docs (zero AI writing tells)',
     gate:        null,
-    description: 'Release Manager scrubs all docs in /docs/ through humanize-check.sh to eliminate 25 cataloged AI writing tells.'
+    description: 'Tech Writer scrubs all docs in /docs/ through humanize-check.sh to eliminate 25 cataloged AI writing tells.'
   }
 ];
 
@@ -260,10 +260,24 @@ function checkGate(stage) {
         fs.statSync(target).isDirectory() &&
         fs.readdirSync(target).some(f => !f.startsWith('.'));
       if (!hasFiles) failures.push(cond.label);
+    } else if (cond.plan) {
+      if (!hasImplementationPlan()) failures.push(cond.label);
     }
   }
 
   return { ok: failures.length === 0, failures };
+}
+
+// Rule 22 plan gate: any file in docs/plans/, or a spec's tasks.md under
+// docs/specs/<slug>/ (the shipped docs/specs/_template/ does not count).
+function hasImplementationPlan() {
+  const plans = path.join(ROOT, 'docs', 'plans');
+  if (fs.existsSync(plans) && fs.statSync(plans).isDirectory() &&
+    fs.readdirSync(plans).some(f => !f.startsWith('.'))) return true;
+  const specs = path.join(ROOT, 'docs', 'specs');
+  if (!fs.existsSync(specs) || !fs.statSync(specs).isDirectory()) return false;
+  return fs.readdirSync(specs).some(slug => slug !== '_template' && !slug.startsWith('.') &&
+    fs.existsSync(path.join(specs, slug, 'tasks.md')));
 }
 
 function checkHumanizerScript() {
@@ -285,7 +299,7 @@ function stageStatusIcon(status) {
 function printBanner() {
   console.log(`\n${c.bold}Dev-OS Autonomous SDLC Pipeline Runner${c.reset}`);
   console.log(`${c.gray}${RULE}${c.reset}`);
-  console.log(`${c.dim}Executive Proxy Agent · 10-Stage Multi-Agent Pipeline${c.reset}\n`);
+  console.log(`${c.dim}Orchestrator (Autonomous Mode) · 10-Stage Multi-Agent Pipeline${c.reset}\n`);
 }
 
 function printHelp() {
@@ -383,15 +397,15 @@ function printStagePrompt(stageId, idea) {
 
   const prompts = {
     inception: `You are the Architect Agent. Using the grill-me skill, extrapolate requirements for the following product and produce docs/PROJECT_REQUIREMENTS.md:\n\n"${ideaStr}"\n\nBe exhaustive. Cover functional requirements, non-functional requirements, data models, user roles, edge cases, and compliance constraints. Output docs/PROJECT_REQUIREMENTS.md.`,
-    design: `You are the UI Designer Agent. Read docs/PROJECT_REQUIREMENTS.md, then use the awesome-design-catalog (devos design match) and ui-ux-pro-max skill to select the best matching real-world design system for this product and write DESIGN.md at the project root. The design system must be sourced from the catalog — not generated. Output DESIGN.md.`,
+    design: `You are the UI Designer Agent. Read docs/PROJECT_REQUIREMENTS.md, then use the awesome-design-catalog (devos design match) and the anti-ai-ui skill to select the best matching real-world design system for this product and write DESIGN.md at the project root. The design system must be sourced from the catalog — not generated. Output DESIGN.md.`,
     database: `You are the DBA Agent. Read docs/PROJECT_REQUIREMENTS.md and DESIGN.md, then design a complete database schema. Write RLS-enabled migrations in database/migrations/ and realistic seed fixtures. All dev/test user accounts must use the password devos123. Output migration files and seed data.`,
-    tasks: `You are the Orchestrator Agent. Read docs/PROJECT_REQUIREMENTS.md and design a deterministic DAG of implementation tasks. Write docs/TASK_BOARD.md with tasks sequenced by dependency. Each task must have an assigned agent, triage level, and gate requirements.\n\nOnce TASK_BOARD.md is written, trigger the brainstorming skill with the Developer to produce an implementation plan in docs/superpowers/plans/YYYY-MM-DD-<topic>-implementation.md before any code is written. This plan is a hard gate for Stage 5.`,
-    implementation: `You are the Developer Agent. Before writing any code:\n1. Confirm DESIGN.md exists at the project root (Mandatory Design Gate).\n2. Read docs/TASK_BOARD.md to understand the task DAG.\n3. Read the approved implementation plan in docs/superpowers/plans/ (produced by the brainstorming → writing-plans workflow).\nThen implement features task by task following CODING_STANDARDS.md and DESIGN.md tokens. Never commit directly — present a staged summary for human review. Do not bypass the QA gate.`,
+    tasks: `You are the Orchestrator Agent. Read docs/PROJECT_REQUIREMENTS.md and design a deterministic DAG of implementation tasks. Write docs/TASK_BOARD.md with tasks sequenced by dependency. Each task must have an assigned agent, triage level, and gate requirements.\n\nOnce TASK_BOARD.md is written, trigger the brainstorming skill with the Developer to produce an implementation plan in docs/plans/YYYY-MM-DD-<topic>-implementation.md before any code is written. This plan is a hard gate for Stage 5.`,
+    implementation: `You are the Developer Agent. Before writing any code:\n1. Confirm DESIGN.md exists at the project root (Mandatory Design Gate).\n2. Read docs/TASK_BOARD.md to understand the task DAG.\n3. Read the approved implementation plan in docs/plans/ (produced by the brainstorming → writing-plans workflow).\nThen implement features task by task following CODING_STANDARDS.md and DESIGN.md tokens. Never commit directly — present a staged summary for human review. Do not bypass the QA gate.`,
     tests: `You are the Tester Agent. Read the feature spec in docs/PROJECT_REQUIREMENTS.md. Write unit and integration tests covering happy path, edge cases, and failure states. Run the suite and report results. Do not fix application code — report failures to the Developer.`,
     'testing-guide': `You are the Tester Agent working with QA. Produce an interactive docs/TESTING_GUIDE.md that a non-technical founder can follow step by step to verify the entire application. All dev accounts must use password devos123. Seed data must be realistic.`,
     qa: `You are the QA Agent. Review all code produced by the Developer. Check against CODING_STANDARDS.md, confirm no forbidden patterns, verify TypeScript types are not bypassed, confirm no hardcoded secrets or TODOs without issues, and verify all tests pass. Return APPROVED or CHANGES REQUESTED with numbered items.`,
     security: `You are the Security Agent. Scan all application code and configuration for: OWASP Top 10 vulnerabilities, authentication and authorization logic, input validation gaps, exposed secrets or credentials, known CVEs in dependencies, SQL injection/XSS/CSRF vectors, file upload handling, and rate-limiting. Return a risk report with severity levels: CRITICAL, HIGH, MEDIUM, LOW, INFO.`,
-    humanize: `You are the Release Manager Agent. Run .agents/scripts/humanize-check.sh on every markdown file in /docs/. For any file that fails, rewrite the flagged sections to eliminate all 25 AI writing tells (not-X-but-Y constructions, one-line closers, forced triads, inflated claims, robotic openers, etc.) without changing the technical content.`
+    humanize: `You are the Tech Writer Agent. Run .agents/scripts/humanize-check.sh on every markdown file in /docs/. For any file that fails, rewrite the flagged sections to eliminate all 25 AI writing tells (not-X-but-Y constructions, one-line closers, forced triads, inflated claims, robotic openers, etc.) without changing the technical content.`
   };
 
   console.log(prompts[stage.id] || stage.description);

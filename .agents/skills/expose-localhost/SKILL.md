@@ -1,8 +1,9 @@
 ---
 name: expose-localhost
-description: Expose a local service to the public internet using ngrok. Starts a tunnel, optionally adds OAuth or WAF via Traffic Policy. Use when asked to expose, tunnel, share, or make a local service publicly accessible.
+description: "Use when asked to expose, tunnel, or share a local service on the public internet, for example to test a webhook or show a demo. Starts an ngrok tunnel and can add OAuth or WAF rules through Traffic Policy. Requires the ngrok CLI, installed and authenticated."
 license: MIT
 metadata:
+  source: https://github.com/ngrok/agent-skills
   author: ngrok
   version: "2.0"
 compatibility: Requires ngrok CLI installed and authenticated.

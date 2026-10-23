@@ -16,8 +16,21 @@ docs/superpowers/
 .agents/memory/sdlc-state.json
 .agents/telemetry/*.jsonl
 
-# Eval run history
+# Eval run history and the repo's own scorecard
+.agents/evals/reports/
+.agents/evals/reports/latest-scorecard.json
 .agents/evals/reports/scorecard-*.json
 
-# Backups
+# The Dev-OS repo's own install manifest (targets get theirs from devos init)
+.agents/manifest.json
+
+# Backups and local tool binaries
 .agents/_backup/
+.agents/bin/
+# Python bytecode (never ship)
+__pycache__/
+*.pyc
+
+# Build output and the git-only marketplace catalog
+/dist/
+/.claude-plugin/

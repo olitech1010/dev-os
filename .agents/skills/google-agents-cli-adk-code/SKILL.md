@@ -1,15 +1,8 @@
 ---
 name: google-agents-cli-adk-code
-description: >
-  This skill should be used when the user wants to "write agent code",
-  "build an agent with ADK", "add a tool", "create a callback", "define an agent",
-  "use state management", or needs ADK (Agent Development Kit) Python API patterns
-  and code examples. Part of the Google ADK skills suite.
-  It provides a quick reference for agent types, tool definitions, orchestration
-  patterns, callbacks, and state management.
-  Do NOT use for creating new projects (use google-agents-cli-scaffold) or deployment
-  (use google-agents-cli-deploy).
+description: "Use when writing Python agent code with Google's Agent Development Kit (ADK): defining agents, adding tools, callbacks, orchestration patterns, and state management. Not for project scaffolding or deployment; those upstream sibling skills are not shipped with Dev-OS."
 metadata:
+  source: https://github.com/google/agents-cli
   author: Google
   license: Apache-2.0
   version: 1.0.0
@@ -17,9 +10,12 @@ metadata:
     bins:
       - agents-cli
     install: "uv tool install google-agents-cli"
+license: Apache-2.0
 ---
 
 # ADK Code Reference
+
+> **Dev-OS note:** Dev-OS ships only `google-agents-cli-workflow` and `google-agents-cli-adk-code` (optional `google-adk` pack). The sibling skills `google-agents-cli-scaffold`, `-eval`, `-deploy`, `-publish`, and `-observability` referenced below are **not shipped**. Install them from upstream with `uvx google-agents-cli setup` if needed, or use the `agents-cli` command help and https://adk.dev docs instead.
 
 > **Before using this skill**, activate `/google-agents-cli-workflow` first — it contains the required development phases and scaffolding steps.
 
@@ -67,6 +63,6 @@ The first two are cheatsheets for common patterns; for broad or deep knowledge, 
 ## Related Skills
 
 - `/google-agents-cli-workflow` — Development workflow, coding guidelines, and operational rules
-- `/google-agents-cli-scaffold` — Project creation and enhancement with `agents-cli scaffold create` / `scaffold enhance`
-- `/google-agents-cli-eval` — Evaluation methodology, dataset schema, and the eval-fix loop
-- `/google-agents-cli-deploy` — Deployment targets, CI/CD pipelines, and production workflows
+- `/google-agents-cli-scaffold` (not shipped) — Project creation and enhancement with `agents-cli scaffold create` / `scaffold enhance`
+- `/google-agents-cli-eval` (not shipped) — Evaluation methodology, dataset schema, and the eval-fix loop
+- `/google-agents-cli-deploy` (not shipped) — Deployment targets, CI/CD pipelines, and production workflows

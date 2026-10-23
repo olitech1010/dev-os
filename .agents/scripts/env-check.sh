@@ -10,10 +10,41 @@ if [ -z "$TARGET_DIR" ]; then
     TARGET_DIR="."
 fi
 
+LIVE_SECRET_RE='(sk_live_[0-9a-zA-Z]{20,}|ghp_[0-9a-zA-Z]{20,}|AKIA[0-9A-Z]{16}|-----BEGIN (RSA|OPENSSH|EC|DSA)? ?PRIVATE KEY-----|eyJ[a-zA-Z0-9_-]{10,}\.eyJ[a-zA-Z0-9_-]{10,})'
+
+# File mode (used by the PostToolUse hook): check one .env* file only.
+#   .env.example / .env.sample / .env.template / .env.dist: must not contain live credentials.
+#   any other .env* file: must not be tracked by git (it is expected to hold real secrets).
+if [ -f "$TARGET_DIR" ]; then
+    FILE="$TARGET_DIR"
+    echo "Dev-OS Environment Audit (file): '$FILE'..."
+    case "$(basename "$FILE")" in
+        *.example|*.sample|*.template|*.dist)
+            HITS=$(grep -Ein "$LIVE_SECRET_RE" "$FILE" 2>/dev/null | cut -d: -f1)
+            if [ -n "$HITS" ]; then
+                echo "  [ FAIL ] [ENV §1] Probable LIVE credential or private key in '$FILE' (values not shown):"
+                echo "$HITS" | sed 's/^/      line /'
+                echo "      Replace it with a placeholder (e.g. API_KEY=your_key_here) and rotate the credential."
+                exit 1
+            fi
+            ;;
+        *)
+            DIR=$(dirname "$FILE")
+            if git -C "$DIR" ls-files --error-unmatch -- "$(basename "$FILE")" >/dev/null 2>&1; then
+                echo "  [ FAIL ] [ENV §3] '$FILE' is tracked by git but holds environment secrets (Hard Rule 2)."
+                echo "      Add it to .gitignore, untrack it (the human runs: git rm --cached), and document keys in .env.example."
+                exit 1
+            fi
+            ;;
+    esac
+    echo "[ OK ] Environment Audit Passed: '$FILE'."
+    exit 0
+fi
+
 ENV_EXAMPLE="$TARGET_DIR/.env.example"
 FAILURES=0
 
-echo "🔐 Dev-OS Environment & Config Parity Audit: Scanning '$TARGET_DIR'..."
+echo "Dev-OS Environment & Config Parity Audit: Scanning '$TARGET_DIR'..."
 
 # If there are no source files or this is an empty directory, skip cleanly
 SOURCE_FILES=$(find "$TARGET_DIR" -type f \( \
@@ -38,18 +69,19 @@ SOURCE_FILES=$(find "$TARGET_DIR" -type f \( \
 2>/dev/null)
 
 if [ -z "$SOURCE_FILES" ]; then
-    echo "ℹ️ No application source files found to audit."
-    echo "✅ Environment Parity Audit: Clean."
+    echo "[ INFO ] No application source files found to audit."
+    echo "[ OK ] Environment Parity Audit: Clean."
     exit 0
 fi
 
 # 1. Check for committed secrets in .env.example if it exists
 if [ -f "$ENV_EXAMPLE" ]; then
     # Look for likely live credentials in .env.example (sk_live_, ghp_, eyJ, private keys, AWS keys)
-    SUSPICIOUS_SECRETS=$(grep -Ein "(sk_live_[0-9a-zA-Z]{20,}|ghp_[0-9a-zA-Z]{20,}|AKIA[0-9A-Z]{16}|-----BEGIN (RSA|OPENSSH|EC|DSA)? ?PRIVATE KEY-----|eyJ[a-zA-Z0-9_-]{10,}\.eyJ[a-zA-Z0-9_-]{10,})" "$ENV_EXAMPLE" 2>/dev/null)
+    SUSPICIOUS_SECRETS=$(grep -Ein "$LIVE_SECRET_RE" "$ENV_EXAMPLE" 2>/dev/null)
     if [ -n "$SUSPICIOUS_SECRETS" ]; then
-        echo "  ❌ [ENV §1] Probable LIVE credential or private key committed in '$ENV_EXAMPLE':"
-        echo "$SUSPICIOUS_SECRETS" | sed 's/^/      /'
+        echo "  [ FAIL ] [ENV §1] Probable LIVE credential or private key committed in '$ENV_EXAMPLE':"
+        # Report line numbers only: echoing the matched value would leak the secret into logs (Hard Rule 2).
+        echo "$SUSPICIOUS_SECRETS" | cut -d: -f1 | sed 's/^/      line /'
         FAILURES=$((FAILURES + 1))
     fi
 fi
@@ -58,11 +90,11 @@ fi
 # Node/JS: process.env.VAR_NAME or process.env['VAR_NAME']
 # Python: os.environ.get('VAR_NAME') or os.environ['VAR_NAME'] or os.getenv('VAR_NAME')
 # PHP: env('VAR_NAME')
-RAW_VARS=$(echo "$SOURCE_FILES" | xargs grep -Eho "(process\.env\.[A-Z0-9_]+|process\.env\['[A-Z0-9_]+'\]|process\.env\[\"[A-Z0-9_]+\"\]|os\.(environ|getenv)[(\[]['\"][A-Z0-9_]+['\"][)\]]|env\(['\"][A-Z0-9_]+['\"]\))" 2>/dev/null)
+RAW_VARS=$(printf '%s\n' "$SOURCE_FILES" | tr '\n' '\0' | xargs -0 grep -Eho "(process\.env\.[A-Z0-9_]+|process\.env\['[A-Z0-9_]+'\]|process\.env\[\"[A-Z0-9_]+\"\]|os\.(environ|getenv)[(\[]['\"][A-Z0-9_]+['\"][)\]]|env\(['\"][A-Z0-9_]+['\"]\))" 2>/dev/null)
 
 if [ -z "$RAW_VARS" ]; then
-    echo "ℹ️ No environment variable references found in source code."
-    echo "✅ Environment Parity Audit: Clean."
+    echo "[ INFO ] No environment variable references found in source code."
+    echo "[ OK ] Environment Parity Audit: Clean."
     exit 0
 fi
 
@@ -99,10 +131,10 @@ done
 
 if [ ${#MISSING_VARS[@]} -gt 0 ]; then
     echo ""
-    echo "  ❌ [ENV §2] Environment variables referenced in code but MISSING from '$ENV_EXAMPLE':"
+    echo "  [ FAIL ] [ENV §2] Environment variables referenced in code but MISSING from '$ENV_EXAMPLE':"
     for m in "${MISSING_VARS[@]}"; do
         # Find which file references it
-        REF_FILE=$(echo "$SOURCE_FILES" | xargs grep -l "$m" 2>/dev/null | head -n 1)
+        REF_FILE=$(printf '%s\n' "$SOURCE_FILES" | tr '\n' '\0' | xargs -0 grep -lw "$m" 2>/dev/null | head -n 1)
         echo "      - $m (referenced in: $REF_FILE)"
     done
     FAILURES=$((FAILURES + ${#MISSING_VARS[@]}))
@@ -110,7 +142,7 @@ fi
 
 if [ "$FAILURES" -gt 0 ]; then
     echo ""
-    echo "❌ Environment & Config Parity Audit Failed: $FAILURES issue(s) detected."
+    echo "[ FAIL ] Environment & Config Parity Audit Failed: $FAILURES issue(s) detected."
     echo "   Remediation:"
     echo "     1. Ensure '$ENV_EXAMPLE' exists at the project root."
     echo "     2. Add missing variables with placeholder values (e.g., API_KEY=your_key_here)."
@@ -118,6 +150,6 @@ if [ "$FAILURES" -gt 0 ]; then
     exit 1
 else
     TOTAL_CHECKED=$(echo "$CLEAN_VARS" | wc -w | tr -d ' ')
-    echo "✅ Environment Parity Audit Passed: All $TOTAL_CHECKED referenced environment variables documented in '$ENV_EXAMPLE'!"
+    echo "[ OK ] Environment Parity Audit Passed: All $TOTAL_CHECKED referenced environment variables documented in '$ENV_EXAMPLE'!"
     exit 0
 fi

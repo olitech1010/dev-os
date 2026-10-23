@@ -1,9 +1,6 @@
 ---
 name: code-reviewer
-description:
-  Use this skill to review code. It supports both local changes (staged or working tree)
-  and remote Pull Requests (by ID or URL). It focuses on correctness, maintainability,
-  and adherence to project standards.
+description: "Use when asked to review code, either local changes (staged or working tree) or a remote pull request by number or URL, for correctness, maintainability, and adherence to project standards."
 ---
 
 # Code Reviewer

@@ -1,6 +1,8 @@
 ---
 name: design-an-interface
-description: Generate multiple radically different interface designs for a module using parallel sub-agents. Use when user wants to design an API, explore interface options, compare module shapes, or mentions "design it twice".
+description: "Use when the user wants to design an API or module interface, explore and compare several interface shapes, or mentions \"design it twice\". Generates multiple radically different designs with parallel sub-agents."
+metadata:
+  source: https://github.com/mattpocock/skills
 ---
 
 # Design an Interface

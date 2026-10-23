@@ -1,6 +1,9 @@
 ---
 name: find-skills
-description: Helps users discover and install agent skills when they ask questions like "how do I do X", "find a skill for X", "is there a skill that can...", or express interest in extending capabilities. This skill should be used when the user is looking for functionality that might exist as an installable skill.
+description: "Use when the user asks how to do something that an installable agent skill might cover (\"find a skill for X\", \"is there a skill that can...\") or wants to extend the agent's capabilities. Helps search for and install skills."
+metadata:
+  source: https://github.com/vercel-labs/skills
+license: MIT
 ---
 
 # Find Skills
@@ -95,13 +98,18 @@ Learn more: https://skills.sh/vercel-labs/agent-skills/react-best-practices
 
 ### Step 6: Offer to Install
 
-If the user wants to proceed, you can install the skill for them:
+Installing a skill downloads third-party instructions (and sometimes scripts) that future agents will follow, so treat it as a supply-chain change:
+
+1. **Ask the human first.** Show the exact command, the source repository, and its install count, and wait for an explicit yes. Never install as a side effect of a search.
+2. **Install into the project, not globally.** Omit `-g` unless the human explicitly asks for a user-level install.
+3. **Do not pass `-y`.** Let the installer show its own confirmation prompt.
+4. **Review before use.** After install, read the new `SKILL.md` (and any bundled scripts) before following it, and report anything that runs network calls or executes code.
 
 ```bash
-npx skills add <owner/repo@skill> -g -y
+npx skills add <owner/repo@skill>
 ```
 
-The `-g` flag installs globally (user-level) and `-y` skips confirmation prompts.
+In a Dev-OS project, prefer `devos skill add <owner/repo>`, which records the skill for `devos skill check` / `devos skill sync`.
 
 ## Common Skill Categories
 

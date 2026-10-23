@@ -241,8 +241,8 @@ Check your `tsconfig.json` includes path aliases:
 
 ## Contributing
 
-Contributions to improve this skill are welcome! See the root [CONTRIBUTING.md](../../CONTRIBUTING.md) for guidelines.
+Contributions to improve this skill are welcome! See the root [CONTRIBUTING.md](https://github.com/google-labs-code/stitch-skills) for guidelines.
 
 ## License
 
-See [LICENSE](../../LICENSE) in the repository root.
+See [LICENSE](https://github.com/google-labs-code/stitch-skills) in the upstream repository (Apache-2.0).

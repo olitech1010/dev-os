@@ -4,6 +4,7 @@ description: Refactor code in specified scope with QA gate
 agent: developer
 triage_level: STANDARD
 workflow: standard
+argument-hint: "<code scope>"
 ---
 
 Refactor the specified code scope.

@@ -4,6 +4,7 @@ description: Report current project state and task progress
 agent: orchestrator
 triage_level: TRIVIAL
 workflow: direct
+argument-hint: "[focus area]"
 ---
 
 Report the current project state.
@@ -14,3 +15,5 @@ Report the current project state.
 4. Report recent decisions and completed work
 
 Present a clean, concise status update.
+
+Focus: $ARGUMENTS

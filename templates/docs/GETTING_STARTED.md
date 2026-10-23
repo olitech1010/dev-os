@@ -81,7 +81,7 @@ Step 5 · Autonomous Goal / Product Idea (Prompted if Mode is Auto)
 
 Step 6 · Capability Scope & Specialist Skills
   1) Lean Stack Pack (Core + target stack skills — token-optimized) [Recommended]
-  2) Full Skills Arsenal (Install all 66 specialist skills across design, backend, devops)
+  2) Full Skills Arsenal (Install every specialist skill across design, backend, devops)
 
 Step 7 · Anonymous Failure Telemetry & Local RCA Buffer
   1) On (Recommended) — Anonymously captures execution errors & RCA reports in .agents/telemetry/
@@ -127,7 +127,7 @@ Dev-OS provides four execution modes configured in `.agents/manifest.json`:
 |------|-------------|-------------|
 | `interactive` | Professional Developers | Default pair-programming workflow. Staged review before every commit. |
 | `guided` | Engineering Leads / QA | Pauses after each SDLC stage (Inception, Design, Schema, Implementation, Testing) for sign-off. |
-| `auto` | Startup Founders / CEOs | Hands-off MVP builder. The Executive Proxy manages the full 10-stage SDLC from prompt to working app. |
+| `auto` | Startup Founders / CEOs | Hands-off MVP builder. The Orchestrator runs the full SDLC from prompt to working app. |
 | `audit` | Security / Compliance | Read-only mode. Performs vulnerability scans, code reviews, and standards audits without modifying code. |
 
 ### Running Autonomous Mode (`devos run` or `/auto`)
@@ -139,7 +139,7 @@ Inside your AI harness, trigger the pipeline with:
 ```text
 /auto Build an inventory management dashboard with Supabase auth and export features
 ```
-The **Executive Proxy Agent** oversees all 10 stages:
+The **Orchestrator** (Autonomous Mode) oversees every stage:
 1. **Inception:** Architect creates `docs/PROJECT_REQUIREMENTS.md`.
 2. **Design Gate:** UI Designer creates `DESIGN.md` at project root (required before UI coding).
 3. **Database Architecture:** DBA writes migrations and seed scripts with universal test credentials (`devos123`).
@@ -149,7 +149,7 @@ The **Executive Proxy Agent** oversees all 10 stages:
 7. **Interactive Guide:** Tester creates `docs/TESTING_GUIDE.md` for human reviewers.
 8. **QA Gate:** QA evaluates types, lint rules, and design specifications.
 9. **Security Scan:** Security agent evaluates OWASP vulnerabilities and secrets.
-10. **Humanizer Gate:** Release Manager de-fluffs documentation and copies.
+10. **Humanizer Gate:** Tech Writer de-fluffs documentation and copy.
 
 ---
 
@@ -174,7 +174,7 @@ The **Executive Proxy Agent** oversees all 10 stages:
   -s, --stack <name>       Target stack (nextjs, laravel, django, react-native, express, fastapi, universal)
   -p, --platform <name>    Target AI harness (antigravity, claude, cursor, opencode, codex, all)
   -m, --mode <name>        Execution mode (interactive, guided, auto, audit)
-  --all-skills             Install all 66 specialist skills
+  --all-skills             Install every specialist skill
   --all-harnesses          Generate configs for all supported AI coding platforms
   --fresh                  Non-interactive fresh project initialization
   --existing               Non-interactive existing project initialization
@@ -194,7 +194,7 @@ The **Executive Proxy Agent** oversees all 10 stages:
 
 Dev-OS enforces code quality through automated runtime gates:
 
-1. **Mechanical Commit Gate:** Raw `git commit` is blocked by pre-commit hooks. Changes must be committed using `.agents/scripts/commit.sh` or with `DEVOS_COMMIT_APPROVED=true`.
+1. **Mechanical Commit Gate:** Only a human commits, by running `.agents/scripts/commit.sh` from their own terminal. Raw `git commit` is blocked by the pre-commit hook, and AI agent shells are refused by `commit.sh`, the pre-commit hook, and the pre-merge-commit hook even with `DEVOS_COMMIT_APPROVED=true`. CI pipelines only: `DEVOS_HEADLESS_COMMIT=1` with `CI=true`. Projects installed with an older Dev-OS re-run `.agents/scripts/install-hooks.sh` (or `devos update`) to get these hooks.
 2. **Mandatory Design Gate:** Modifying frontend UI files (`.tsx`, `.jsx`, `.vue`, `.svelte`, `.html`, `.css`) without an approved `DESIGN.md` at project root is blocked by `.agents/hooks/pre-tool-use.sh`.
 3. **Mechanical Humanizer Gate:** Documentation in `docs/` must pass `.agents/scripts/humanize-check.sh` to remove robotic text patterns before merging.
 4. **Universal Test Password:** Standard test accounts and seed fixtures must use `devos123` to eliminate authentication friction for human testers.

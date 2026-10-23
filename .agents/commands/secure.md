@@ -4,6 +4,7 @@ description: Run security scan on current changes
 agent: security
 triage_level: STANDARD
 workflow: direct
+argument-hint: "[path or diff target]"
 ---
 
 Perform a security scan on the specified target.

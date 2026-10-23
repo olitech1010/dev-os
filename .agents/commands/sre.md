@@ -1,9 +1,10 @@
 ---
 name: sre
-description: Architect infrastructure-as-code and observability runbooks
-agent: sre
+description: Architect infrastructure-as-code, SLOs, and observability runbooks (handled by DevOps)
+agent: devops
 triage_level: CRITICAL
 workflow: infrastructure
+argument-hint: "<infrastructure request>"
 ---
 
 Design infrastructure, monitoring configs, and reliability runbooks.

@@ -1,6 +1,6 @@
 ---
 name: task-contract
-description: Defines the standard contract format for sub-task delegation between agents.
+description: "Use when delegating a sub-task from one agent to another. Defines the task contract format: context, deliverable, acceptance criteria, and boundaries."
 ---
 
 # Task Contract

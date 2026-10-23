@@ -70,14 +70,19 @@ flowchart TD
 
 ```mermaid
 flowchart LR
-    Dev["Agent / Developer"] --> Script[commit.sh]
-    Script --> Token[Export DEVOS_COMMIT_APPROVED]
-    Token --> Git[git commit]
-    Git --> Hook[Pre-commit hook]
-    Hook --> Gitleaks[gitleaks Secret Scan]
-    Gitleaks -- Pass --> Success[Commit Saved]
-    Gitleaks -- Fail --> Reject[Commit Rejected]
+    Agent["Agent / Developer"] --> Stage[Stage changes and present summary]
+    Stage --> Human[Human in own terminal]
+    Human --> Script[commit.sh]
+    Script --> Marker{Agent marker set?}
+    Marker -- Yes --> Reject[Commit Refused]
+    Marker -- No --> Approve[Type approve, type, message on /dev/tty]
+    Approve --> Git[git commit with DEVOS_COMMIT_APPROVED=true]
+    Git --> Hook[Pre-commit hook: agent check, token, scans]
+    Hook -- Pass --> Success[Commit Saved]
+    Hook -- Fail --> Reject
 ```
+
+Agent shells (`CLAUDECODE`, `GEMINI_CLI`, `CODEX_*`, `CURSOR_AGENT`, `AI_AGENT`, and related markers) can never commit: `commit.sh`, the `pre-commit` hook, and the `pre-merge-commit` hook all refuse them. Headless commits (`DEVOS_HEADLESS_COMMIT=1`) work only with `CI=true`, in pipelines. Existing projects re-run `.agents/scripts/install-hooks.sh` (or `devos update`) to get the current hooks. Details: [PRE_COMMIT_HOOK.md](PRE_COMMIT_HOOK.md).
 
 ### Memory System Architecture
 
@@ -88,9 +93,9 @@ flowchart TD
     Lessons[LESSONS.md] --> Context
     
     Context --> Execution[Agent Execution]
-    Execution --> MemoryManager[Memory Manager Agent]
-    MemoryManager --> |Updates| CurrentState
-    MemoryManager --> |Learns| Lessons
+    Execution --> SharedMemory[Orchestrator: shared-memory skill]
+    SharedMemory --> |Updates| CurrentState
+    SharedMemory --> |Learns| Lessons
 ```
 
 ### Slash Command Routing
@@ -148,7 +153,7 @@ flowchart TD
 ```mermaid
 flowchart TD
     Idea["Product Idea / MVP Goal"] --> Stage1["1. Inception: Architect (grill-me) -> docs/PROJECT_REQUIREMENTS.md"]
-    Stage1 --> Stage2["2. Design Gate: UI Designer (ui-ux-pro-max) -> DESIGN.md"]
+    Stage1 --> Stage2["2. Design Gate: UI Designer (anti-ai-ui) -> DESIGN.md"]
     Stage2 --> Stage3["3. Schema & Seeds: DBA -> Migrations + Fixtures (devos123)"]
     Stage3 --> Stage4["4. Task DAG: Orchestrator -> docs/TASK_BOARD.md"]
     Stage4 --> Stage5["5. Implementation: Developer -> Code authoring"]
@@ -156,7 +161,7 @@ flowchart TD
     Stage6 --> Stage7["7. Testing Guide: Tester -> docs/TESTING_GUIDE.md"]
     Stage7 --> Stage8["8. QA Gate: QA -> Lint, Types & Design Gate Audit"]
     Stage8 --> Stage9["9. Security Gate: Security -> OWASP & Secrets Scan"]
-    Stage9 --> Stage10["10. Humanizer: Release Manager -> humanize-check.sh"]
+    Stage9 --> Stage10["10. Humanizer: Tech Writer -> humanize-check.sh"]
     Stage10 --> FinalReview["Founder Delivery Briefing"]
 ```
 
@@ -165,7 +170,7 @@ flowchart TD
 ```mermaid
 flowchart LR
     HookErr[Hook Failure / Circuit Breaker Trip] --> LocalLog[Local Buffer: .agents/telemetry/events.jsonl]
-    LocalLog --> TelemetryAgent[Telemetry Agent: RCA Diagnosis]
+    LocalLog --> TelemetryAgent[Telemetry agent, maintainer pack: RCA Diagnosis]
     TelemetryAgent --> Sanitize[Sanitization & Privacy Gate: Strip Code & Secrets]
     Sanitize --> UpstreamPR[Automated Bug Report / PR to olitech1010/dev-os]
 ```
@@ -173,8 +178,9 @@ flowchart LR
 ## Directory Structure
 
 - `.agents/`: The core logic of the OS.
-  - `agents/`: System prompts for each agent persona (Orchestrator, Developer, QA, Tester, DBA, DevOps, Architect, Researcher, Memory Manager, Release Manager, UI Designer, Executive Proxy, Telemetry, Eval Engineer).
-  - `commands/`: Slash commands (YAML frontmatter + instructions: `task.md`, `auto.md`, `design.md`, `humanize.md`, `telemetry.md`, etc.).
+  - `agents/`: System prompts for each default agent persona (Orchestrator, Architect, PM, UI Designer, Developer, DBA, Tester, QA, Security, Researcher, DevOps, Tech Writer, Tech Lead).
+  - `maintainer/`: Maintainer-pack agents and commands (Telemetry, Eval Engineer; `/telemetry`, `/eval`), not installed by default.
+  - `commands/`: Slash commands (YAML frontmatter + instructions: `task.md`, `auto.md`, `design.md`, `humanize.md`, etc.).
   - `skills/`: Specialist engineering skills (`humanizer/`, `testing-guide/`, `autonomous-sdlc/`, `telemetry/`, etc.).
   - `hooks/`: Runtime lifecycle hooks (`session-start.sh`, `pre-tool-use.sh`, `session-end.sh`).
   - `memory/`: Shared memory vault (`decisions/ADRs`, `handoffs/`, `context.json`).
@@ -182,7 +188,7 @@ flowchart LR
   - `scripts/`: Tooling (`commit.sh`, `install-hooks.sh`, `humanize-check.sh`).
   - `packs.json`: Composable capability pack definitions.
   - `manifest.json`: Installed pack tracking, execution mode, telemetry configuration, and version metadata.
-- `DESIGN.md`: Mandatory design system specification extracted from `ui-ux-pro-max` at project root.
+- `DESIGN.md`: Mandatory design system specification at project root, authored by the UI Designer with the `anti-ai-ui` skill.
 - `CODING_STANDARDS.md`: Engineering quality standards and type safety policies at project root.
 - `docs/`: Project documentation.
   - `PROJECT_REQUIREMENTS.md`: Scoped project spec generated by Architect via `grill-me`.

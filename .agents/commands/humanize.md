@@ -1,9 +1,10 @@
 ---
 name: humanize
 description: Audit and scrub AI writing tells from documentation and marketing copy
-agent: release-manager
+agent: tech-writer
 triage_level: STANDARD
-workflow: standard
+workflow: documentation
+argument-hint: "<file or directory>"
 ---
 
 Audit markdown prose, PRDs, and documentation against AI writing patterns:
@@ -17,3 +18,7 @@ Audit markdown prose, PRDs, and documentation against AI writing patterns:
    - Chatbot residue
 3. Preserve all technical commands, links, and code blocks unchanged.
 4. Verify the rewritten copy sounds human, clear, and direct.
+
+Target: $ARGUMENTS
+
+If no target is given, ask which document or directory to audit.
