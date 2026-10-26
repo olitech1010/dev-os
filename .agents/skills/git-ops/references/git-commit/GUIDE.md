@@ -92,7 +92,7 @@ Analyze the diff to determine:
 
 ### 4. Commit Through the Gate (Human Approval Required)
 
-Raw `git commit` is forbidden in Dev-OS (Hard Rule "Mechanical Commit Gate" in `.agents/AGENTS.md`) and is blocked by hooks. Agents never commit on their own (Staged Review):
+Raw `git commit` is forbidden in Dev-OS (Hard Rule "Mechanical Commit Gate" in `.agents/AGENTS.md`) and is blocked by hooks. Agents never commit on their own initiative (Staged Review). Under commit policy `agent` (Claude Code), a commit the human asked for runs as `.agents/scripts/commit.sh --agent "<message>"` and the human approves it in the permission prompt. Otherwise:
 
 1. Present the staged file list, the diff summary, and your proposed message (`<type>[scope]: <description>`) to the human.
 2. Wait for QA approval and an explicit human go-ahead.

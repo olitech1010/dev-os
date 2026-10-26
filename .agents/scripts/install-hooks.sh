@@ -161,16 +161,27 @@ echo "[ INFO ] Running Dev-OS Pre-Commit Checks..."
 REPO_ROOT=$(git rev-parse --show-toplevel 2>/dev/null)
 [ -n "$REPO_ROOT" ] && cd "$REPO_ROOT"
 
-# 0. AI agent shells can never commit, even with DEVOS_COMMIT_APPROVED set. Keep this list in
-#    sync with AGENT_MARKERS in .agents/scripts/commit.sh and .agents/hooks/lib/hook-input.js.
+# 0. AI agent shells may not commit. The one exception is commit.sh's --agent path in Claude Code
+#    with commitPolicy "agent" in .agents/manifest.json: there the human approved the command in
+#    the Claude Code permission prompt, and commit.sh sets DEVOS_AGENT_COMMIT=1. Keep the marker
+#    list in sync with AGENT_MARKERS in .agents/scripts/commit.sh and .agents/hooks/lib/hook-input.js.
+DEVOS_AGENT_OK=0
+if [ "$DEVOS_AGENT_COMMIT" = "1" ] && [ "$DEVOS_COMMIT_APPROVED" = "true" ] && [ -n "$CLAUDECODE" ] \
+    && [ -f ".agents/manifest.json" ] \
+    && grep -Eq '"commitPolicy"[[:space:]]*:[[:space:]]*"agent"' ".agents/manifest.json"; then
+    DEVOS_AGENT_OK=1
+fi
 for DEVOS_MARKER in CLAUDECODE CLAUDE_CODE_ENTRYPOINT GEMINI_CLI CODEX_SANDBOX CODEX_SANDBOX_NETWORK_DISABLED CODEX_THREAD_ID CURSOR_AGENT AI_AGENT; do
-    if [ -n "${!DEVOS_MARKER}" ]; then
-        echo ""
-        echo "[ FAIL ] DEV-OS GATE ERROR: commit attempted from an AI agent shell ($DEVOS_MARKER is set)."
-        echo "-> Present the changes for human review; the human commits via '.agents/scripts/commit.sh' from their own terminal."
-        echo ""
-        exit 1
-    fi
+    [ -n "${!DEVOS_MARKER}" ] || continue
+    case "$DEVOS_MARKER" in
+        CLAUDECODE|CLAUDE_CODE_ENTRYPOINT|AI_AGENT) [ "$DEVOS_AGENT_OK" = "1" ] && continue ;;
+    esac
+    echo ""
+    echo "[ FAIL ] DEV-OS GATE ERROR: commit attempted from an AI agent shell ($DEVOS_MARKER is set)."
+    echo "-> Present the changes for human review; the human commits via '.agents/scripts/commit.sh' from their own terminal."
+    echo "   (Claude Code with 'devos commit-policy agent': .agents/scripts/commit.sh --agent \"<message>\")"
+    echo ""
+    exit 1
 done
 
 # 1. Enforce Dev-OS Commit Gate (Must run via commit.sh or have approval token)

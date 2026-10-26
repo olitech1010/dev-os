@@ -11,6 +11,7 @@ The commit gate has two halves. `.agents/scripts/commit.sh` collects human appro
 | Caller | Result |
 |---|---|
 | AI agent shell (any agent marker set) | Refused by `commit.sh`, by `pre-commit`, and by `pre-merge-commit`, even with `DEVOS_COMMIT_APPROVED=true` |
+| Claude Code agent, commit policy `agent`, `.agents/scripts/commit.sh --agent "<message>"` | Allowed after the human approves the Claude Code permission prompt; then the scans run. `commit.sh` sets `DEVOS_AGENT_COMMIT=1`, which `pre-commit` accepts only with the `agent` policy and a Claude Code marker |
 | Human, raw `git commit` | Refused by `pre-commit` (no approval token) |
 | Human, `.agents/scripts/commit.sh` in their own terminal | Allowed after typing `approve`, a commit type, and a message; then the scans run |
 | CI pipeline, `DEVOS_HEADLESS_COMMIT=1` with `CI=true` | Allowed with a Conventional Commit message argument; the scans run |
@@ -18,7 +19,7 @@ The commit gate has two halves. `.agents/scripts/commit.sh` collects human appro
 
 **Agent markers.** The hooks and `commit.sh` treat the shell as an agent shell when any of these environment variables is non-empty: `CLAUDECODE`, `CLAUDE_CODE_ENTRYPOINT`, `GEMINI_CLI`, `CODEX_SANDBOX`, `CODEX_SANDBOX_NETWORK_DISABLED`, `CODEX_THREAD_ID`, `CURSOR_AGENT`, `AI_AGENT`. The same list lives in `commit.sh`, the generated hooks, and `.agents/hooks/lib/hook-input.js`; keep them in sync.
 
-An agent that finishes a change stages it, presents a summary, and asks the human to run `.agents/scripts/commit.sh` from their own terminal.
+An agent that finishes a change stages it, presents a summary, and asks the human to run `.agents/scripts/commit.sh` from their own terminal. With commit policy `agent` (the default in Claude Code projects), a Claude Code agent asked to commit runs `.agents/scripts/commit.sh --agent "<message>"` instead, and the human approves it in the permission prompt.
 
 ---
 
@@ -66,7 +67,7 @@ git commit
 
 ### Check 0: agent shells
 
-Runs before the token check, so exporting `DEVOS_COMMIT_APPROVED=true` from an agent shell does not help. This is the mechanical form of Hard Rule 8.
+Runs before the token check, so exporting `DEVOS_COMMIT_APPROVED=true` from an agent shell does not help. This is the mechanical form of Hard Rule 8. The one exception is a Claude Code marker (`CLAUDECODE`, `CLAUDE_CODE_ENTRYPOINT`, `AI_AGENT`) together with `DEVOS_AGENT_COMMIT=1`, `DEVOS_COMMIT_APPROVED=true` and `"commitPolicy": "agent"` in `.agents/manifest.json`, which is what `commit.sh --agent` sets after the human approved the prompt. Any other harness marker is refused regardless.
 
 ### Check 1: the approval token
 

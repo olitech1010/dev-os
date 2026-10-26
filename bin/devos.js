@@ -45,8 +45,8 @@ const DEVOS_RULES_DIGEST = [
   'This is a digest. `.agents/AGENTS.md` is canonical; numbers in brackets are its Hard Rule numbers.',
   '- [R1] Zero Destructive Actions: Never delete, drop, or truncate without an approved dry-run plan.',
   '- [R2] Zero Secrets Stored, Logged, or Hardcoded: Use `process.env.*`; ask the human for secrets at runtime.',
-  '- [R8] Mechanical Commit Gate: Raw `git commit` is BLOCKED. Commits go only through `.agents/scripts/commit.sh`.',
-  '- [R6] Staged Review: Agents write code but NEVER auto-commit. Present summaries for human review; the human commits.',
+  '- [R8] Mechanical Commit Gate: Raw `git commit` is BLOCKED. Commits go only through `.agents/scripts/commit.sh`. Agents may run it only as `.agents/scripts/commit.sh --agent "<message>"`, in Claude Code, with commitPolicy `agent`; the human approves each commit in the permission prompt.',
+  '- [R6] Staged Review: Agents write code but NEVER commit on their own initiative. Present summaries for human review; the human commits, or asks the agent to commit and approves the prompt.',
   '- [R10] Circuit Breaker: After 3 failed fix iterations (one Developer fix attempt plus the failing gate run each), halt; the Tech Lead gets exactly one arbitration attempt; then halt and escalate to the human. See "Circuit Breaker (canonical)" in AGENTS.md.',
   '- [R11] Verify Before Implementing: Confirm actual library APIs and patterns before authoring code.',
   '- [R12] No Heavy Dependencies: Packages >5MB or >50 dependencies require explicit human approval.',
@@ -128,7 +128,8 @@ const VALUE_FLAGS = {
   '--title': ['title', String],
   '--branch': ['branch', String],
   '-o': ['output', String], '--output': ['output', String],
-  '--out': ['out', String]
+  '--out': ['out', String],
+  '--commit-policy': ['commitPolicy', String]
 };
 
 function parseArgs(args, options = {}) {
@@ -175,6 +176,7 @@ function parseArgs(args, options = {}) {
     installGitleaks: false,
     out: null,
     printPath: false,
+    commitPolicy: null,
     passed: {}
   };
 
@@ -263,6 +265,7 @@ function printHelp() {
   console.log(`  ${colors.green}update${colors.reset}, ${colors.green}upgrade${colors.reset}    Safely refresh .agents/, skills, commands, harnesses, and hooks`);
   console.log(`  ${colors.green}run${colors.reset}, ${colors.green}auto${colors.reset}         Launch autonomous hands-off SDLC mode (devos run "<product idea>")`);
   console.log(`  ${colors.green}telemetry${colors.reset}            Manage anonymous failure telemetry (status, report, enable, disable)`);
+  console.log(`  ${colors.green}commit-policy${colors.reset}        Who may commit: status | agent (Claude Code default: the agent commits, you approve each one) | human`);
   console.log(`  ${colors.green}mode${colors.reset}                 Inspect or switch the locked session mode (status, <mode>, lock, unlock)`);
   console.log(`  ${colors.green}scaffold${colors.reset}            Regenerate missing state scaffolds from templates (CURRENT_STATE, TASK_BOARD, LESSONS, context.json)`);
   console.log(`  ${colors.green}doctor${colors.reset}, ${colors.green}check${colors.reset}      Diagnose setup, hooks, memory vault, task board, and health`);
@@ -283,6 +286,7 @@ function printHelp() {
   console.log(`  ${colors.cyan}-s, --stack <name>${colors.reset}    Target stack (${STACKS.join(', ')})`);
   console.log(`  ${colors.cyan}-p, --platform <name>${colors.reset} Target AI platform (${PLATFORMS.join(', ')})`);
   console.log(`  ${colors.cyan}-m, --mode <name>${colors.reset}     SDLC execution mode (interactive, guided, auto, audit)`);
+  console.log(`  ${colors.cyan}--commit-policy <p>${colors.reset}  init/update: agent (default with Claude Code; you approve each commit) or human`);
   console.log(`  ${colors.cyan}--telemetry / --no-telemetry${colors.reset} Enable or disable anonymous failure telemetry (default: on)`);
   console.log(`  ${colors.cyan}--harness <list>${colors.reset}      Target AI harnesses: ${HARNESSES.join(', ')}`);
   console.log(`  ${colors.cyan}--all-harnesses${colors.reset}       Generate configurations for all supported AI harnesses`);
@@ -2099,6 +2103,12 @@ const DEVOS_CLAUDE_HOOKS = {
   SubagentStop: [{ hooks: [{ type: 'command', command: '"$CLAUDE_PROJECT_DIR"/.agents/hooks/subagent-stop.sh' }] }],
   SessionEnd: [{ hooks: [{ type: 'command', command: '"$CLAUDE_PROJECT_DIR"/.agents/hooks/session-end.sh' }] }]
 };
+// Always asked, in every permission mode (code.claude.com/docs/en/permission-modes,
+// "Actions no mode auto-approves"). With commitPolicy "agent" this prompt is the human's
+// per-commit approval of .agents/scripts/commit.sh --agent; with "human" it is harmless.
+const DEVOS_COMMIT_ASK_RULE = 'Bash(.agents/scripts/commit.sh *)';
+// Pushing publishes commits, so it is asked too (human in the loop for outward actions).
+const DEVOS_PERMISSION_ASK = [DEVOS_COMMIT_ASK_RULE, 'Bash(git push *)'];
 const DEVOS_PERMISSION_DENY = [
   'Bash(git commit *)',
   'Bash(git push --force *)',
@@ -2147,6 +2157,11 @@ function mergeClaudeSettings(existing) {
     if (!deny.includes(rule)) deny.push(rule);
   });
   permissions.deny = deny;
+  const ask = Array.isArray(permissions.ask) ? permissions.ask.slice() : [];
+  DEVOS_PERMISSION_ASK.forEach((rule) => {
+    if (!ask.includes(rule)) ask.push(rule);
+  });
+  permissions.ask = ask;
   settings.permissions = permissions;
   // Keep $schema as the first key for readability
   const { $schema, ...rest } = settings;
@@ -2558,6 +2573,8 @@ function installSkillsAndPacks(srcAgents, destAgents, stack, allSkills, telemetr
 // ---------------------------------------------------------------------------
 
 async function runInit(flags) {
+  // Validate before anything is written or prompted
+  const commitPolicy = flags.commitPolicy ? normalizeCommitPolicy(flags.commitPolicy) : null;
   if (!flags.quiet) printBanner();
 
   const insideSource = TEMPLATE_DIR === TARGET_DIR;
@@ -2807,6 +2824,10 @@ async function runInit(flags) {
     return ensureGitignoreEntries(TARGET_DIR, DEVOS_GITIGNORE_GROUPS) ? 'updated' : 'already up to date';
   });
 
+  if (!insideSource) {
+    step('Setting commit policy', () => writeCommitPolicy(TARGET_DIR, commitPolicy || defaultCommitPolicy(TARGET_DIR)));
+  }
+
   // Summary card
   const agentCount = countAgents(path.join(destAgents, 'agents'));
   const skillCount = countSkills(path.join(destAgents, 'skills'));
@@ -2819,6 +2840,7 @@ async function runInit(flags) {
     ['.agents/memory/', 'Shared Memory Vault (ADRs in decisions/, session handoffs)'],
     ['docs/TASK_BOARD.md', 'Deterministic Task Board & DAG Workflow State'],
     ['.agents/scripts/', 'Commit Checkpoint Gate (commit.sh) + Hook Installer'],
+    ['Commit policy', insideSource ? 'human' : describeCommitPolicy(readCommitPolicy(TARGET_DIR))],
     ['.agents/AGENTS.md', 'Team Roster & Triage Rules'],
     ['CODING_STANDARDS.md', `Stack Standards [${stack.toUpperCase()}]`]
   ];
@@ -3140,6 +3162,11 @@ async function runUpdate(flags) {
       return previousVersion !== PKG.version ? `v${previousVersion} -> v${PKG.version}` : `v${PKG.version}`;
     });
     step('Updating .gitignore rules', () => (ensureGitignoreEntries(TARGET_DIR, DEVOS_GITIGNORE_GROUPS) ? 'updated' : 'already up to date'));
+  }
+
+  if (!insideSource) {
+    step('Setting commit policy', () => writeCommitPolicy(TARGET_DIR,
+      flags.commitPolicy ? normalizeCommitPolicy(flags.commitPolicy) : defaultCommitPolicy(TARGET_DIR)));
   }
 
   // 5c. Dev-OS skills were synced in step 2c; --skills also updates skills.sh installs
@@ -4088,6 +4115,99 @@ function detectAgentShell(env = process.env) {
   }) || null;
 }
 
+// ---------------------------------------------------------------------------
+// Commit policy: who may run .agents/scripts/commit.sh
+//   agent  (default with Claude Code) the agent commits via commit.sh --agent, and the human
+//          approves each commit in the Claude Code permission prompt (ask rule
+//          DEVOS_COMMIT_ASK_RULE), which no agent can answer and which prompts in every mode
+//   human  (default without Claude Code) only a human, from their own terminal
+// The per-commit prompt is the approval, so the policy itself may be set from anywhere.
+// ---------------------------------------------------------------------------
+
+const COMMIT_POLICIES = ['human', 'agent'];
+
+function normalizeCommitPolicy(value) {
+  const v = String(value || '').trim().toLowerCase();
+  if (!COMMIT_POLICIES.includes(v)) {
+    throw new Error(`Unknown commit policy '${value}'. Valid: ${COMMIT_POLICIES.join(', ')}`);
+  }
+  return v;
+}
+
+function readCommitPolicy(targetDir) {
+  return readManifestLenient(path.join(targetDir, '.agents')).commitPolicy === 'agent' ? 'agent' : 'human';
+}
+
+// Keeps an explicit earlier choice; otherwise agent when the Claude Code approval prompt is wired.
+function defaultCommitPolicy(targetDir) {
+  const recorded = readManifestLenient(path.join(targetDir, '.agents')).commitPolicy;
+  if (COMMIT_POLICIES.includes(recorded)) return recorded;
+  return commitAskRuleWired(targetDir) ? 'agent' : 'human';
+}
+
+function writeCommitPolicy(targetDir, policy) {
+  const manifestPath = path.join(targetDir, '.agents', 'manifest.json');
+  if (!fs.existsSync(manifestPath)) {
+    throw new Error('Dev-OS is not initialized here (.agents/manifest.json is missing). Run devos init first.');
+  }
+  const manifest = readJsonFile(manifestPath, '.agents/manifest.json');
+  manifest.commitPolicy = policy;
+  fs.writeFileSync(manifestPath, JSON.stringify(manifest, null, 2) + '\n', 'utf8');
+  return policy;
+}
+
+function commitAskRuleWired(targetDir) {
+  const settingsPath = path.join(targetDir, '.claude', 'settings.json');
+  if (!fs.existsSync(settingsPath)) return false;
+  try {
+    const settings = JSON.parse(fs.readFileSync(settingsPath, 'utf8'));
+    const ask = settings && settings.permissions && Array.isArray(settings.permissions.ask) ? settings.permissions.ask : [];
+    return ask.includes(DEVOS_COMMIT_ASK_RULE);
+  } catch (e) {
+    return false;
+  }
+}
+
+function describeCommitPolicy(policy) {
+  return policy === 'agent'
+    ? 'agent (Claude Code agents commit via commit.sh --agent; you approve each commit in the permission prompt)'
+    : 'human (only you commit, via .agents/scripts/commit.sh in your own terminal)';
+}
+
+function runCommitPolicy(flags, positional) {
+  const sub = (positional[0] || 'status').toLowerCase();
+  if (!fs.existsSync(path.join(TARGET_DIR, '.agents'))) {
+    console.error(`${colors.red}[ FAIL ] Dev-OS is not initialized in this directory (${TARGET_DIR}). Run 'devos init' first.${colors.reset}\n`);
+    process.exit(1);
+  }
+  if (sub === 'status' || sub === 'show') {
+    const policy = readCommitPolicy(TARGET_DIR);
+    const wired = commitAskRuleWired(TARGET_DIR);
+    if (flags.json) {
+      console.log(JSON.stringify({ commitPolicy: policy, askRuleWired: wired }, null, 2));
+      return;
+    }
+    console.log(`Commit policy: ${describeCommitPolicy(policy)}`);
+    if (policy === 'agent' && !wired) {
+      console.log(`${colors.yellow}[ WARN ] ${DEVOS_COMMIT_ASK_RULE} is missing from .claude/settings.json permissions.ask; agent commits are refused until it is back (run: devos update).${colors.reset}`);
+    }
+    return;
+  }
+  let policy;
+  try {
+    policy = normalizeCommitPolicy(sub);
+    writeCommitPolicy(TARGET_DIR, policy);
+  } catch (e) {
+    console.error(`${colors.red}[ FAIL ] ${e.message}${colors.reset}\n`);
+    process.exit(1);
+  }
+  console.log(`${colors.green}[ OK ] Commit policy set: ${describeCommitPolicy(policy)}${colors.reset}`);
+  if (policy === 'agent' && !commitAskRuleWired(TARGET_DIR)) {
+    console.log(`${colors.yellow}[ WARN ] Run 'devos update' to add ${DEVOS_COMMIT_ASK_RULE} to .claude/settings.json; until then agent commits are refused.${colors.reset}`);
+  }
+  console.log('');
+}
+
 // Publishing telemetry upstream is a public, irreversible action, so only a
 // human at an interactive terminal may approve it (default No). --yes is
 // ignored here: an agent could pass it by itself. Agent shells and non-TTY
@@ -4958,6 +5078,7 @@ function runDoctor(flags) {
     { name: 'Claude Code commands (.claude/commands/)', path: path.join(TARGET_DIR, '.claude', 'commands'), type: 'dir', optional: true },
     { name: 'Claude Code agents (.claude/agents/)', path: path.join(TARGET_DIR, '.claude', 'agents'), type: 'dir', optional: true },
     { name: 'Claude Code hook wiring (.claude/settings.json PreToolUse)', path: path.join(TARGET_DIR, '.claude', 'settings.json'), type: 'file', optional: true, validate: () => claudeHooksWired(TARGET_DIR), invalidReason: 'Dev-OS PreToolUse hook not wired; run devos update' },
+    { name: `Commit approval prompt (permissions.ask ${DEVOS_COMMIT_ASK_RULE})`, path: path.join(TARGET_DIR, '.claude', 'settings.json'), type: 'file', optional: true, validate: () => commitAskRuleWired(TARGET_DIR), invalidReason: 'ask rule missing; run devos update (agent commits are refused without it)' },
     { name: 'Claude Code skills (.claude/skills/ in sync with .agents/skills/)', path: path.join(TARGET_DIR, '.claude', 'skills'), type: 'dir', optional: true, skip: !hasClaudeDir, validate: () => !skillDrift, invalidReason: skillDrift },
     { name: 'Cross-harness instructions (AGENTS.md Dev-OS block)', path: agentsMdPath, type: 'file', optional: true, validate: agentsMdHasBlock, invalidReason: 'no Dev-OS block; run devos update' },
     { name: 'Cursor rules (.cursor/rules/devos.mdc)', path: path.join(TARGET_DIR, '.cursor', 'rules', 'devos.mdc'), type: 'file', optional: true },
@@ -5087,6 +5208,7 @@ function runStatus(flags) {
   console.log(`  Target Path:   ${colors.cyan}${TARGET_DIR}${colors.reset}`);
   console.log(`  Dev-OS Status: ${hasAgents ? colors.green + 'Initialized' : colors.yellow + 'Not Initialized'}${colors.reset}`);
   console.log(`  Telemetry:     ${manifest && manifest.telemetry === 'off' ? colors.gray + 'Off' : colors.green + 'Active (on - recommended)'}${colors.reset}`);
+  console.log(`  Commits:       ${colors.cyan}${hasAgents ? readCommitPolicy(TARGET_DIR) : 'human'}${colors.reset}`);
   console.log(`  SDLC Mode:     ${manifest && manifest.mode ? colors.cyan + manifest.mode : colors.cyan + 'interactive'}${colors.reset}`);
   console.log(`  Design Gate:   ${hasDesign ? colors.green + 'Ready (DESIGN.md)' : colors.yellow + 'Pending DESIGN.md'}${colors.reset}`);
   console.log(`  Testing Guide: ${hasTestingGuide ? colors.green + 'Ready (docs/TESTING_GUIDE.md)' : colors.gray + 'None'}${colors.reset}`);
@@ -5555,6 +5677,9 @@ async function main() {
     case 'telemetry':
       await runTelemetry(flags, positional);
       break;
+    case 'commit-policy':
+      runCommitPolicy(flags, positional);
+      break;
     case 'mode':
       runMode(flags, positional);
       break;
@@ -5634,6 +5759,11 @@ module.exports = {
   yamlScalar,
   mergeClaudeSettings,
   claudeHooksWired,
+  commitAskRuleWired,
+  readCommitPolicy,
+  normalizeCommitPolicy,
+  defaultCommitPolicy,
+  DEVOS_COMMIT_ASK_RULE,
   generateClaudeAgents,
   generateClaudeCommands,
   upsertManagedBlock,

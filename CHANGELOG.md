@@ -3,6 +3,24 @@
 All notable changes to Dev-OS are recorded here. The Tech Writer agent maintains this file.
 Versions follow [Semantic Versioning](https://semver.org/).
 
+## [5.1.0] - 2026-10-25
+
+### Added
+
+- **Commit policy** (`devos commit-policy [status|human|agent]`, also `--commit-policy` on `init` and `update`), stored as `commitPolicy` in `.agents/manifest.json`.
+  - `agent` is the default when the Claude Code approval prompt is wired. A Claude Code agent commits with `.agents/scripts/commit.sh --agent "<conventional message>"` when you ask it to, and you approve each commit in the permission prompt. You never need a separate terminal.
+  - `human` is the default for other harnesses and keeps the 5.0 behaviour: only a human commits, from their own terminal.
+  - `init` and `update` keep an explicit earlier choice. The policy can be changed from anywhere, because the per-commit prompt is the approval.
+- `.claude/settings.json` gets the ask rules `Bash(.agents/scripts/commit.sh *)` and `Bash(git push *)`. Explicit ask rules prompt in every permission mode, including auto and `bypassPermissions`, and allow rules cannot override them. The PreToolUse hook also returns `permissionDecision: "ask"` for the canonical command.
+- `devos doctor` checks the ask rule, and `devos status` shows the commit policy.
+
+### Changed
+
+- The PreToolUse hook blocks running commit.sh in any form other than the literal `.agents/scripts/commit.sh`: `bash`/`sh`, `./`, absolute paths, `source`, `eval`, variable expansion and command substitution. Those forms would not match the ask rule. **If you scripted `bash .agents/scripts/commit.sh`, call `.agents/scripts/commit.sh` directly.**
+- `DEVOS_AGENT_COMMIT` joins the self-approval variables that tool calls may not assign.
+- The pre-commit hook accepts a Claude Code agent commit only with `DEVOS_AGENT_COMMIT=1`, `DEVOS_COMMIT_APPROVED=true` and the `agent` policy. Other harness markers are always refused. Run `devos update` (or `.agents/scripts/install-hooks.sh`) to refresh the hook.
+- Hard Rules 6 and 8, `/commit`, the `git-ops` skill, README and `docs/PRE_COMMIT_HOOK.md` describe both policies.
+
 ## [5.0.0] - 2026-10-22
 
 This is a major release. The agent roster and skill library were consolidated, and several runtime gates were rewired. Run `devos update` in each project; it migrates a 4.x install in place and backs up everything it touches to `.agents/_backup/`.

@@ -22,11 +22,12 @@ When assigned a task:
    - If instructed to start a feature: `git checkout -b feat/your-feature-name`
 3. **Execute**: Write the code and run tests/linting.
 4. **QA Gate**: Pass output to the QA Agent. You MUST NOT commit yet.
-5. **Commit & Human Gate**: Once QA approves, hand the commit to the human. Agents cannot commit at all: `commit.sh` and the git pre-commit and pre-merge-commit hooks refuse whenever an agent-shell marker is set (`CLAUDECODE`, `GEMINI_CLI`, `CODEX_*`, `CURSOR_AGENT`, `AI_AGENT`, and similar).
+5. **Commit & Human Gate**: Once QA approves, route the commit through the human. Every commit needs a human approval.
    - Stage your files: `git add <specific-files>`
    - Propose a Conventional Commit message and present the staged summary.
-   - Ask the human to run `./.agents/scripts/commit.sh` from their own terminal. The script prompts for an `approve` token, the type, and the message on `/dev/tty`.
-   - **DO NOT run `git commit` or `commit.sh` yourself.**
+   - Commit policy `human` (default): ask the human to run `.agents/scripts/commit.sh` from their own terminal. The script prompts for an `approve` token, the type, and the message on `/dev/tty`.
+   - Commit policy `agent` (Claude Code only), and only when the human asked for the commit: run exactly `.agents/scripts/commit.sh --agent "<type>(scope): <subject>"` from the project root. The human approves it in the Claude Code permission prompt.
+   - **Never run raw `git commit`, never set `DEVOS_COMMIT_APPROVED` or `DEVOS_AGENT_COMMIT`, and never run commit.sh any other way.**
 6. **Push**: only when the human explicitly asks: `git push origin HEAD`
 7. **Repeat** for the next logical unit.
 

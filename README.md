@@ -4,7 +4,7 @@
 
 **by Clement Olives · Olives Technologies**
 
-![Version](https://img.shields.io/badge/version-v5.0.0-blue.svg)
+![Version](https://img.shields.io/badge/version-v5.1.0-blue.svg)
 ![npm](https://img.shields.io/badge/npm-%40olives%2Fdevos-red.svg)
 ![License](https://img.shields.io/badge/license-MIT-green.svg)
 
@@ -178,6 +178,7 @@ Run `devos help` for the authoritative list. Every command also works as `npx @o
 | `list` | `agents` | Installed agents and skills |
 | `run "<idea>"` | `auto` | Autonomous SDLC runner |
 | `mode` | | `status`, `<interactive\|guided\|auto\|audit>`, `lock`, `unlock` |
+| `commit-policy` | | `status`, `agent` (Claude Code default: the agent commits, you approve each one), `human`. See [Commit model](#commit-model) |
 | `pack` | `packs` | `pack list`, `pack add <name>` |
 | `skill` | `skills` | `list`, `add`, `update`, `sync`, `check`, `audit`, `find` |
 | `spec waves <slug>` | | Print the parallel waves of `docs/specs/<slug>/tasks.md` |
@@ -204,6 +205,7 @@ Common flags:
 | `--no-hooks` | Skip `.claude/settings.json` hooks and the git commit gate |
 | `--no-claude` | Skip `.claude/` generation |
 | `--install-gitleaks` | Install or upgrade Gitleaks through `install-hooks.sh` |
+| `--commit-policy <p>` | `init`/`update`: set the commit policy (default `agent` with Claude Code, else `human`) |
 | `-f, --force` | Overwrite customized files during update, after a backup |
 | `--json` | JSON output for diagnostics, listings and `spec` |
 | `--out <dir>`, `--print-path` | `build-plugin` output options |
@@ -263,15 +265,36 @@ Other protocols in `.agents/AGENTS.md`: Project Inception, Product Planning, Doc
 
 ### Commit model
 
-Agents write code and stage it; only a human commits.
+Agents write code and stage it. Every commit needs a human approval, and you choose where that approval happens with `devos commit-policy`:
 
-- The human runs `.agents/scripts/commit.sh` from their own terminal. It reads an `approve` token, the commit type and the message from `/dev/tty`, so piped input cannot answer it. Stage files with `git add` first.
-- Agent shells can never commit. `commit.sh`, the git `pre-commit` hook and the `pre-merge-commit` hook all refuse when an agent-shell variable is set (`CLAUDECODE`, `CLAUDE_CODE_ENTRYPOINT`, `GEMINI_CLI`, `CODEX_SANDBOX`, `CODEX_SANDBOX_NETWORK_DISABLED`, `CODEX_THREAD_ID`, `CURSOR_AGENT`, `AI_AGENT`). Exporting `DEVOS_COMMIT_APPROVED=true` does not get around this.
+| Policy | Who runs the commit | How you approve |
+|---|---|---|
+| `human` (default without Claude Code) | You, with `.agents/scripts/commit.sh` in your own terminal | Type `approve`, the commit type and the message on `/dev/tty` |
+| `agent` (default with Claude Code) | The agent, with `.agents/scripts/commit.sh --agent "<message>"`, when you ask for a commit | Claude Code shows you a permission prompt for that exact command |
+
+```bash
+devos commit-policy            # show the current policy
+devos commit-policy agent      # the agent commits; you approve each commit in the prompt
+devos commit-policy human      # only you commit, from your own terminal
+```
+
+In practice: the agent finishes the work and shows you a summary. You say "commit it". The agent runs the commit, and Claude Code asks you to approve that exact command and message. `git push` works the same way. You never open another terminal.
+
+Why the `agent` policy is safe:
+
+- The approval comes through a channel the agent cannot write to. Dev-OS adds the ask rule `Bash(.agents/scripts/commit.sh *)` to `.claude/settings.json`. Explicit ask rules prompt in every permission mode, including auto mode and `bypassPermissions`, and an allow rule cannot override them.
+- Permission rules match the command text, so the PreToolUse hook blocks every other way of running the script: `bash commit.sh`, `./`, an absolute path, `source`, `eval`, and substitutions. It also blocks assigning `DEVOS_AGENT_COMMIT` or `DEVOS_COMMIT_APPROVED` inline.
+- `commit.sh --agent` checks the policy, that the shell is Claude Code, that the ask rule is present, and that it was invoked as `.agents/scripts/commit.sh` from the project root. The pre-commit hook re-checks the policy and the harness.
+- Codex, Gemini CLI and Cursor stay human-only, because they have no equivalent prompt that holds in every mode.
+
+Other rules:
+
+- Outside the `agent` policy, agent shells can never commit. `commit.sh`, the git `pre-commit` hook and the `pre-merge-commit` hook all refuse when an agent-shell variable is set (`CLAUDECODE`, `CLAUDE_CODE_ENTRYPOINT`, `GEMINI_CLI`, `CODEX_SANDBOX`, `CODEX_SANDBOX_NETWORK_DISABLED`, `CODEX_THREAD_ID`, `CURSOR_AGENT`, `AI_AGENT`). Exporting `DEVOS_COMMIT_APPROVED=true` does not get around this.
 - A raw `git commit` without `commit.sh` is refused by the pre-commit hook.
 - Headless commits are for CI only: `DEVOS_HEADLESS_COMMIT=1 .agents/scripts/commit.sh "<type>: <subject>"` works only with `CI=true`.
 - The pre-commit hook then runs Gitleaks (or the built-in scanner), `env-check.sh`, and, for matching staged files, `db-check.sh`, `ui-taste-check.sh` and `humanize-check.sh`.
 
-`/commit` stages and proposes a message; it never runs the commit. Git hooks are not version-controlled, so after upgrading run `devos update` or `.agents/scripts/install-hooks.sh` to refresh them. Details: [templates/docs/PRE_COMMIT_HOOK.md](templates/docs/PRE_COMMIT_HOOK.md), installed into fresh projects as `docs/PRE_COMMIT_HOOK.md`.
+`/commit` stages and proposes a message. It runs the commit only under the `agent` policy, and then only through the permission prompt. Git hooks are not version-controlled, so after upgrading run `devos update` or `.agents/scripts/install-hooks.sh` to refresh them. Details: [templates/docs/PRE_COMMIT_HOOK.md](templates/docs/PRE_COMMIT_HOOK.md), installed into fresh projects as `docs/PRE_COMMIT_HOOK.md`.
 
 ### Known limits
 
@@ -333,7 +356,7 @@ Dev-OS also ships as a Claude Code plugin with the default agents, the commands,
 /plugin install devos@olives-devos
 ```
 
-This needs `@olives/devos` 5.0.0 published to npm, because the marketplace entry in `.claude-plugin/marketplace.json` uses a `command` source that builds the pinned version on your machine. That source type needs Claude Code v2.1.229 or later. The install shows you the build command and asks you to accept it before running anything, and Claude Code re-runs it once per session (the pinned version is cached under `~/.devos/claude-plugin/`). The plugin's hooks only act in projects that have been set up with `devos init` (they look for `.agents/manifest.json`); in any other repository they do nothing. To build the plugin locally instead:
+This needs `@olives/devos` 5.1.0 published to npm, because the marketplace entry in `.claude-plugin/marketplace.json` uses a `command` source that builds the pinned version on your machine. That source type needs Claude Code v2.1.229 or later. The install shows you the build command and asks you to accept it before running anything, and Claude Code re-runs it once per session (the pinned version is cached under `~/.devos/claude-plugin/`). The plugin's hooks only act in projects that have been set up with `devos init` (they look for `.agents/manifest.json`); in any other repository they do nothing. To build the plugin locally instead:
 
 ```bash
 devos build-plugin --out dist/claude-plugin

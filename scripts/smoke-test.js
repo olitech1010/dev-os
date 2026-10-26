@@ -144,6 +144,11 @@ function checkSettings(settingsPath, stage) {
   const commitRules = deny.filter((r) => /^Bash\(git commit/.test(r));
   check(`[${stage}] permissions.deny has one raw git commit rule`, commitRules.length === 1, JSON.stringify(deny));
   check(`[${stage}] permissions.deny has no duplicates`, new Set(deny).size === deny.length, JSON.stringify(deny));
+  const ask = settings.permissions && Array.isArray(settings.permissions.ask) ? settings.permissions.ask : [];
+  check(`[${stage}] permissions.ask has the commit.sh approval rule exactly once`,
+    ask.filter((r) => r === 'Bash(.agents/scripts/commit.sh *)').length === 1, JSON.stringify(ask));
+  check(`[${stage}] permissions.ask has the git push approval rule exactly once`,
+    ask.filter((r) => r === 'Bash(git push *)').length === 1, JSON.stringify(ask));
   check(`[${stage}] pre-existing user key "model" preserved`, settings.model === 'x');
   check(`[${stage}] pre-existing user deny rule preserved`, deny.includes('Read(./secret)'));
   check(`[${stage}] user hook .agents/hooks/my-audit.sh preserved`, userHookPreserved(settings), JSON.stringify(settings.hooks && settings.hooks.PostToolUse));
@@ -305,11 +310,12 @@ try {
   const lsJson = runHook(hookPre, { cwd: proj, input: JSON.stringify({ tool_name: 'Bash', tool_input: { command: 'ls' } }) });
   check('pre-tool-use.sh allows benign Bash JSON (ls) with exit 0', lsJson.status === 0, hookDetail(lsJson));
 
-  const commitShJson = runHook(hookPre, { cwd: proj, input: JSON.stringify({ tool_name: 'Bash', tool_input: { command: 'bash .agents/scripts/commit.sh "feat: add thing"' } }) });
-  check('pre-tool-use.sh allows commit.sh via stdin JSON', commitShJson.status === 0, hookDetail(commitShJson));
+  const commitShJson = runHook(hookPre, { cwd: proj, input: JSON.stringify({ tool_name: 'Bash', tool_input: { command: '.agents/scripts/commit.sh --agent "feat: add thing"' } }) });
+  check('pre-tool-use.sh allows canonical commit.sh via stdin JSON and asks the human', commitShJson.status === 0 &&
+    /"permissionDecision":"ask"/.test(commitShJson.stdout || ''), hookDetail(commitShJson));
 
-  const commitShPos = runHook(hookPre, { args: ['bash .agents/scripts/commit.sh "feat: add thing"'], cwd: proj });
-  check('pre-tool-use.sh allows commit.sh via positional arg', commitShPos.status === 0, hookDetail(commitShPos));
+  const commitShPos = runHook(hookPre, { args: ['.agents/scripts/commit.sh "feat: add thing"'], cwd: proj });
+  check('pre-tool-use.sh allows canonical commit.sh via positional arg', commitShPos.status === 0, hookDetail(commitShPos));
 
   // C2: stop.sh must never loop and must be a no-op outside a git repo
   const stopActive = runHook(hookStop, { cwd: proj, input: JSON.stringify({ hook_event_name: 'Stop', stop_hook_active: true }) });
@@ -674,6 +680,8 @@ try {
   const ocProj = fs.mkdtempSync(path.join(os.tmpdir(), 'devos-oc-'));
   try {
     const ocInit = runCli(['init', '--existing', '--stack', 'universal', '--platform', 'opencode', '--quiet'], ocProj);
+    const ocPolicy = (readJson(path.join(ocProj, '.agents', 'manifest.json')) || {}).commitPolicy;
+    check('[commit-policy] non-Claude install (opencode) defaults to human', ocPolicy === 'human', String(ocPolicy));
     check('devos init --platform opencode exits 0', ocInit.status === 0, ocInit.stderr);
     check('AGENTS.md created for opencode platform', fs.existsSync(path.join(ocProj, 'AGENTS.md')));
     check('opencode.json created at the project root for opencode platform', Boolean(readJson(path.join(ocProj, 'opencode.json'))));
@@ -1334,6 +1342,120 @@ check('all referenced skill paths resolve on disk', badRefs.length === 0, badRef
 ['nextjs', 'laravel', 'django', 'react-native', 'express', 'fastapi'].forEach((stack) => {
   check(`stack template exists: ${stack}`, fs.existsSync(path.join(skillsDir, 'stacks', `${stack}.md`)));
 });
+
+// ---------------------------------------------------------------------------
+// Commit policy (v5.1): human-only by default; with "agent", Claude Code agents commit through
+// .agents/scripts/commit.sh --agent and the human approves each commit in the permission prompt.
+// ---------------------------------------------------------------------------
+{
+  const AGENT_VARS = ['CLAUDECODE', 'CLAUDE_CODE_ENTRYPOINT', 'GEMINI_CLI', 'CODEX_SANDBOX',
+    'CODEX_SANDBOX_NETWORK_DISABLED', 'CODEX_THREAD_ID', 'CURSOR_AGENT', 'AI_AGENT', 'DEVOS_AGENT_SHELL',
+    'DEVOS_AGENT_COMMIT', 'DEVOS_HEADLESS_COMMIT', 'CI'];
+  const HUMAN_ENV = { ...BASE_ENV, GIT_AUTHOR_NAME: 't', GIT_AUTHOR_EMAIL: 't@example.com', GIT_COMMITTER_NAME: 't', GIT_COMMITTER_EMAIL: 't@example.com' };
+  AGENT_VARS.forEach((k) => { delete HUMAN_ENV[k]; });
+  const AGENT_ENV = { ...HUMAN_ENV, CLAUDECODE: '1' };
+  const cp = fs.mkdtempSync(path.join(os.tmpdir(), 'devos-commitpolicy-'));
+  const cpSpawn = (cmd, args, env, opts = {}) => spawnSync(cmd, args, { cwd: opts.cwd || cp, encoding: 'utf8', timeout: HOOK_TIMEOUT_MS, input: '', env });
+  const cpCli = (args, env) => spawnSync(process.execPath, [CLI, ...args], { cwd: cp, encoding: 'utf8', timeout: CLI_TIMEOUT_MS, input: '', env });
+  const out = (r) => `exit=${r.status} ${((r.stderr || '') + (r.stdout || '')).trim().slice(-240)}`;
+  const commits = () => {
+    const r = cpSpawn('git', ['rev-list', '--count', 'HEAD'], HUMAN_ENV);
+    return r.status === 0 ? parseInt(r.stdout, 10) : 0;
+  };
+  const stage = (name) => {
+    fs.writeFileSync(path.join(cp, name), `${name}\n`);
+    cpSpawn('git', ['add', name], HUMAN_ENV);
+  };
+  const policyOf = () => (readJson(path.join(cp, '.agents', 'manifest.json')) || {}).commitPolicy;
+  const COMMIT_SH = '.agents/scripts/commit.sh';
+  try {
+    cpSpawn('git', ['init', '-q'], HUMAN_ENV);
+    const cpInit = cpCli(['init', '--existing', '--stack', 'universal', '--platform', 'claude', '--quiet'], HUMAN_ENV);
+    check('[commit-policy] init exits 0', cpInit.status === 0, out(cpInit));
+    check('[commit-policy] pre-commit hook installed', fs.existsSync(path.join(cp, '.git', 'hooks', 'pre-commit')));
+
+    const st = cpCli(['commit-policy', '--json'], HUMAN_ENV);
+    const stJson = (() => { try { return JSON.parse(st.stdout); } catch (e) { return {}; } })();
+    check('[commit-policy] Claude Code install defaults to agent, ask rule wired', stJson.commitPolicy === 'agent' && stJson.askRuleWired === true, out(st));
+    const toHuman = cpCli(['commit-policy', 'human'], AGENT_ENV);
+    check('[commit-policy] switching to human works from an agent shell', toHuman.status === 0 && policyOf() === 'human', out(toHuman));
+    const keep = cpCli(['update', '--quiet'], HUMAN_ENV);
+    check('[commit-policy] update keeps an explicit human choice', keep.status === 0 && policyOf() === 'human', out(keep));
+
+    stage('a.txt');
+    const offPolicy = cpSpawn(COMMIT_SH, ['--agent', 'feat: add a'], AGENT_ENV);
+    check('[commit-policy] human policy: commit.sh --agent refused', offPolicy.status !== 0 && /disabled/.test(offPolicy.stderr) && commits() === 0, out(offPolicy));
+    const plainAgent = cpSpawn(COMMIT_SH, [], AGENT_ENV);
+    check('[commit-policy] human policy: agent shell refused on the interactive path', plainAgent.status !== 0 && /agent shell/.test(plainAgent.stderr), out(plainAgent));
+
+    const bogus = cpCli(['commit-policy', 'robots'], HUMAN_ENV);
+    check('[commit-policy] unknown policy rejected', bogus.status !== 0 && /Unknown commit policy/.test(bogus.stderr), out(bogus));
+    const enable = cpCli(['update', '--commit-policy', 'agent', '--quiet'], AGENT_ENV);
+    check('[commit-policy] the agent can switch to agent policy (each commit still needs the prompt)', enable.status === 0 && policyOf() === 'agent', out(enable));
+
+    const noFlag = cpSpawn(COMMIT_SH, [], AGENT_ENV);
+    check('[commit-policy] agent policy: plain commit.sh from an agent points at --agent', noFlag.status !== 0 && /--agent/.test(noFlag.stderr), out(noFlag));
+    const badMsg = cpSpawn(COMMIT_SH, ['--agent', 'added stuff'], AGENT_ENV);
+    check('[commit-policy] agent policy: non-conventional message refused', badMsg.status !== 0 && /Conventional Commit/.test(badMsg.stderr) && commits() === 0, out(badMsg));
+    const absPath = cpSpawn(path.join(cp, COMMIT_SH), ['--agent', 'feat: add a'], AGENT_ENV);
+    check('[commit-policy] agent policy: absolute-path invocation refused', absPath.status !== 0 && /Run exactly/.test(absPath.stderr) && commits() === 0, out(absPath));
+    const sub = path.join(cp, 'sub');
+    fs.mkdirSync(sub);
+    const fromSub = cpSpawn('../' + COMMIT_SH, ['--agent', 'feat: add a'], AGENT_ENV, { cwd: sub });
+    check('[commit-policy] agent policy: invocation outside the repo root refused', fromSub.status !== 0 && commits() === 0, out(fromSub));
+    const codex = cpSpawn(COMMIT_SH, ['--agent', 'feat: add a'], { ...AGENT_ENV, CODEX_THREAD_ID: 'x' });
+    check('[commit-policy] agent policy: other harness marker refused', codex.status !== 0 && /only supported in Claude Code/.test(codex.stderr) && commits() === 0, out(codex));
+    const noMarker = cpSpawn(COMMIT_SH, ['--agent', 'feat: add a'], HUMAN_ENV);
+    check('[commit-policy] --agent without an agent shell refused', noMarker.status !== 0 && commits() === 0, out(noMarker));
+
+    const settingsFile = path.join(cp, '.claude', 'settings.json');
+    const savedSettings = fs.readFileSync(settingsFile, 'utf8');
+    const stripped = JSON.parse(savedSettings);
+    stripped.permissions.ask = [];
+    fs.writeFileSync(settingsFile, JSON.stringify(stripped));
+    const noAsk = cpSpawn(COMMIT_SH, ['--agent', 'feat: add a'], AGENT_ENV);
+    check('[commit-policy] agent policy: missing ask rule refused', noAsk.status !== 0 && /not wired/.test(noAsk.stderr) && commits() === 0, out(noAsk));
+    fs.writeFileSync(settingsFile, savedSettings);
+
+    const ok = cpSpawn(COMMIT_SH, ['--agent', 'feat(core): add a\n\nBody line.'], AGENT_ENV);
+    const msg = cpSpawn('git', ['log', '-1', '--format=%s'], HUMAN_ENV).stdout.trim();
+    check('[commit-policy] agent policy: canonical commit.sh --agent commits', ok.status === 0 && commits() === 1 && msg === 'feat(core): add a', out(ok));
+
+    stage('b.txt');
+    const rawNoToken = cpSpawn('git', ['commit', '-m', 'feat: b'], { ...AGENT_ENV, DEVOS_COMMIT_APPROVED: 'true' });
+    check('[commit-policy] pre-commit refuses an agent raw commit without DEVOS_AGENT_COMMIT', rawNoToken.status !== 0 && commits() === 1, out(rawNoToken));
+    const otherHarness = cpSpawn('git', ['commit', '-m', 'feat: b'], { ...AGENT_ENV, GEMINI_CLI: '1', DEVOS_COMMIT_APPROVED: 'true', DEVOS_AGENT_COMMIT: '1' });
+    check('[commit-policy] pre-commit refuses other harness markers even with the agent token', otherHarness.status !== 0 && commits() === 1, out(otherHarness));
+
+    const disable = cpCli(['commit-policy', 'human'], AGENT_ENV);
+    check('[commit-policy] switching back to human', disable.status === 0 && policyOf() === 'human', out(disable));
+    const afterDisable = cpSpawn('git', ['commit', '-m', 'feat: b'], { ...AGENT_ENV, DEVOS_COMMIT_APPROVED: 'true', DEVOS_AGENT_COMMIT: '1' });
+    check('[commit-policy] human policy: pre-commit refuses the agent token', afterDisable.status !== 0 && commits() === 1, out(afterDisable));
+
+    // PreToolUse: only the canonical spelling reaches the ask rule
+    const hook = path.join(cp, '.agents', 'hooks', 'pre-tool-use.sh');
+    [
+      'bash .agents/scripts/commit.sh --agent "feat: x"',
+      'sh .agents/scripts/commit.sh --agent "feat: x"',
+      './.agents/scripts/commit.sh --agent "feat: x"',
+      `${cp}/.agents/scripts/commit.sh --agent "feat: x"`,
+      'source .agents/scripts/commit.sh',
+      'eval ".agents/scripts/commit.sh --agent x"',
+      'echo $(.agents/scripts/commit.sh --agent x)',
+      'C=.agents/scripts/commit.sh; $C --agent "feat: x"',
+      'DEVOS_AGENT_COMMIT=1 git status'
+    ].forEach((c) => {
+      const r = runHook(hook, { cwd: cp, input: JSON.stringify({ tool_name: 'Bash', tool_input: { command: c }, cwd: cp }), env: AGENT_ENV });
+      check(`[commit-policy] hook blocks: ${c}`, isBlocked(r), hookDetail(r));
+    });
+    ['git add -A && .agents/scripts/commit.sh --agent "feat: x"', 'cat .agents/scripts/commit.sh'].forEach((c) => {
+      const r = runHook(hook, { cwd: cp, input: JSON.stringify({ tool_name: 'Bash', tool_input: { command: c }, cwd: cp }), env: AGENT_ENV });
+      check(`[commit-policy] hook allows: ${c}`, r.status === 0, hookDetail(r));
+    });
+  } finally {
+    fs.rmSync(cp, { recursive: true, force: true });
+  }
+}
 
 console.log('');
 console.log(`Elapsed: ${((Date.now() - SUITE_START) / 1000).toFixed(1)}s`);

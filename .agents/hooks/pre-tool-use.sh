@@ -64,7 +64,7 @@ if [ -f "$HELPER" ] && command -v node >/dev/null 2>&1; then
     HELPER_RC=$?
 fi
 
-PARSE=""; TOOL_NAME=""; COMMAND=""; ROOT=""; GIT_COMMIT="0"; APPROVAL_ENV="0"; MARKER_TAMPER="0"
+PARSE=""; TOOL_NAME=""; COMMAND=""; ROOT=""; GIT_COMMIT="0"; APPROVAL_ENV="0"; MARKER_TAMPER="0"; COMMIT_SH="none"
 DESTRUCTIVE=""; UNSURE="0"; TARGETS=""; UTARGETS=""
 EDIT_EXISTS="0"; EDIT_LINES=""; EDIT_BYTES=""; SESSION_ID=""; PROTECTED=""; FALLBACK="0"
 while IFS= read -r line; do
@@ -76,6 +76,7 @@ while IFS= read -r line; do
         GIT_COMMIT=*)    GIT_COMMIT="${line#GIT_COMMIT=}" ;;
         APPROVAL_ENV=*)  APPROVAL_ENV="${line#APPROVAL_ENV=}" ;;
         MARKER_TAMPER=*) MARKER_TAMPER="${line#MARKER_TAMPER=}" ;;
+        COMMIT_SH=*)     COMMIT_SH="${line#COMMIT_SH=}" ;;
         DESTRUCTIVE=*)   DESTRUCTIVE="${line#DESTRUCTIVE=}" ;;
         UNSURE=*)        UNSURE="${line#UNSURE=}" ;;
         EDIT_EXISTS=*)   EDIT_EXISTS="${line#EDIT_EXISTS=}" ;;
@@ -98,8 +99,13 @@ EOF
 fallback_reason() {
     FB=$(printf '%s' "$1" | sed -e 's/\\n/ ; /g' -e 's/\\t/ /g' | tr -d "'\"\\\\")
     B='(^|[^A-Za-z0-9_.-])'
-    if printf '%s' "$FB" | grep -Eq 'DEVOS_(HEADLESS_COMMIT|COMMIT_APPROVED)'; then
+    if printf '%s' "$FB" | grep -Eq 'DEVOS_(HEADLESS_COMMIT|COMMIT_APPROVED|AGENT_COMMIT)'; then
         echo "self-approval variable"; return 0
+    fi
+    # commit.sh only as the literal command word .agents/scripts/commit.sh (see hook-input.js COMMIT_SH)
+    if printf '%s' "$FB" | grep -oE '[^[:space:];&|()]*commit\.sh' | grep -vqx '\.agents/scripts/commit\.sh' \
+        || printf '%s' "$FB" | grep -Eq "${B}(bash|sh|zsh|dash|ksh|source|eval|\.)[[:space:]]+[^;&|]*commit\.sh"; then
+        echo "commit.sh run in a non-canonical form"; return 0
     fi
     if printf '%s' "$FB" | grep -Eq 'devos-(trivial-budget|session-stamp)|\.git/(worktrees/[^/]+/)?(devos-|hooks/)'; then
         echo "Dev-OS gate state (.git/devos-*, .git/hooks/*)"; return 0
@@ -270,7 +276,7 @@ has_active_task() {
 if [ "$APPROVAL_ENV" = "1" ]; then
     block "RULE_8_COMMIT_GATE" \
         "[ FAIL ] Dev-OS Policy Violation (Hard Rule 8: Mechanical Commit Gate)" \
-        "         Assigning or exporting DEVOS_COMMIT_APPROVED or DEVOS_HEADLESS_COMMIT inside a command is self-approval and is blocked." \
+        "         Assigning or exporting DEVOS_COMMIT_APPROVED, DEVOS_HEADLESS_COMMIT or DEVOS_AGENT_COMMIT inside a command is self-approval and is blocked." \
         "         Stop and present a summary for human review; the human commits via .agents/scripts/commit.sh."
 fi
 
@@ -306,6 +312,22 @@ if [ "$GIT_COMMIT" = "1" ] && [ "$DEVOS_COMMIT_APPROVED" != "true" ]; then
         "[ FAIL ] Dev-OS Policy Violation (Hard Rule 8: Mechanical Commit Gate)" \
         "         Commit-creating git commands (commit, merge, cherry-pick, revert, am, commit-tree) are forbidden here." \
         "         Present your changes for human review; commits go through: .agents/scripts/commit.sh"
+fi
+
+# 2b. commit.sh must run as the literal command word ".agents/scripts/commit.sh" so the Claude Code
+#     ask rule Bash(.agents/scripts/commit.sh *) matches and the human is asked to approve it.
+if [ "$COMMIT_SH" = "noncanonical" ]; then
+    block "RULE_8_COMMIT_GATE" \
+        "[ FAIL ] Dev-OS Policy Violation (Hard Rule 8: Mechanical Commit Gate)" \
+        "         commit.sh must be run exactly as: .agents/scripts/commit.sh ... (from the project root)." \
+        "         Running it through bash/sh/source/eval, ./, an absolute path or a substitution is blocked," \
+        "         because that spelling would skip the human approval prompt."
+fi
+
+# A canonical commit.sh call always goes to the human, even if the settings ask rule was removed.
+# (Claude Code reads this JSON on exit 0; an explicit ask rule prompts in every permission mode.)
+if [ "$COMMIT_SH" = "canonical" ] && [ $# -eq 0 ]; then
+    printf '%s\n' '{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"ask","permissionDecisionReason":"Dev-OS: commits need your approval. Review the staged changes and the commit message before allowing."}}'
 fi
 
 # Gates 3-5 apply to files the tool call writes inside the project

@@ -35,7 +35,14 @@
 //   ROOT=<project root>       $CLAUDE_PROJECT_DIR, else nearest ancestor of cwd with .agents/
 //   GIT_COMMIT=0|1            command creates a commit (commit, commit-tree, merge, cherry-pick,
 //                             revert, am, or an alias of one), or drives commit.sh/git through a pty
-//   APPROVAL_ENV=0|1          command assigns DEVOS_COMMIT_APPROVED or DEVOS_HEADLESS_COMMIT
+//   APPROVAL_ENV=0|1          command assigns DEVOS_COMMIT_APPROVED, DEVOS_HEADLESS_COMMIT or
+//                             DEVOS_AGENT_COMMIT
+//   COMMIT_SH=none|canonical|noncanonical
+//                             how the command runs .agents/scripts/commit.sh. canonical: as the
+//                             literal command word ".agents/scripts/commit.sh", which the Claude Code
+//                             ask rule Bash(.agents/scripts/commit.sh *) matches. noncanonical: any
+//                             other spelling (bash/sh/source/./absolute path/expansion/eval/command
+//                             substitution), which would skip that prompt; callers block it
 //   MARKER_TAMPER=0|1         command unsets/overrides agent-shell markers (or clears the
 //                             environment) and also runs git or commit.sh
 //   DESTRUCTIVE=<reason>      empty when nothing destructive was found
@@ -72,7 +79,8 @@ const MAX_SQL_FILE_BYTES = 2 * 1024 * 1024;
 //   AI_AGENT                   generic convention (@vercel/detect-agent); set by Claude Code
 const AGENT_MARKERS = ['CLAUDECODE', 'CLAUDE_CODE_ENTRYPOINT', 'GEMINI_CLI', 'CODEX_SANDBOX',
   'CODEX_SANDBOX_NETWORK_DISABLED', 'CODEX_THREAD_ID', 'CURSOR_AGENT', 'AI_AGENT'];
-const APPROVAL_VARS = ['DEVOS_HEADLESS_COMMIT', 'DEVOS_COMMIT_APPROVED'];
+const APPROVAL_VARS = ['DEVOS_HEADLESS_COMMIT', 'DEVOS_COMMIT_APPROVED', 'DEVOS_AGENT_COMMIT'];
+const COMMIT_SH_CANONICAL = '.agents/scripts/commit.sh';
 
 function flat(v) {
   if (v === undefined || v === null) return '';
@@ -912,6 +920,19 @@ function analyze(src, out, depth, ctx) {
 
     recordBuiltinAssignments(cmd, args, ctx.info);
 
+    // commit.sh must run as the literal command word ".agents/scripts/commit.sh" at the top
+    // level, so the Claude Code ask rule Bash(.agents/scripts/commit.sh *) matches it.
+    const head = seg.words.find((x) => !ASSIGN_RE.test(x));
+    const isCommitSh = (x) => /(^|\/)commit\.sh$/.test(String(x || ''));
+    if (isCommitSh(w[0])) {
+      const canonical = depth === 0 && head === COMMIT_SH_CANONICAL && w[0] === COMMIT_SH_CANONICAL;
+      out.commitSh.push(canonical ? 'canonical' : 'noncanonical');
+    } else if ((SHELLS.has(cmd) || cmd === 'source' || cmd === '.') && args.some(isCommitSh)) {
+      out.commitSh.push('noncanonical');
+    } else if (/[$`]/.test(w[0]) && /commit\.sh/.test(src)) {
+      out.commitSh.push('noncanonical');
+    }
+
     // Command word built from an expansion ("$G commit", "$(echo git) commit"): unknown
     // command with a commit-creating subcommand is treated as git.
     if (/[$`]/.test(w[0]) && args.some((a) => /^(commit|commit-tree|merge|cherry-pick|revert|am)$/.test(a))) {
@@ -1052,7 +1073,19 @@ const FB_DESTRUCTIVE = [
   [/\baws[ \t]+s3[ \t]+(rm|rb)\b/, 'aws s3 rm/rb (fallback)'],
   [/\bgcloud\b[^;&|\n]*projects[ \t]+delete\b/, 'gcloud projects delete (fallback)']
 ];
-const FB_APPROVAL_RE = /DEVOS_(HEADLESS_COMMIT|COMMIT_APPROVED)/;
+const FB_APPROVAL_RE = /DEVOS_(HEADLESS_COMMIT|COMMIT_APPROVED|AGENT_COMMIT)/;
+// Fallback: every mention of commit.sh must be the canonical command word at a command start.
+const FB_COMMIT_SH_RE = /\S*commit\.sh/g;
+function fallbackCommitSh(t) {
+  const forms = [];
+  let m;
+  FB_COMMIT_SH_RE.lastIndex = 0;
+  while ((m = FB_COMMIT_SH_RE.exec(t))) {
+    const atStart = /(^|[;&|(])\s*$/.test(t.slice(0, m.index));
+    forms.push(m[0] === COMMIT_SH_CANONICAL && atStart ? 'canonical' : 'noncanonical');
+  }
+  return forms;
+}
 const MARKER_RE = new RegExp(`\\b(${AGENT_MARKERS.join('|')})\\b`);
 const COMMIT_TOOL_RE = new RegExp(`commit\\.sh|${B}git([^A-Za-z0-9_.-]|$)`);
 const PTY_FB_RE = new RegExp(`${B}(script|expect|unbuffer|socat|empty|ptyrun|pty)[ \\t]`);
@@ -1067,6 +1100,7 @@ function fallbackScan(raw, out) {
   if (FB_APPROVAL_RE.test(t)) out.approval = true;
   if ((MARKER_RE.test(t) || ENV_CLEAR_RE.test(t)) && COMMIT_TOOL_RE.test(t)) out.markerTamper = true;
   if (PTY_FB_RE.test(t) && COMMIT_TOOL_RE.test(t)) out.gitCommit = true;
+  out.commitSh.push(...fallbackCommitSh(t));
 }
 
 // ---------------------------------------------------------------------------
@@ -1154,6 +1188,11 @@ function editStats(ti, abs) {
 
 // ---------------------------------------------------------------------------
 
+function commitShForm(forms) {
+  if (forms.includes('noncanonical')) return 'noncanonical';
+  return forms.includes('canonical') ? 'canonical' : 'none';
+}
+
 function buildLines(input, parseMode) {
   const ti = (input && typeof input.tool_input === 'object' && input.tool_input) || {};
   const toolName = typeof input.tool_name === 'string' ? input.tool_name : '';
@@ -1169,7 +1208,7 @@ function buildLines(input, parseMode) {
     unsure: false, stdinShell: false, arith: [], braces: [],
     info: { assigned: new Set(), unset: new Set(), clearEnv: false, indirect: false }
   };
-  const out = { gitCommit: false, destructive: '', targets: [], mutates: [], approval: false, markerTamper: false, protectedHit: '' };
+  const out = { gitCommit: false, destructive: '', targets: [], mutates: [], approval: false, markerTamper: false, protectedHit: '', commitSh: [] };
 
   if (command) {
     analyze(command, out, 0, ctx);
@@ -1186,7 +1225,7 @@ function buildLines(input, parseMode) {
 
     const norm = normalizeRaw(command);
     if (APPROVAL_VARS.some((v) => ctx.info.assigned.has(v))) out.approval = true;
-    if (ctx.info.indirect && /DEVOS_(HEADLESS|COMMIT)/.test(norm)) out.approval = true;
+    if (ctx.info.indirect && /DEVOS_(HEADLESS|COMMIT|AGENT_COMMIT)/.test(norm)) out.approval = true;
     const tamper = ctx.info.clearEnv || AGENT_MARKERS.some((v) => ctx.info.assigned.has(v) || ctx.info.unset.has(v));
     if (tamper && COMMIT_TOOL_RE.test(norm)) out.markerTamper = true;
 
@@ -1209,6 +1248,7 @@ function buildLines(input, parseMode) {
     `GIT_COMMIT=${out.gitCommit ? 1 : 0}`,
     `APPROVAL_ENV=${out.approval ? 1 : 0}`,
     `MARKER_TAMPER=${out.markerTamper ? 1 : 0}`,
+    `COMMIT_SH=${commitShForm(out.commitSh)}`,
     `DESTRUCTIVE=${flat(out.destructive)}`,
     `UNSURE=${ctx.unsure || ctx.stdinShell ? 1 : 0}`,
     `SESSION_ID=${sessionId(input)}`
@@ -1241,7 +1281,7 @@ function partialLines(text) {
   const cwd = cwdField && fs.existsSync(cwdField) ? cwdField : process.cwd();
   const root = findRoot(cwd);
   const ctx = { cwd, root, home: process.env.HOME || '' };
-  const out = { gitCommit: false, destructive: '', targets: [], approval: false, markerTamper: false };
+  const out = { gitCommit: false, destructive: '', targets: [], approval: false, markerTamper: false, commitSh: [] };
   fallbackScan(text, out);
   const toolName = jsonStringField(text, 'tool_name') || '';
   const filePath = jsonStringField(text, 'file_path') || jsonStringField(text, 'notebook_path');
@@ -1269,6 +1309,7 @@ function partialLines(text) {
     `GIT_COMMIT=${out.gitCommit ? 1 : 0}`,
     `APPROVAL_ENV=${out.approval ? 1 : 0}`,
     `MARKER_TAMPER=${out.markerTamper ? 1 : 0}`,
+    `COMMIT_SH=${commitShForm(out.commitSh)}`,
     `DESTRUCTIVE=${flat(out.destructive)}`,
     'UNSURE=1',
     `SESSION_ID=${flat((jsonStringField(text, 'session_id') || '').replace(/[^A-Za-z0-9._-]/g, ''))}`

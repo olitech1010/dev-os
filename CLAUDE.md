@@ -15,7 +15,7 @@ Prefer read-only inspection first. Ask before write/destructive operations and f
 <!-- END SERVBAY MCP -->
 
 <!-- BEGIN DEV-OS -->
-## Dev-OS — Multi-Agent Engineering OS (v5.0.0)
+## Dev-OS — Multi-Agent Engineering OS (v5.1.0)
 
 This repository IS the Dev-OS source. When working here:
 
@@ -29,8 +29,8 @@ This repository IS the Dev-OS source. When working here:
 This is a digest. `.agents/AGENTS.md` is canonical; numbers in brackets are its Hard Rule numbers.
 - [R1] Zero Destructive Actions: Never delete, drop, or truncate without an approved dry-run plan.
 - [R2] Zero Secrets Stored, Logged, or Hardcoded: Use `process.env.*`; ask the human for secrets at runtime.
-- [R8] Mechanical Commit Gate: Raw `git commit` is BLOCKED. Commits go only through `.agents/scripts/commit.sh`.
-- [R6] Staged Review: Agents write code but NEVER auto-commit. Present summaries for human review; the human commits.
+- [R8] Mechanical Commit Gate: Raw `git commit` is BLOCKED. Commits go only through `.agents/scripts/commit.sh`. Agents may run it only as `.agents/scripts/commit.sh --agent "<message>"`, in Claude Code, with commitPolicy `agent`; the human approves each commit in the permission prompt.
+- [R6] Staged Review: Agents write code but NEVER commit on their own initiative. Present summaries for human review; the human commits, or asks the agent to commit and approves the prompt.
 - [R10] Circuit Breaker: After 3 failed fix iterations (one Developer fix attempt plus the failing gate run each), halt; the Tech Lead gets exactly one arbitration attempt; then halt and escalate to the human. See "Circuit Breaker (canonical)" in AGENTS.md.
 - [R11] Verify Before Implementing: Confirm actual library APIs and patterns before authoring code.
 - [R12] No Heavy Dependencies: Packages >5MB or >50 dependencies require explicit human approval.
