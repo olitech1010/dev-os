@@ -19,8 +19,8 @@ Paths are relative to `.agents/skills/`. A path under `<skill>/references/<name>
 | image | https://github.com/coreyhaines31/marketingskills | MIT | |
 | image/references/imagegen-frontend-web | https://github.com/Leonxlnx/imagegen-skills | MIT | Previously in Leonxlnx/taste-skill (MIT). Split into references/ |
 | image/references/image-generation | https://github.com/claude-office-skills/skills | MIT | Byte-identical to upstream; the local `license: MIT` frontmatter is upstream's own |
-| imagegen | https://github.com/openai/skills | Apache-2.0 | License from bundled `LICENSE.txt`. The upstream path (`skills/.system/imagegen`) was confirmed only through third-party catalogs |
-| skill-creator | https://github.com/anthropics/skills | Apache-2.0 | License from bundled `LICENSE.txt` |
+| imagegen | https://github.com/openai/skills | Apache-2.0 | License from the bundled `LICENSE.txt`; that repository licenses per skill directory, not repository-wide. The upstream path (`skills/.system/imagegen`) was confirmed only through third-party catalogs |
+| skill-creator | https://github.com/anthropics/skills | Apache-2.0 | License from the bundled `LICENSE.txt`; that repository licenses per skill directory, not repository-wide |
 | anti-ai-ui/references/ui-designer | https://github.com/anthropics/skills (`frontend-design`) | Apache-2.0 | The suspicious `find-relevant-image.py` section was removed in wave 1 |
 | code-reviewer | https://github.com/google-gemini/gemini-cli (`.gemini/skills/code-reviewer`) | Apache-2.0 | Body is verbatim upstream; only the description was reworded. Attribution added in 5.1.1 |
 | find-skills | https://github.com/vercel-labs/skills | MIT | Copyright (c) 2026 Vercel, Inc. |
@@ -47,6 +47,9 @@ Paths are relative to `.agents/skills/`. A path under `<skill>/references/<name>
 | qa | https://github.com/mattpocock/skills | MIT | Retired upstream. Last seen at `skills/deprecated/qa/SKILL.md`, commit `62f43a18177be6ec82da242e59ffbc490a4c22ea` (2026-04-28), since deleted. Byte-identical but for the description |
 | seo-geo | https://github.com/ReScienceLab/opc-skills | Apache-2.0 | Corrected in 5.1.1: the LICENSE file is Apache-2.0. The upstream README badge says MIT and a nested `plugin.json` says MIT, which is where the earlier MIT claim came from |
 | seo-geo/references/seo-aeo-best-practices | https://github.com/sanity-io/agent-toolkit | MIT | Corrected in 5.1.1: this came from Sanity, not opc-skills. Copyright (c) 2025 Sanity. All five files byte-identical |
+| git-ops/references/git-commit | https://github.com/github/awesome-copilot (`skills/git-commit/SKILL.md`) | MIT | Resolved in 5.1.2. Copyright GitHub, Inc. The as-vendored copy was byte-identical to upstream commit `e24be77e`; the current file rewrites step 4 to route through `.agents/scripts/commit.sh` and rewords the description (40 diff lines). Upstream has since rewritten the skill |
+| performance-engineer | https://github.com/wshobson/agents (`plugins/application-performance/agents/performance-engineer.md`) | MIT | Resolved in 5.1.2. Copyright (c) 2024 Seth Hobson; 83% of the body is verbatim upstream commit `f662524f`. The `## Use this skill when` / `## Safety` / `## Limitations` wrapper and the frontmatter came from https://github.com/sickn33/agentic-awesome-skills (MIT code, CC BY 4.0 prose), which carries no upstream notice for this skill |
+| anti-ai-ui/references/frontend-ui-engineering | https://github.com/addyosmani/agent-skills (`skills/frontend-ui-engineering/SKILL.md`) | MIT | Resolved in 5.1.2. Copyright (c) 2025 Addy Osmani. The body is byte-identical to upstream commit `cea2f381`; Dev-OS added only attribution frontmatter. Upstream has since revised the skill |
 
 ## Declared only (no upstream LICENSE file)
 
@@ -79,14 +82,7 @@ The upstream states a license in its README or package metadata but ships no LIC
 
 ## Unresolved
 
-Origin could not be established. They are kept with whatever provenance their own files state.
-
-| Skill (path) | Likely origin (unconfirmed) | License |
-|---|---|---|
-| performance-engineer | community collection (frontmatter says "source: community") | unresolved |
-| anti-ai-ui/references/frontend-ui-engineering | unknown | unresolved |
-| anti-ai-ui/references/design | unknown | unresolved |
-| git-ops/references/git-commit | unknown (heavily adapted for the Dev-OS commit gate; frontmatter declares MIT) | unresolved |
+None. Every vendored skill is attributed above or listed as first-party below.
 
 ## Removed
 
@@ -97,5 +93,10 @@ Origin could not be established. They are kept with whatever provenance their ow
 ## First-party (Dev-OS, MIT)
 
 Written for Dev-OS and covered by the Dev-OS license: anti-ai-ui, autonomous-sdlc, deployment-checklist, eval-harness, git-ops, git-ops/references/git-workflow, grill-me (inspired by Matt Pocock's grill-me), human-checkpoint, project-requirements, shared-memory, spec-driven, stacks, task-board, task-contract, telemetry, testing-guide, token-optimization, workflow-metrics.
+
+Two files were reclassified as first-party in 5.1.2 after their origin was traced:
+
+- `anti-ai-ui/references/design/GUIDE.md` — Dev-OS original. Its body is unchanged since this repository's second commit (`f281274`, 2026-06-19), which predates any external skill vendoring here (`7a2a2d0`, 2026-06-30), and verbatim phrase searches return only this repository and installs of it.
+- `anti-ai-ui/references/frontend-ui-engineering/references/accessibility-checklist.md` — Dev-OS written, not vendored. Upstream `addyosmani/agent-skills` ships a different and longer WCAG 2.1 AA checklist; this is a shorter WCAG 2.2 AA one with no shared wording. Its individual bullets restate WCAG success criteria, which many projects write independently, so no third party holds it.
 
 Sub-directories under a vendored skill's own `references/` that are not merged skills (for example `vercel-optimize/references/playbooks` and `.../support-topics`) are part of that skill and carry its license.

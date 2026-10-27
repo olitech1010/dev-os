@@ -3,6 +3,10 @@ name: git-commit
 description: 'Prepare a conventional commit (type, scope, message) from the staged diff and hand it to the Dev-OS commit gate (.agents/scripts/commit.sh). Use when the user asks to commit changes, create a git commit, or mentions "/commit". Supports: (1) Auto-detecting type and scope from changes, (2) Generating conventional commit messages from diff, (3) Optional type/scope/description overrides, (4) Intelligent file staging for logical grouping. Never runs raw git commit.'
 license: MIT
 allowed-tools: Bash
+metadata:
+  source: https://github.com/github/awesome-copilot
+  license: MIT
+  notice: ../../../licenses/MIT-upstreams.txt
 ---
 
 # Git Commit with Conventional Commits

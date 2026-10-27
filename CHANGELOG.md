@@ -3,6 +3,45 @@
 All notable changes to Dev-OS are recorded here. The Tech Writer agent maintains this file.
 Versions follow [Semantic Versioning](https://semver.org/).
 
+## [5.1.2] - 2026-10-27
+
+Completes the licensing audit. The four skills left unresolved in 5.1.1 were
+traced to their origins: three are attributed, two are confirmed first-party.
+The "Unresolved" table is now empty.
+
+### Fixed
+
+- `git-ops/references/git-commit` attributed to `github/awesome-copilot`
+  (MIT, Copyright GitHub, Inc.). The as-vendored copy was byte-identical to
+  upstream commit `e24be77e`; the current file differs by 40 lines, all of them
+  the Dev-OS commit-gate rerouting. Its `license: MIT` frontmatter was upstream's
+  own line and was accurate all along.
+- `performance-engineer` attributed to `wshobson/agents` (MIT, Copyright (c)
+  2024 Seth Hobson) for the body, 83% verbatim against commit `f662524f`, and to
+  `sickn33/agentic-awesome-skills` for the wrapper sections and frontmatter. Its
+  `source: community` line is corrected.
+- `anti-ai-ui/references/frontend-ui-engineering` attributed to
+  `addyosmani/agent-skills` (MIT, Copyright (c) 2025 Addy Osmani), byte-identical
+  to upstream commit `cea2f381`.
+- `performance-engineer` listed FID among the Core Web Vitals. FID was replaced
+  by INP; corrected.
+- The Apache-2.0 NOTICE records that `openai/skills` and `anthropics/skills`
+  license per skill directory rather than repository-wide, which is why their
+  repository-level license appears absent.
+
+### Changed
+
+- `anti-ai-ui/references/design` reclassified as first-party. Its body is
+  unchanged since this repository's second commit (`f281274`, 2026-06-19),
+  predating any external vendoring here, and verbatim phrase searches return only
+  this repository and installs of it.
+- `anti-ai-ui/references/frontend-ui-engineering/references/accessibility-checklist.md`
+  reclassified as first-party. Upstream ships a different, longer WCAG 2.1 AA
+  checklist; this is a shorter WCAG 2.2 AA one with no shared wording.
+- Attribution frontmatter added to `git-commit`, `performance-engineer` and
+  `frontend-ui-engineering`; GitHub, Inc. and Addy Osmani added to the MIT
+  notices.
+
 ## [5.1.1] - 2026-10-27
 
 Licensing audit of the vendored skills, done before the first 5.x npm publish.

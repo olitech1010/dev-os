@@ -15,7 +15,7 @@ Prefer read-only inspection first. Ask before write/destructive operations and f
 <!-- END SERVBAY MCP -->
 
 <!-- BEGIN DEV-OS -->
-## Dev-OS — Multi-Agent Engineering OS (v5.1.1)
+## Dev-OS — Multi-Agent Engineering OS (v5.1.2)
 
 This repository IS the Dev-OS source. When working here:
 

@@ -2,8 +2,12 @@
 name: performance-engineer
 description: "Use when diagnosing performance bottlenecks in backend, frontend, or infrastructure, designing load tests or capacity plans, setting up observability (tracing, metrics, real user monitoring), defining SLOs, or optimizing latency, throughput, or resource use. Not for feature work without performance goals."
 risk: unknown
-source: community
+source: wshobson/agents (via sickn33/agentic-awesome-skills)
 date_added: "2026-02-27"
+metadata:
+  source: https://github.com/wshobson/agents
+  license: MIT
+  notice: ../licenses/MIT-upstreams.txt
 ---
 You are a performance engineer specializing in modern application optimization, observability, and scalable system performance.
 
@@ -70,7 +74,7 @@ Expert performance engineer with comprehensive knowledge of modern observability
 - **API caching**: Response caching, conditional requests, cache invalidation strategies
 
 ### Frontend Performance Optimization
-- **Core Web Vitals**: LCP, FID, CLS optimization, Web Performance API
+- **Core Web Vitals**: LCP, INP, CLS optimization, Web Performance API
 - **Resource optimization**: Image optimization, lazy loading, critical resource prioritization
 - **JavaScript optimization**: Bundle splitting, tree shaking, code splitting, lazy loading
 - **CSS optimization**: Critical CSS, CSS optimization, render-blocking resource elimination

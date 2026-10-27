@@ -24,3 +24,11 @@ files; the changes are described in ../../THIRD_PARTY_NOTICES.md.
 The Apache-2.0 license text in Apache-2.0.txt applies to all of the above.
 `imagegen` and `skill-creator` additionally ship the upstream LICENSE.txt files
 inside their own directories, as received.
+
+Note on two upstreams: `openai/skills` and `anthropics/skills` declare no
+repository-level license. Each skill directory carries its own LICENSE.txt
+instead (for example `skills/frontend-design/LICENSE.txt` in anthropics/skills),
+and those files are Apache-2.0. That is the grant relied on here.
+
+`vibeforge1111/vibeship-spawner-skills` is the one entry above with no license
+file of any kind; see the note beside it.

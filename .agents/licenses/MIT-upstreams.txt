@@ -6,6 +6,8 @@ file (GitHub license API, decoded) in October 2026. The MIT license text follows
 once and applies to all of them. See ../../THIRD_PARTY_NOTICES.md for which
 skill came from which repository.
 
+  Copyright GitHub, Inc.                                github/awesome-copilot
+  Copyright (c) 2025 Addy Osmani                        addyosmani/agent-skills
   Copyright (c) 2026 Matt Pocock                        mattpocock/skills
   Copyright (c) 2024 Seth Hobson                        wshobson/agents
   Copyright (c) 2026 Affaan Mustafa                     affaan-m/ECC
