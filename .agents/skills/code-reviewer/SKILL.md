@@ -1,6 +1,10 @@
 ---
 name: code-reviewer
 description: "Use when asked to review code, either local changes (staged or working tree) or a remote pull request by number or URL, for correctness, maintainability, and adherence to project standards."
+metadata:
+  source: https://github.com/google-gemini/gemini-cli
+  license: Apache-2.0
+  notice: ../../licenses/Apache-2.0-NOTICE.txt
 ---
 
 # Code Reviewer

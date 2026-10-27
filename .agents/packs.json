@@ -83,7 +83,6 @@
       "description": "Agent and skill authoring, skill discovery and benchmarking, interface design exploration, requirement grilling, and browser automation. Google ADK skills moved to the google-adk pack.",
       "skills": [
         "agent-browser",
-        "agent-development",
         "skill-creator",
         "find-skills",
         "design-an-interface",

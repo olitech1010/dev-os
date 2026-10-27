@@ -19,3 +19,16 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
+
+---
+
+Third-party components
+
+The MIT license above covers the Dev-OS first-party work. This package also
+bundles agent skills adapted from third-party open-source projects, which keep
+their own licenses. See THIRD_PARTY_NOTICES.md for the per-skill list.
+
+Note in particular that the reference material in .agents/skills/security-review
+is adapted from the OWASP Cheat Sheet Series and is licensed under
+Creative Commons Attribution-ShareAlike 4.0 International (CC BY-SA 4.0), not
+MIT. Its terms are in .agents/skills/security-review/LICENSE.

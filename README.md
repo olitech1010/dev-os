@@ -4,7 +4,7 @@
 
 **by Clement Olives · Olives Technologies**
 
-![Version](https://img.shields.io/badge/version-v5.1.0-blue.svg)
+![Version](https://img.shields.io/badge/version-v5.1.1-blue.svg)
 ![npm](https://img.shields.io/badge/npm-%40olives%2Fdevos-red.svg)
 ![License](https://img.shields.io/badge/license-MIT-green.svg)
 
@@ -356,7 +356,7 @@ Dev-OS also ships as a Claude Code plugin with the default agents, the commands,
 /plugin install devos@olives-devos
 ```
 
-This needs `@olives/devos` 5.1.0 published to npm, because the marketplace entry in `.claude-plugin/marketplace.json` uses a `command` source that builds the pinned version on your machine. That source type needs Claude Code v2.1.229 or later. The install shows you the build command and asks you to accept it before running anything, and Claude Code re-runs it once per session (the pinned version is cached under `~/.devos/claude-plugin/`). The plugin's hooks only act in projects that have been set up with `devos init` (they look for `.agents/manifest.json`); in any other repository they do nothing. To build the plugin locally instead:
+This needs `@olives/devos` 5.1.1 published to npm, because the marketplace entry in `.claude-plugin/marketplace.json` uses a `command` source that builds the pinned version on your machine. That source type needs Claude Code v2.1.229 or later. The install shows you the build command and asks you to accept it before running anything, and Claude Code re-runs it once per session (the pinned version is cached under `~/.devos/claude-plugin/`). The plugin's hooks only act in projects that have been set up with `devos init` (they look for `.agents/manifest.json`); in any other repository they do nothing. To build the plugin locally instead:
 
 ```bash
 devos build-plugin --out dist/claude-plugin

@@ -3,6 +3,56 @@
 All notable changes to Dev-OS are recorded here. The Tech Writer agent maintains this file.
 Versions follow [Semantic Versioning](https://semver.org/).
 
+## [5.1.1] - 2026-10-27
+
+Licensing audit of the vendored skills, done before the first 5.x npm publish.
+No functional changes to the CLI, agents or hooks.
+
+### Removed
+
+- `agent-development` skill. It was a near-verbatim copy of
+  `anthropics/claude-code` `plugins/plugin-dev/skills/agent-development` (the
+  415-line SKILL.md differed only in frontmatter; the other six files were
+  byte-identical). That repository's `LICENSE.md` reserves all rights and grants
+  no redistribution right, so the skill could not be shipped. Dropped from the
+  `agentic` pack.
+
+### Added
+
+- `.agents/licenses/` with the license texts that redistribution requires to
+  travel with the material: the Apache-2.0 text, an Apache-2.0 NOTICE naming
+  each upstream, the MIT copyright lines read from each upstream's own LICENSE
+  file, and the CC BY 4.0 notice for `backend-dev-guidelines`.
+- `THIRD_PARTY_NOTICES.md` is now in the published package. It previously existed
+  but was missing from the `files` allowlist, so the tarball shipped vendored
+  third-party skills with no attribution file at all.
+- A "Third-party components" section in `LICENSE`, naming the one carve-out from
+  the Dev-OS MIT license.
+- Source and license frontmatter on `code-reviewer`, which was a verbatim
+  Apache-2.0 copy carrying no attribution.
+
+### Fixed
+
+- `security-review` is recorded as **CC BY-SA 4.0**, not MIT. Its reference
+  material is adapted from the OWASP Cheat Sheet Series, and ShareAlike means it
+  cannot be relicensed; the root `LICENSE` now says so.
+- `seo-geo` is Apache-2.0, not MIT. The upstream LICENSE file is Apache-2.0; the
+  earlier MIT claim came from the upstream README badge and a nested plugin.json.
+- `seo-geo/references/seo-aeo-best-practices` came from `sanity-io/agent-toolkit`
+  (MIT), not from opc-skills.
+- `backend-dev-guidelines/references/backend-development` is attributed to
+  `MoizIbnYousaf/ai-agent-skills`, the repository the bytes actually came from;
+  its own frontmatter declares `wshobson/agents` upstream. Both are MIT.
+- Stale upstream URLs updated: `sickn33/antigravity-awesome-skills` to
+  `sickn33/agentic-awesome-skills`, `affaan-m/everything-claude-code` to
+  `affaan-m/ECC`, `ngrok/agent-skills` to `ngrok/skills`.
+- The nine `vercel-labs/agent-skills` skills and `nextjs-supabase-auth` moved to a
+  "Declared only" section: their upstreams state a license in the README or
+  package metadata but ship no LICENSE file.
+- `design-an-interface` and `qa` verified as MIT from `mattpocock/skills`, with the
+  commit SHAs pinned since both were since deleted upstream.
+- The unverified list went from 15 entries to 4.
+
 ## [5.1.0] - 2026-10-25
 
 ### Added

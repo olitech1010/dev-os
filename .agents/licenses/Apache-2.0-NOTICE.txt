@@ -1,0 +1,26 @@
+NOTICE — Apache-2.0 skills vendored into Dev-OS
+===============================================
+
+Apache License 2.0 section 4 requires that redistributions carry a copy of the
+license (see Apache-2.0.txt in this directory) and retain attribution notices.
+The upstreams below license their work under Apache-2.0. Dev-OS modified these
+files; the changes are described in ../../THIRD_PARTY_NOTICES.md.
+
+  agent-browser                          vercel-labs/agent-browser
+  code-reviewer                          google-gemini/gemini-cli
+  imagegen                               openai/skills
+  skill-creator                          anthropics/skills
+  anti-ai-ui/references/ui-designer      anthropics/skills (frontend-design)
+  google-agents-cli-adk-code             google/agents-cli
+  google-agents-cli-workflow             google/agents-cli
+  modern-web-guidance                    GoogleChrome/modern-web-guidance
+  shadcn-ui                              google-labs-code/stitch-skills
+  seo-geo                                ReScienceLab/opc-skills
+  supabase/references/nextjs-supabase-auth   vibeforge1111/vibeship-spawner-skills
+                                             (Apache-2.0 declared in README and
+                                             package.json; no LICENSE file in
+                                             the repository)
+
+The Apache-2.0 license text in Apache-2.0.txt applies to all of the above.
+`imagegen` and `skill-creator` additionally ship the upstream LICENSE.txt files
+inside their own directories, as received.

@@ -1,0 +1,24 @@
+Creative Commons Attribution 4.0 International (CC BY 4.0)
+==========================================================
+
+Applies to the prose content of the skills vendored from
+sickn33/agentic-awesome-skills (see ../../THIRD_PARTY_NOTICES.md):
+
+  - backend-dev-guidelines (and its resources/)
+
+Licensor: sickn33/agentic-awesome-skills
+Upstream: https://github.com/sickn33/agentic-awesome-skills
+License:  https://creativecommons.org/licenses/by/4.0/
+Full text: https://creativecommons.org/licenses/by/4.0/legalcode
+
+Changes were made: Dev-OS edited the skill description, reorganised the
+upstream resources/ files into references/, and adapted guidance to route
+commits through .agents/scripts/commit.sh. The local copy is an earlier
+upstream snapshot; upstream has since revised some wording.
+
+NOTE ON ORIGIN: this skill was present in the upstream repository's initial
+commit marked "source: community" with no upstream link, and it is not listed
+in that repository's own attribution manifest. Its text references a private
+codebase, so the original author is unknown. The CC BY grant above is the
+distributor's; it may not be effective if the original author never licensed
+the text. Dev-OS makes no provenance claim beyond this.
