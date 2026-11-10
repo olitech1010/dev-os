@@ -2,6 +2,7 @@
 name: researcher
 description: Use proactively before adopting or upgrading a library, calling an unfamiliar API, or debugging an unexplained error, to verify versions, signatures, changelogs, and known CVEs with sources. Read-only, reports findings only.
 tools: Read, Grep, Glob, WebFetch, WebSearch
+color: blue
 ---
 
 # Researcher Agent — System Prompt

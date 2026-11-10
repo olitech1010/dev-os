@@ -3,6 +3,119 @@
 All notable changes to Dev-OS are recorded here. The Tech Writer agent maintains this file.
 Versions follow [Semantic Versioning](https://semver.org/).
 
+## [5.2.0] - 2026-11-09
+
+Dev-OS now behaves inside Claude Code the way Claude Code itself works, and the same
+runtime behaviour reaches Codex, Cursor, Antigravity CLI and OpenCode. Every external fact
+this release depends on is pinned in a conformance fixture with the date it was checked,
+because those facts moved twice while this release was being built.
+
+### Added
+
+- **A bootstrap skill that loads itself.** `using-devos` (about 2 KB, core pack) is injected
+  at session start and after compaction, so the model is told to check for a skill before
+  acting instead of relying on skill descriptions alone. When Superpowers is enabled in Claude
+  Code, only a short Dev-OS delta is printed so the rule is not given twice.
+- **Five more Claude Code hook events**, bringing the lifecycle to twelve:
+  - `PreCompact` steers what the compaction summary must keep (mode, active task, approved
+    plan, Hard Rules, circuit-breaker count) and saves that state to
+    `.agents/memory/compact-state.json`. It never blocks compaction.
+  - `PostCompact` records the compaction and the summary's size.
+  - `SubagentStart` injects the task contract into every subagent: mode, active task, plan,
+    the no-commit rule and the handoff duty. Opt out with `DEVOS_SUBAGENT_CONTRACT=off`.
+  - `TaskCompleted` logs every task closure. Set `DEVOS_TASK_VERIFY=1` (or to a command) to
+    refuse a closure whose verification fails; it is advisory by default.
+  - `InstructionsLoaded` logs each instruction file Claude Code loads, which is how
+    `devos doctor` now *proves* the `CLAUDE.md` -> `AGENTS.md` import resolved rather than
+    inferring it. Opt out with `DEVOS_INSTR_LOG=off`.
+- **Cross-harness hooks.** The same `.agents/hooks/` scripts now run on four more harnesses.
+  An adapter only registers the events in that harness's config and tags the command with
+  `DEVOS_HOOK_FORMAT=<harness>`; `lib/common.sh` renders the reply shape that harness
+  documents, and `lib/hook-input.js` folds every payload spelling into one.
+  - Codex: `.codex/hooks.json`, ten events. **Run `/hooks` in Codex once to trust them, and
+    again after each `devos update`** — trust is tied to each script's hash.
+  - Cursor: `.cursor/hooks.json`, nine events, in a trusted workspace.
+  - Antigravity CLI: `.agents/hooks.json`, four events.
+  - OpenCode: `.opencode/plugins/devos.js`, which injects the directive, enforces the gates by
+    throwing, and contributes compaction context.
+- **Full subagent frontmatter.** The generator passes through and validates `tools`,
+  `disallowedTools`, `model` (aliases including `fable`, plus full Anthropic, Bedrock and
+  Vertex ids), `effort`, `maxTurns`, `autoCompactWindow`, `skills`, `memory`, `isolation`,
+  `color`, `omitClaudeMd` and `background`. A `skills:` entry that is not installed is dropped
+  with a warning. The roster gained a `color` per persona, `effort: high` on tech-lead, and
+  one or two core-pack skill preloads per role.
+- **A harness conformance fixture**, `.agents/evals/conformance.json`: every external fact
+  Dev-OS depends on, with its doc URL and the date it was checked.
+  `node scripts/check-conformance.js` verifies offline that the CLI cannot wire a hook event,
+  use a plugin hook, or drop a frontmatter key that no recorded fact supports, and reports how
+  old the facts are. A scheduled GitHub Action re-reads the doc pages and opens an issue on
+  drift. The CLI itself never fetches.
+- `devos doctor` gained three sections: "Harness conformance", "Cross-harness hooks" (what
+  each harness can actually block, and whether that was checked live or by fixture), and
+  "Instruction load".
+
+### Changed
+
+- **No Gemini CLI hooks are written.** Google replaced Gemini CLI with Antigravity CLI on
+  2026-06-18, so the planned `.gemini/settings.json` adapter was dropped and an Antigravity
+  one built instead. `GEMINI.md` is untouched, so anyone still on the old CLI keeps today's
+  advisory behaviour.
+- The plugin stands down whenever a project's own `.claude/settings.json` wires
+  `.agents/hooks/`, which ends the parallel double-run that duplicated context injection and
+  raced on `.agents/memory/session.json`.
+- `deploy-to-vercel` and `expose-localhost` are manual-only (`disable-model-invocation`, plus a
+  Codex `agents/openai.yaml`), so a side-effecting deploy skill is never model-invoked.
+- `devos skill audit` warns when a listing entry passes Claude Code's 1,536-character cap and
+  reports the total listing size against Codex's 8,000-character budget.
+- The marketplace `--out` directory now carries the package version, with a test that keeps
+  the two in sync.
+
+### Fixed
+
+- Full model ids (`us.anthropic.claude-opus-4-5-v1:0`, `claude-sonnet-4-5@20250929`) were
+  rejected as unknown and the agent silently inherited another model. This is the only entry
+  here that affected a released version; everything below was introduced during 5.2.0 and
+  caught by review or by running a second harness before release.
+- The Superpowers yield applied on every harness, so Dev-OS suppressed its own bootstrap on
+  OpenCode because Superpowers was enabled in *Claude Code's* settings. Superpowers is a Claude
+  Code plugin and is not loaded elsewhere; the yield is now Claude-Code-only.
+- No persona sets `memory:` any more. A subagent with a memory scope automatically gains Read,
+  Write and Edit, which silently widened the `tools:` allowlist of the two roles documented as
+  read-only (researcher and tech-lead).
+- `compact-state.json` could be invalid JSON: a double quote in a branch name (git permits
+  one) or a tab in a task line was written through unescaped, and an unquoted command
+  substitution let a mode of `*` glob into the file.
+- `post-compact.sh` read stdin with an unbounded `cat`, which could have stalled a session for
+  the full 600-second hook timeout.
+- `DEVOS_TASK_VERIFY=1` chose its command by grepping package.json as text, so a dependency
+  named `verify` made the gate refuse tasks in a project with no verify script. It now parses
+  the file and stays advisory when neither script exists.
+- The JSON escaper relied on awk `gsub` replacement semantics, which differ between BWK awk and
+  gawk; on gawk it would have emitted invalid JSON and Claude Code would have dropped the
+  subagent contract with no visible error. It is now a character scan.
+- `devos_hook_field` truncated a value at an escaped quote, so a task subject such as
+  `Fix the "login" bug` was logged as `Fix the \`.
+
+- The design and orchestration gates refused *read-only* tool calls on Cursor, Antigravity and
+  OpenCode. Claude Code's `PreToolUse` matcher had always hidden that the gates were
+  tool-name-agnostic; the new adapters fire on every tool, so reading or grepping a `.tsx`
+  file in a project without `DESIGN.md` was blocked. A file path now only counts as a write
+  target for a tool that writes it.
+- The Antigravity adapter enforced nothing: its tool arguments are PascalCase
+  (`CommandLine`, `TargetFile`), so the folded payload left the command empty and every gate
+  passed, including `rm -rf /`.
+
+### Notes
+
+- Measured with `opencode debug skill`, OpenCode discovers no project-level skills from
+  `.agents/skills`, `.claude/skills` or `.opencode/skills` — only built-ins and the global
+  `~/.claude/skills`. The rules still reach it in full through `opencode.json`
+  `instructions`, and the plugin injects the directive, but a Dev-OS skill is not invocable by
+  name there. The same claim for Codex and Cursor came from reading their docs and is recorded
+  as suspect in the conformance fixture until it can be measured.
+- Codex and Antigravity hooks are fixture-verified, not live-verified: neither CLI is
+  installed on the machine this release was built on. `devos doctor` says so per harness.
+
 ## [5.1.2] - 2026-10-27
 
 Completes the licensing audit. The four skills left unresolved in 5.1.1 were

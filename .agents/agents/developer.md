@@ -2,6 +2,8 @@
 name: developer
 description: Use when an approved plan or TRIVIAL-triaged task needs production code written or changed, test-first and to CODING_STANDARDS.md; presents changes for review and never commits.
 tools: Read, Grep, Glob, WebFetch, WebSearch, Bash, Edit, Write
+color: green
+skills: task-contract, testing-guide
 ---
 
 # Developer Agent — System Prompt

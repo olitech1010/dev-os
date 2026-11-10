@@ -48,6 +48,27 @@ if [ -f "$_DEVOS_HD/lib/common.sh" ]; then
 fi
 
 HOOK_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" 2>/dev/null && pwd)"
+# Antigravity requires a "decision" on PreToolUse, so a permitted call must say "allow"
+# explicitly. Other harnesses treat exit 0 with no output as permission, so they print nothing.
+# The trap covers every allow path, including the early exits; devos_block sets DEVOS_DECIDED
+# so a refusal is never followed by an allow.
+devos_emit_allow_on_exit() {
+    _devos_st=$?
+    [ "$_devos_st" = "0" ] || return 0
+    [ "$DEVOS_DECIDED" = "1" ] && return 0
+    command -v devos_allow >/dev/null 2>&1 && devos_allow
+    return 0
+}
+trap devos_emit_allow_on_exit EXIT
+
+# Fail closed in the shape the calling harness understands.
+devos_fail_closed() {
+    if command -v devos_block >/dev/null 2>&1; then
+        devos_block "[ FAIL ] Dev-OS pre-tool-use: the input parser is unavailable, so this call cannot be checked."
+    fi
+    exit 2
+}
+
 HELPER="$HOOK_DIR/lib/hook-input.js"
 
 # node reads the payload itself (see header); RAW_INPUT is only filled when it could not.
@@ -166,7 +187,7 @@ case "$PARSE" in
                     echo "         Restore node and .agents/hooks/lib/hook-input.js, or ask the human to run the command."
                     echo ""
                 } >&2
-                exit 2
+                devos_fail_closed
             fi
         fi
         if [ -n "$RAW_INPUT" ]; then
@@ -178,7 +199,7 @@ case "$PARSE" in
                     echo "         Restore node and .agents/hooks/lib/hook-input.js, or ask the human to run the command."
                     echo ""
                 } >&2
-                exit 2
+                devos_fail_closed
             fi
         fi
         echo "[ WARN ] Dev-OS pre-tool-use: input parser unavailable (node or lib/hook-input.js missing or failed$( [ "$RAW_PARTIAL" = "1" ] && echo '; stdin read timed out' )); only the fallback checks ran." >&2
@@ -251,16 +272,24 @@ LOG_TELEMETRY() {
     return 0
 }
 
-# block <telemetry-rule> <message lines...>: print reason to stderr, log, exit 2.
+# block <telemetry-rule> <message lines...>: refuse the tool call and exit.
+# The refusal shape is the calling harness's: exit 2 with the reason on stderr for Claude Code,
+# Codex and Cursor, or {"decision":"deny","reason":...} for Antigravity, which does not read a
+# non-zero exit as a denial. devos_block (lib/common.sh) picks the shape and exits.
 block() {
     RULE="$1"
     shift
-    {
-        echo ""
-        for msg in "$@"; do echo "$msg"; done
-        echo ""
-    } >&2
+    _BLOCK_MSG=""
+    for msg in "$@"; do
+        if [ -n "$_BLOCK_MSG" ]; then _BLOCK_MSG="$_BLOCK_MSG
+$msg"; else _BLOCK_MSG="$msg"; fi
+    done
     LOG_TELEMETRY "$RULE" "$SUBJECT"
+    if command -v devos_block >/dev/null 2>&1; then
+        devos_block "$_BLOCK_MSG"
+    fi
+    # lib/common.sh absent: fail closed the way Dev-OS always has.
+    printf '\n%s\n\n' "$_BLOCK_MSG" >&2
     exit 2
 }
 
@@ -324,10 +353,22 @@ if [ "$COMMIT_SH" = "noncanonical" ]; then
         "         because that spelling would skip the human approval prompt."
 fi
 
-# A canonical commit.sh call always goes to the human, even if the settings ask rule was removed.
-# (Claude Code reads this JSON on exit 0; an explicit ask rule prompts in every permission mode.)
+# A canonical commit.sh call always goes to the human, even if the settings ask rule was
+# removed. The "ask" reply is Claude Code's shape and only Claude Code honours it: Codex
+# documents ask as not yet supported, Cursor accepts ask on preToolUse without enforcing it
+# (and blocks a reply that is not in its own schema), and Antigravity requires a "decision".
+# Commit policy `agent` is Claude-Code-only by design, so on every other harness the agent
+# commit path is refused rather than silently allowed without an approval prompt.
 if [ "$COMMIT_SH" = "canonical" ] && [ $# -eq 0 ]; then
-    printf '%s\n' '{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"ask","permissionDecisionReason":"Dev-OS: commits need your approval. Review the staged changes and the commit message before allowing."}}'
+    if [ "$(devos_hook_format 2>/dev/null || echo claude)" = "claude" ]; then
+        printf '%s\n' '{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"ask","permissionDecisionReason":"Dev-OS: commits need your approval. Review the staged changes and the commit message before allowing."}}'
+    else
+        block "AGENT_COMMIT_UNSUPPORTED_HARNESS" \
+            "[ FAIL ] Dev-OS Commit Gate (Hard Rule 8): agent commits are Claude Code only." \
+            "         This harness has no per-call approval prompt Dev-OS can rely on, so" \
+            "         .agents/scripts/commit.sh --agent is refused here." \
+            "         Ask the human to run .agents/scripts/commit.sh themselves."
+    fi
 fi
 
 # Gates 3-5 apply to files the tool call writes inside the project

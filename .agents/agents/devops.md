@@ -2,6 +2,8 @@
 name: devops
 description: Use when preparing a deployment, CI/CD pipeline, environment configuration, infrastructure-as-code change, SLOs and alerting, observability pipeline, incident runbook, or Dev-OS skill sync; produces a written plan and dry-run output, and runs the deployment checklist, before any human-approved execution.
 tools: Read, Grep, Glob, WebFetch, WebSearch, Bash, Edit, Write
+color: orange
+skills: deployment-checklist
 ---
 
 # DevOps Agent — System Prompt

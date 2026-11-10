@@ -1,0 +1,476 @@
+{
+  "$comment": "Every external fact Dev-OS depends on, with the source and the date it was checked. The smoke test makes this binding: the CLI may not wire a hook event, emit a subagent frontmatter key, or use an OpenCode plugin hook that is not recorded here. scripts/check-conformance.js verifies that offline; with --fetch (CI only) it re-reads the doc pages and reports drift. The CLI itself never fetches.",
+  "schemaVersion": "1.0.0",
+  "updated": "2026-11-09",
+  "stalenessWarningDays": 120,
+  "harnesses": {
+    "claude": {
+      "name": "Claude Code",
+      "configFile": ".claude/settings.json",
+      "docs": [
+        {
+          "url": "https://code.claude.com/docs/en/hooks",
+          "verified": "2026-11-06",
+          "how": "docs",
+          "covers": "hook events, per-event payloads and output contracts"
+        },
+        {
+          "url": "https://code.claude.com/docs/en/sub-agents",
+          "verified": "2026-11-06",
+          "how": "docs",
+          "covers": "subagent frontmatter keys and allowed values"
+        },
+        {
+          "url": "https://code.claude.com/docs/en/memory",
+          "verified": "2026-10-22",
+          "how": "docs",
+          "covers": "CLAUDE.md imports and AGENTS.md fallback"
+        }
+      ],
+      "verifiedAgainstBinary": {
+        "cli": "2.1.319",
+        "date": "2026-11-06",
+        "note": "the hook event enum and the hook dispatchers were read out of the installed binary, not only the docs"
+      },
+      "hookEvents": [
+        "PreToolUse",
+        "PostToolUse",
+        "PostToolUseFailure",
+        "PostToolBatch",
+        "Notification",
+        "UserPromptSubmit",
+        "UserPromptExpansion",
+        "SessionStart",
+        "SessionEnd",
+        "Stop",
+        "StopFailure",
+        "SubagentStart",
+        "SubagentStop",
+        "PreCompact",
+        "PostCompact",
+        "PreModelSwitch",
+        "PostModelSwitch",
+        "PermissionRequest",
+        "PermissionDenied",
+        "Setup",
+        "TeammateIdle",
+        "TaskCreated",
+        "TaskCompleted",
+        "Elicitation",
+        "ElicitationResult",
+        "ConfigChange",
+        "WorktreeCreate",
+        "WorktreeRemove",
+        "InstructionsLoaded",
+        "FileChanged",
+        "CwdChanged",
+        "DirectoryAdded",
+        "MessageDisplay"
+      ],
+      "blocking": "exit 2 with the reason on stderr; some events also take a JSON decision",
+      "contextOutput": "plain stdout on SessionStart and UserPromptSubmit; hookSpecificOutput.additionalContext elsewhere",
+      "subagentKeys": [
+        "name",
+        "description",
+        "tools",
+        "disallowedTools",
+        "model",
+        "maxTurns",
+        "autoCompactWindow",
+        "skills",
+        "memory",
+        "background",
+        "omitClaudeMd",
+        "effort",
+        "isolation",
+        "color",
+        "experimental"
+      ],
+      "subagentKeysIgnoredForPlugins": [
+        "hooks",
+        "mcpServers",
+        "permissionMode",
+        "initialPrompt"
+      ],
+      "facts": [
+        {
+          "id": "claude-precompact-stdout",
+          "claim": "A PreCompact hook that exits 0 has its stdout used as the compaction summary instructions, capped at 10,000 characters per hook.",
+          "verified": "2026-11-06"
+        },
+        {
+          "id": "claude-postcompact-no-context",
+          "claim": "PostCompact has no decision control and cannot inject context; its stdout is discarded. SessionStart fires again after compaction, which is what re-injects context.",
+          "verified": "2026-11-06"
+        },
+        {
+          "id": "claude-instructionsloaded-per-file",
+          "claim": "InstructionsLoaded fires once per instruction file with file_path, memory_type and load_reason. There is no instruction_files array.",
+          "verified": "2026-11-06"
+        },
+        {
+          "id": "claude-memory-adds-write",
+          "claim": "A subagent with a memory scope automatically gains the Read, Write and Edit tools, which widens any tools: allowlist. No Dev-OS persona sets memory:.",
+          "verified": "2026-11-06"
+        },
+        {
+          "id": "claude-skills-dir",
+          "claim": "Claude Code reads skills from .claude/skills only, which is why Dev-OS writes links there.",
+          "verified": "2026-11-02"
+        },
+        {
+          "id": "claude-handler-dedup",
+          "claim": "An identical handler in two settings files runs once, but a plugin's copy stays separate and runs in parallel; hence the plugin stand-down gate.",
+          "verified": "2026-11-02"
+        }
+      ],
+      "subagentIsolationValues": [
+        "worktree"
+      ],
+      "subagentEffortValues": [
+        "low",
+        "medium",
+        "high",
+        "xhigh",
+        "max"
+      ],
+      "subagentColorValues": [
+        "red",
+        "blue",
+        "green",
+        "yellow",
+        "purple",
+        "orange",
+        "pink",
+        "cyan"
+      ],
+      "subagentMemoryValues": [
+        "user",
+        "project",
+        "local"
+      ]
+    },
+    "codex": {
+      "name": "Codex",
+      "configFile": ".codex/hooks.json",
+      "docs": [
+        {
+          "url": "https://learn.chatgpt.com/docs/hooks",
+          "verified": "2026-11-08",
+          "how": "docs",
+          "covers": "hook config schema, events, payloads, trust model"
+        },
+        {
+          "url": "https://learn.chatgpt.com/docs/build-skills",
+          "verified": "2026-11-02",
+          "how": "docs",
+          "covers": "skill discovery directories"
+        }
+      ],
+      "hookEvents": [
+        "SessionStart",
+        "SessionEnd",
+        "PreToolUse",
+        "PermissionRequest",
+        "PostToolUse",
+        "PreModelRequest",
+        "PostModelRequest",
+        "PreCompact",
+        "PostCompact",
+        "UserPromptSubmit",
+        "SubagentStart",
+        "SubagentStop",
+        "Stop",
+        "Interrupt"
+      ],
+      "schemaShape": "nested matcher groups, identical to Claude Code",
+      "timeoutUnit": "seconds",
+      "blocking": "exit 2 with stderr, or permissionDecision deny",
+      "contextOutput": "plain stdout or hookSpecificOutput.additionalContext",
+      "facts": [
+        {
+          "id": "codex-trust",
+          "claim": "Project hooks do not run until the human trusts them with /hooks, and trust is tied to each script's hash, so a devos update requires re-trusting.",
+          "verified": "2026-11-08"
+        },
+        {
+          "id": "codex-sessionend-timeout",
+          "claim": "SessionEnd and Interrupt default to a 1 second timeout and allow at most 3.",
+          "verified": "2026-11-08"
+        },
+        {
+          "id": "codex-hosted-tools",
+          "claim": "PreToolUse cannot intercept hosted tools such as WebSearch; the docs call tool hooks a guardrail, not an enforcement boundary.",
+          "verified": "2026-11-08"
+        },
+        {
+          "id": "codex-listing-budget",
+          "claim": "The skill list is capped at 2% of the context window, or 8,000 characters when the window is unknown.",
+          "verified": "2026-11-02"
+        },
+        {
+          "id": "codex-skills-dir",
+          "claim": "Codex scans .agents/skills from the cwd up to the repo root. NOT re-verified live: no Codex CLI is installed here, and the equivalent claim for OpenCode proved wrong when measured.",
+          "verified": "2026-11-02",
+          "confidence": "doc-only, suspect"
+        },
+        {
+          "id": "codex-ask-unsupported",
+          "claim": "Codex documents permissionDecision \"ask\" as not yet supported, so the Claude Code commit-approval prompt has no equivalent. Commit policy agent stays Claude-Code-only and the agent commit path is refused on other harnesses.",
+          "verified": "2026-11-09"
+        }
+      ]
+    },
+    "cursor": {
+      "name": "Cursor",
+      "configFile": ".cursor/hooks.json",
+      "docs": [
+        {
+          "url": "https://cursor.com/docs/hooks",
+          "verified": "2026-11-08",
+          "how": "docs",
+          "covers": "hook config schema, event list, payloads, exit codes"
+        },
+        {
+          "url": "https://cursor.com/docs/context/skills",
+          "verified": "2026-11-02",
+          "how": "docs",
+          "covers": "skill discovery directories"
+        }
+      ],
+      "hookEvents": [
+        "sessionStart",
+        "sessionEnd",
+        "preToolUse",
+        "postToolUse",
+        "postToolUseFailure",
+        "subagentStart",
+        "subagentStop",
+        "beforeShellExecution",
+        "afterShellExecution",
+        "beforeMCPExecution",
+        "afterMCPExecution",
+        "beforeReadFile",
+        "afterFileEdit",
+        "beforeSubmitPrompt",
+        "preCompact",
+        "stop",
+        "afterAgentResponse",
+        "afterAgentThought",
+        "beforeTabFileRead",
+        "afterTabFileEdit",
+        "workspaceOpen"
+      ],
+      "schemaShape": "flat handler lists under each camelCase event, with a required integer \"version\"",
+      "timeoutUnit": "seconds",
+      "blocking": "exit 2, or permission deny",
+      "contextOutput": "additional_context (snake_case)",
+      "facts": [
+        {
+          "id": "cursor-version-required",
+          "claim": "hooks.json requires a positive integer \"version\" field.",
+          "verified": "2026-11-08"
+        },
+        {
+          "id": "cursor-ask-not-enforced",
+          "claim": "On preToolUse, permission \"ask\" is accepted but not enforced; only beforeShellExecution honours ask.",
+          "verified": "2026-11-08"
+        },
+        {
+          "id": "cursor-trust",
+          "claim": "Project hooks require the workspace to be trusted.",
+          "verified": "2026-11-08"
+        },
+        {
+          "id": "cursor-skills-dir",
+          "claim": "Cursor scans .agents/skills plus .cursor/skills and .claude/skills. NOT re-verified live: Cursor is installed as an app only, with no CLI to measure.",
+          "verified": "2026-11-02",
+          "confidence": "doc-only, suspect"
+        },
+        {
+          "id": "cursor-beforesubmitprompt-no-context",
+          "claim": "beforeSubmitPrompt outputs only {continue, user_message}; it has no additional_context, so the per-turn Orchestrator directive cannot be injected there. Dev-OS does not wire it and relies on sessionStart instead.",
+          "verified": "2026-11-09"
+        },
+        {
+          "id": "cursor-fails-open",
+          "claim": "Any exit code other than 2 (a crash, a timeout, a missing script) lets the action proceed unless the handler sets failClosed. Dev-OS sets failClosed on preToolUse.",
+          "verified": "2026-11-09"
+        },
+        {
+          "id": "cursor-generic-pretooluse",
+          "claim": "preToolUse fires for every tool type including Read and Grep, and takes no matcher in the flat schema Dev-OS writes. The file gates therefore have to decide for themselves whether a tool writes the path it names.",
+          "verified": "2026-11-09"
+        }
+      ]
+    },
+    "antigravity": {
+      "name": "Antigravity CLI",
+      "configFile": ".agents/hooks.json",
+      "docs": [
+        {
+          "url": "https://antigravity.google/docs/hooks?tab=cli",
+          "verified": "2026-11-08",
+          "how": "docs",
+          "covers": "hook config locations, schema, events, payloads, output"
+        }
+      ],
+      "hookEvents": [
+        "SessionStart",
+        "PreToolUse",
+        "PostToolUse",
+        "PreInvocation",
+        "PostInvocation",
+        "Stop"
+      ],
+      "schemaShape": "a named bundle with \"enabled\"; lifecycle handlers sit directly under the event key, tool events use matcher groups",
+      "timeoutUnit": "seconds",
+      "blocking": "a required {\"decision\":\"deny\"} with a reason; exit 2 is NOT documented as a denial",
+      "contextOutput": "injectSteps[].systemMessage; there is no additionalContext",
+      "facts": [
+        {
+          "id": "antigravity-replaced-gemini",
+          "claim": "Antigravity CLI replaced Gemini CLI on 2026-06-18, so Dev-OS writes no .gemini/settings.json hooks.",
+          "verified": "2026-11-08"
+        },
+        {
+          "id": "antigravity-config-path",
+          "claim": "Workspace hooks live at .agents/hooks.json at the project root, a file beside Dev-OS's own .agents/hooks/ script directory. Hooks in ~/.gemini/antigravity-cli/settings.json are not loaded.",
+          "verified": "2026-11-08"
+        },
+        {
+          "id": "antigravity-camelcase",
+          "claim": "Payload fields are camelCase and differ from every other harness: conversationId, workspacePaths, transcriptPath, artifactDirectoryPath, modelName, lastUserInput.",
+          "verified": "2026-11-08"
+        },
+        {
+          "id": "antigravity-pascalcase-args",
+          "claim": "Tool ARGUMENTS are PascalCase, not just the envelope: run_command takes CommandLine, and the write tools take TargetFile plus CodeContent/ReplacementContent/ReplacementChunks. Folding only the outer field names left tool_input.command empty, which silently disabled every gate on this harness.",
+          "verified": "2026-11-09"
+        },
+        {
+          "id": "antigravity-decision-required",
+          "claim": "PreToolUse requires a \"decision\"; allow, auto_approve, deny, ask, force_ask and deny_unless_prior_grant are the documented values. Dev-OS answers allow on a permitted call and deny on a refusal.",
+          "verified": "2026-11-09"
+        },
+        {
+          "id": "antigravity-injectsteps-ambiguous",
+          "claim": "OPEN QUESTION. The docs contradict themselves on the inject-step shape: the SessionStart example nests {\"systemMessage\": {\"systemMessage\": \"...\"}} while the PreInvocation field table shows a step as {\"systemMessage\": \"text\", \"metadata\": {...}} with a plain string. Dev-OS emits the plain string form, which matches the field table. If the nested form is real, session context is silently dropped on this harness. Needs measuring on a machine with the CLI.",
+          "verified": "2026-11-09",
+          "confidence": "doc-ambiguous, unresolved"
+        },
+        {
+          "id": "antigravity-exit-code-undocumented",
+          "claim": "The docs say nothing about a non-zero exit, empty stdout, invalid JSON or a hook timeout. Dev-OS therefore never relies on an exit code here: every refusal prints a deny decision.",
+          "verified": "2026-11-09"
+        }
+      ],
+      "toolArgSpellings": {
+        "run_command": [
+          "CommandLine",
+          "Cwd",
+          "WaitMsBeforeAsync"
+        ],
+        "write_to_file": [
+          "TargetFile",
+          "Overwrite",
+          "CodeContent",
+          "Description"
+        ],
+        "replace_file_content": [
+          "TargetFile",
+          "Instruction",
+          "Description",
+          "TargetContent",
+          "ReplacementContent",
+          "StartLine",
+          "EndLine"
+        ],
+        "multi_replace_file_content": [
+          "TargetFile",
+          "ReplacementChunks"
+        ]
+      },
+      "decisionValues": [
+        "allow",
+        "auto_approve",
+        "deny",
+        "ask",
+        "force_ask",
+        "deny_unless_prior_grant"
+      ]
+    },
+    "opencode": {
+      "name": "OpenCode",
+      "configFile": ".opencode/plugins/devos.js",
+      "docs": [
+        {
+          "url": "https://opencode.ai/docs/plugins/",
+          "verified": "2026-11-08",
+          "how": "docs",
+          "covers": "plugin discovery directories only; the plugin API pages 404"
+        },
+        {
+          "url": "https://opencode.ai/docs/config/",
+          "verified": "2026-10-22",
+          "how": "docs",
+          "covers": "opencode.json schema and instructions array"
+        }
+      ],
+      "verifiedAgainstTypings": {
+        "package": "@opencode-ai/plugin",
+        "version": "1.18.26",
+        "cli": "1.18.35",
+        "date": "2026-11-08",
+        "note": "hook names and signatures were read from the installed typings because the API docs 404 and third-party sources contradict each other"
+      },
+      "pluginHooks": [
+        "chat.message",
+        "chat.params",
+        "chat.headers",
+        "permission.ask",
+        "command.execute.before",
+        "tool.execute.before",
+        "tool.execute.after",
+        "tool.definition",
+        "shell.env",
+        "experimental.chat.messages.transform",
+        "experimental.chat.system.transform",
+        "experimental.provider.small_model",
+        "experimental.session.compacting",
+        "experimental.compaction.autocontinue",
+        "experimental.text.complete"
+      ],
+      "hookEvents": [],
+      "schemaShape": "a JS module exporting a Plugin function that returns a flat object of named hooks",
+      "blocking": "throw from tool.execute.before; its output carries only args, so there is no decision field",
+      "contextOutput": "push onto output.system in experimental.chat.system.transform",
+      "facts": [
+        {
+          "id": "opencode-no-session-hooks",
+          "claim": "permission.asked, session.created and session.compacted are NOT hooks. The real name is permission.ask; session lifecycle arrives through the generic event hook.",
+          "verified": "2026-11-08",
+          "confidence": "live"
+        },
+        {
+          "id": "opencode-plugin-discovery",
+          "claim": "A plain .js file at .opencode/plugins/ is auto-discovered; opencode debug config lists it under \"plugin\".",
+          "verified": "2026-11-09",
+          "confidence": "live"
+        },
+        {
+          "id": "opencode-skills-not-found",
+          "claim": "Measured with opencode debug skill in an OpenCode install, NO project-level skills are discovered: not from .agents/skills, .claude/skills or .opencode/skills. Only built-ins and the global ~/.claude/skills are listed. This contradicts opencode.ai/docs/skills and is why the same doc-only claims for Codex and Cursor are marked suspect.",
+          "verified": "2026-11-09",
+          "confidence": "live"
+        },
+        {
+          "id": "opencode-generic-tool-hook",
+          "claim": "tool.execute.before fires for every tool, including the lowercase read/grep tools, so the file gates must distinguish writers from readers themselves.",
+          "verified": "2026-11-09",
+          "confidence": "live"
+        }
+      ]
+    }
+  }
+}

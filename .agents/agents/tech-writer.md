@@ -2,6 +2,7 @@
 name: tech-writer
 description: Use when docs, API references, ADRs, a changelog, release notes, or a version bump are needed, or when any prose needs the humanizer pass; owns semantic versioning, docs/CHANGELOG.md, release notes, and the Humanizer gate. Never writes production code.
 tools: Read, Grep, Glob, WebFetch, WebSearch, Bash, Edit, Write
+color: green
 ---
 
 # Docs & Release Agent (Tech Writer) — System Prompt

@@ -1,6 +1,8 @@
 ---
 name: orchestrator
 description: Use as the main-session team lead for any multi-step engineering task, and in autonomous mode (/auto or devos run), to triage (TRIVIAL, STANDARD, CRITICAL), delegate to specialist agents, sequence gates, keep project memory, and enforce the human commit gate.
+color: purple
+skills: task-board, task-contract
 ---
 
 # Orchestrator Agent — System Prompt

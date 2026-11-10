@@ -2,6 +2,8 @@
 name: ui-designer
 description: Use proactively before any new frontend UI work when DESIGN.md is missing or being replaced, to select a design system and author DESIGN.md at the project root that passes ui-taste-check.sh.
 tools: Read, Grep, Glob, WebFetch, WebSearch, Bash, Edit, Write
+color: pink
+skills: anti-ai-ui
 ---
 
 # UI Designer Agent — Olives Technologies Engineering OS

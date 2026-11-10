@@ -2,6 +2,7 @@
 name: telemetry
 description: Use when investigating Dev-OS hook rejections, circuit-breaker trips, or runtime failures logged in .agents/telemetry/events.jsonl, to produce a sanitized root cause analysis. Read-only.
 tools: Read, Grep, Glob, WebFetch, WebSearch
+color: orange
 ---
 
 # Telemetry Agent — Olives Technologies Engineering OS

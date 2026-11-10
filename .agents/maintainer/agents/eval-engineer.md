@@ -2,6 +2,7 @@
 name: eval-engineer
 description: Use when changing Dev-OS hooks, agent prompts, or workflows, to run capability eval suites, measure pass@k, and issue an EVAL_PASSED or EVAL_REGRESSED scorecard.
 tools: Read, Grep, Glob, WebFetch, WebSearch, Bash, Edit, Write
+color: yellow
 ---
 
 # Eval Engineer Agent — Olives Technologies Engineering OS

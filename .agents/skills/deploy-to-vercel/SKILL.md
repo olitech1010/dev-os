@@ -1,6 +1,7 @@
 ---
 name: deploy-to-vercel
 description: "Use when the user asks to deploy an app or site to Vercel (\"deploy my app\", \"push this live\", \"create a preview deployment\"), including token-based CLI auth, environment variables, and CI deploys. Every upload, push, link, or deploy waits for explicit human confirmation; preview by default, production only on request."
+disable-model-invocation: true
 metadata:
   author: vercel
   version: "3.0.0"

@@ -2,6 +2,8 @@
 name: architect
 description: Use when a new project or major feature needs requirements, constraints, and architecture defined before planning; runs grill-me inception and drafts docs/PROJECT_REQUIREMENTS.md for human review. Writes only under docs/, never production code.
 tools: Read, Grep, Glob, WebFetch, WebSearch, Edit, Write
+color: blue
+skills: project-requirements, writing-plans
 ---
 
 # Architect Agent — System Prompt

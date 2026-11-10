@@ -1193,7 +1193,97 @@ function commitShForm(forms) {
   return forms.includes('canonical') ? 'canonical' : 'none';
 }
 
+// Cross-harness payload shapes (wave 5.2 W6). Every harness sends its own spelling for
+// "which tool, with what arguments", so the shapes are folded into the Claude Code spelling
+// once, here, and the gates below stay harness-agnostic.
+// Verified 2026-11-08 against each harness's own docs:
+//   Claude Code / Codex / Cursor preToolUse: {tool_name, tool_input: {command|file_path}, cwd}
+//     - identical spelling, so nothing to do.
+//   Cursor beforeShellExecution: {command, cwd, sandbox} - no tool_name, no tool_input.
+//   Antigravity CLI PreToolUse: {toolCall: {name, args}, stepIdx, workspacePaths: [...]}
+//     - camelCase throughout, and the project root arrives as workspacePaths, not cwd.
+// A field already present in the Claude Code spelling always wins, so this can only add.
+function normalizeHarnessPayload(input) {
+  if (!input || typeof input !== 'object' || Array.isArray(input)) return input;
+
+  // Antigravity: toolCall.name / toolCall.args
+  if (typeof input.tool_name !== 'string' && input.toolCall && typeof input.toolCall === 'object') {
+    if (typeof input.toolCall.name === 'string') input.tool_name = input.toolCall.name;
+    if (!input.tool_input && input.toolCall.args && typeof input.toolCall.args === 'object') {
+      input.tool_input = input.toolCall.args;
+    }
+  }
+
+  // Cursor's shell hook: the command sits at the top level with no tool named.
+  if (typeof input.tool_name !== 'string' && typeof input.command === 'string') {
+    input.tool_name = 'Bash';
+    if (!input.tool_input) input.tool_input = { command: input.command };
+  }
+
+  const ti = input.tool_input && typeof input.tool_input === 'object' && !Array.isArray(input.tool_input)
+    ? input.tool_input : null;
+
+  // Antigravity spells its tool arguments in PascalCase, which is why folding only the field
+  // NAMES was not enough: every gate reads tool_input.command or tool_input.file_path, so an
+  // unmapped arg left COMMAND empty and the destructive, commit and marker gates never ran.
+  // Verified 2026-11-09 (antigravity.google/docs/hooks?tab=cli): run_command -> CommandLine,
+  // write_to_file -> TargetFile + CodeContent, replace_file_content -> TargetFile +
+  // ReplacementContent, multi_replace_file_content -> TargetFile + ReplacementChunks.
+  if (ti && typeof ti.command !== 'string') {
+    ['CommandLine', 'commandLine'].some((k) => {
+      if (typeof ti[k] === 'string' && ti[k]) { ti.command = ti[k]; return true; }
+      return false;
+    });
+  }
+
+  // Alternative spellings for the written path. file_path is what the gates read.
+  if (ti && typeof ti.file_path !== 'string') {
+    ['filePath', 'TargetFile', 'targetFile', 'notebook_path', 'notebookPath',
+      'absolute_path', 'absolutePath', 'path'].some((k) => {
+      if (typeof ti[k] === 'string' && ti[k]) { ti.file_path = ti[k]; return true; }
+      return false;
+    });
+  }
+
+  // Antigravity sends workspacePaths instead of cwd; the first entry is the workspace root.
+  if (typeof input.cwd !== 'string' && Array.isArray(input.workspacePaths) &&
+      typeof input.workspacePaths[0] === 'string') {
+    input.cwd = input.workspacePaths[0];
+  }
+
+  return input;
+}
+
+// Tools that write a file, across every harness Dev-OS supports (lowercased for comparison).
+// Claude Code: Edit, Write, MultiEdit, NotebookEdit. Codex: apply_patch (also matched as
+// Edit/Write). Antigravity: write_to_file, replace_file_content, multi_replace_file_content.
+// OpenCode: lowercase write/edit/patch.
+const WRITE_TOOLS = new Set(['edit', 'write', 'multiedit', 'notebookedit', 'apply_patch',
+  'applypatch', 'patch', 'write_to_file', 'writetofile', 'replace_file_content',
+  'replacefilecontent', 'multi_replace_file_content', 'multireplacefilecontent',
+  'create_file', 'createfile', 'str_replace', 'strreplace', 'str_replace_editor']);
+// Tools that only read. These never produce a write target, whatever path they carry.
+const READ_ONLY_TOOLS = new Set(['read', 'grep', 'glob', 'ls', 'list', 'search', 'find',
+  'notebookread', 'readfile', 'read_file', 'view', 'view_file', 'codebase_search',
+  'grep_search', 'file_search', 'list_dir', 'webfetch', 'websearch']);
+// An argument that carries file content: an unrecognised tool that has one is writing.
+const CONTENT_ARGS = ['content', 'new_string', 'newString', 'CodeContent', 'codeContent',
+  'ReplacementContent', 'replacementContent', 'ReplacementChunks', 'replacementChunks',
+  'patch', 'diff', 'new_str', 'newStr'];
+
+// Does this tool call write the path it names? A known writer does; a known reader never
+// does; anything else does only when it carries file content, which keeps an unrecognised
+// writing tool gated without refusing every unrecognised read.
+function writesItsFilePath(toolName, ti) {
+  const t = String(toolName || '').toLowerCase();
+  if (!t) return true;
+  if (WRITE_TOOLS.has(t)) return true;
+  if (READ_ONLY_TOOLS.has(t)) return false;
+  return Boolean(ti && CONTENT_ARGS.some((k) => typeof ti[k] === 'string' || Array.isArray(ti[k])));
+}
+
 function buildLines(input, parseMode) {
+  input = normalizeHarnessPayload(input);
   const ti = (input && typeof input.tool_input === 'object' && input.tool_input) || {};
   const toolName = typeof input.tool_name === 'string' ? input.tool_name : '';
   const command = typeof ti.command === 'string' ? ti.command : '';
@@ -1232,7 +1322,9 @@ function buildLines(input, parseMode) {
     if (ctx.unsure || ctx.stdinShell) fallbackScan(command, out);
     if (STATE_NAME_RE.test(norm)) out.protectedHit = out.protectedHit || 'names the TRIVIAL budget or session stamp file';
   }
-  if (filePath) out.targets.unshift(filePath);
+  // FILE_PATH is still reported for every tool (the TRIVIAL fast path and the edit-size
+  // checks read it); it only becomes a write TARGET when the tool actually writes it.
+  if (filePath && writesItsFilePath(toolName, ti)) out.targets.unshift(filePath);
   const prot = protectedPaths(out.targets.concat(out.mutates), ctx);
   if (out.protectedHit) prot.unshift(out.protectedHit);
 

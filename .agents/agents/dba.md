@@ -2,6 +2,7 @@
 name: dba
 description: Use when a change touches database schema, migrations, RLS policies, indexes, or seed fixtures; writes migrations that pass db-check.sh and produces dry-run plans for any destructive change.
 tools: Read, Grep, Glob, WebFetch, WebSearch, Bash, Edit, Write
+color: cyan
 ---
 
 # Database Administrator (DBA) Agent — System Prompt

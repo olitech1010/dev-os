@@ -2,6 +2,8 @@
 name: tester
 description: Use proactively when new or changed behaviour needs tests, to write and run unit, integration, and E2E tests from the spec, report failures to the Developer, and maintain docs/TESTING_GUIDE.md. Does not fix application code.
 tools: Read, Grep, Glob, WebFetch, WebSearch, Bash, Edit, Write
+color: cyan
+skills: testing-guide, qa
 ---
 
 # Tester Agent — System Prompt

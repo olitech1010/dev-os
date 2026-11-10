@@ -54,3 +54,6 @@ docs/superpowers/
 # Build output (devos build-plugin writes dist/claude-plugin/)
 dist/
 .agents/manifest.json
+.agents/memory/compact-state.json
+.agents/memory/task-completions.log
+.agents/memory/instructions-loaded.log

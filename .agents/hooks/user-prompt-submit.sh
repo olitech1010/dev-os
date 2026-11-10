@@ -17,6 +17,16 @@ if [ -f "$_DEVOS_HD/lib/common.sh" ]; then
 fi
 
 if [ ! -t 0 ]; then IFS= read -r -d '' -t 2 _DISCARD || true; fi
+# lib/common.sh absent (a partial install): keep printing plain text, which is what
+# Claude Code and Codex read anyway.
+if ! command -v devos_say >/dev/null 2>&1; then
+    devos_say() { printf '%s\n' "$1"; }
+    devos_flush_context() { :; }
+    # devos_superpowers_present calls this; without it the hook printed a
+    # "command not found" line and then fell back to plain text on every harness.
+    devos_hook_format() { printf 'claude\n'; }
+fi
+
 
 if [ -n "$CLAUDE_PROJECT_DIR" ] && [ -d "$CLAUDE_PROJECT_DIR" ]; then
     cd "$CLAUDE_PROJECT_DIR" 2>/dev/null || true
@@ -36,23 +46,24 @@ if [ -f "$SESSION_FILE" ]; then
     if [ -n "$PARSED_DELEG" ]; then DELEGATION="$PARSED_DELEG"; fi
 fi
 
-echo "=================================================="
-echo "  Dev-OS Orchestrator Directive (re-injected each turn)"
-echo "=================================================="
+devos_say "=================================================="
+devos_say "  Dev-OS Orchestrator Directive (re-injected each turn)"
+devos_say "=================================================="
 if [ "$LOCKED" = "true" ]; then
-    echo "Role: ORCHESTRATOR (locked). You do NOT author production code directly."
-    echo "      Triage the request, declare the task in docs/TASK_BOARD.md, and delegate"
-    echo "      implementation to the assigned specialist subagent."
+    devos_say "Role: ORCHESTRATOR (locked). You do NOT author production code directly."
+    devos_say "      Triage the request, declare the task in docs/TASK_BOARD.md, and delegate"
+    devos_say "      implementation to the assigned specialist subagent."
 else
-    echo "Role: Orchestrator (unlocked). Specialist delegation is encouraged."
+    devos_say "Role: Orchestrator (unlocked). Specialist delegation is encouraged."
 fi
-echo "Mode: $MODE (locked — change only with 'devos mode <interactive|guided|auto|audit>')."
+devos_say "Mode: $MODE (locked — change only with 'devos mode <interactive|guided|auto|audit>')."
 if [ "$DELEGATION" = "true" ]; then
-    echo "Delegation: REQUIRED. Solo production-code writes are blocked until an active"
-    echo "            [ IN_PROGRESS ] task with an Assignee exists in docs/TASK_BOARD.md."
-    echo "            Intentional solo work requires DEVOS_SOLO_APPROVED=true."
+    devos_say "Delegation: REQUIRED. Solo production-code writes are blocked until an active"
+    devos_say "            [ IN_PROGRESS ] task with an Assignee exists in docs/TASK_BOARD.md."
+    devos_say "            Intentional solo work requires DEVOS_SOLO_APPROVED=true."
 fi
-echo "Commit: raw 'git commit' is blocked. Use .agents/scripts/commit.sh."
-echo "=================================================="
+devos_say "Commit: raw 'git commit' is blocked. Use .agents/scripts/commit.sh."
+devos_say "=================================================="
 
+devos_flush_context ""
 exit 0

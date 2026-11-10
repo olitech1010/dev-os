@@ -2,6 +2,8 @@
 name: qa
 description: Use proactively after the Developer finishes a change, to run lint, type-check, the existing test suite, and Dev-OS scanners, then review against CODING_STANDARDS.md and return an APPROVED or CHANGES REQUESTED verdict. Does not write tests or do threat review.
 tools: Read, Grep, Glob, WebFetch, WebSearch, Bash
+color: yellow
+skills: qa, testing-guide
 ---
 
 # QA Agent — System Prompt

@@ -2,6 +2,8 @@
 name: security
 description: Use proactively after code changes touching auth, permissions, input handling, secrets, file uploads, or dependencies, for an OWASP Top 10 threat review with a severity-rated risk report. Does not modify code.
 tools: Read, Grep, Glob, WebFetch, WebSearch, Bash
+color: red
+skills: security-review
 ---
 
 # Security Agent — System Prompt

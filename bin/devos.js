@@ -545,6 +545,7 @@ const AUDIT_LATEST_ALLOW = ['shadcn@latest', 'create-next-app@latest', 'create-e
 // Runtime paths that only exist after Dev-OS runs; references to them are not broken
 const AUDIT_RUNTIME_PATHS = ['.agents/_backup', '.agents/bin', '.agents/manifest.json', '.agents/telemetry',
   '.agents/evals/reports', '.agents/memory/session.json', '.agents/memory/sdlc-state.json', '.agents/memory/context.json',
+  '.agents/memory/compact-state.json', '.agents/memory/task-completions.log', '.agents/memory/instructions-loaded.log',
   '.agents/memory/decisions', '.agents/memory/handoffs',
   '.agents/product-marketing.md' /* user-authored context file the marketing skills create */];
 
@@ -661,6 +662,7 @@ function auditSkills(skillsDir) {
     passed: 0,
     warnings: 0,
     errors: 0,
+    listingChars: 0,
     skills: []
   };
 
@@ -722,6 +724,15 @@ function auditSkills(skillsDir) {
       const desc = fm.data && typeof fm.data.description === 'string' ? fm.data.description.trim() : '';
       if (desc && (!/use when/i.test(desc) || desc.length < 80)) {
         skillReport.issues.push({ level: 'warn', code: 'weak-description', message: `description should be a 'Use when ...' trigger of at least 80 chars (${desc.length} chars)` });
+      }
+      // Claude Code lists description + when_to_use and cuts each entry at 1,536 characters
+      // (code.claude.com/docs/en/skills, verified 2026-11-02); Codex caps the whole list at 8,000
+      // characters when the context window is unknown (learn.chatgpt.com/docs/build-skills).
+      const whenTo = fm.data && typeof fm.data.when_to_use === 'string' ? fm.data.when_to_use.trim() : '';
+      const entryLen = desc.length + (whenTo ? whenTo.length + 1 : 0);
+      result.listingChars += skillName.length + Math.min(entryLen, 1536);
+      if (entryLen > 1536) {
+        skillReport.issues.push({ level: 'warn', code: 'listing-cap', message: `description + when_to_use is ${entryLen} chars; Claude Code cuts the listing entry at 1,536, so put the trigger first` });
       }
       const lineCount = content.split(/\r?\n/).length;
       if (lineCount > 500 && !fs.existsSync(path.join(sPath, 'references'))) {
@@ -1427,8 +1438,50 @@ function generateClaudeCommands(destAgents, destClaude, written, guard) {
   return count;
 }
 
-// Claude Code subagent frontmatter keys passed through from .agents/agents/*.md
-const AGENT_MODELS = ['sonnet', 'opus', 'haiku', 'inherit'];
+// Claude Code subagent frontmatter, passed through from .agents/agents/*.md.
+// Keys and allowed values verified 2026-11-06 against code.claude.com/docs/en/sub-agents.
+// Multi-word keys are camelCase and must match exactly; Claude Code silently ignores keys it
+// does not know, so a typo in a source persona would otherwise be invisible.
+const AGENT_MODEL_ALIASES = ['sonnet', 'opus', 'haiku', 'fable', 'inherit'];
+// A full model id is allowed too, in any of the spellings the three hosts use:
+// claude-opus-5-5 (Anthropic API), us.anthropic.claude-opus-4-5-v1:0 (Bedrock),
+// claude-sonnet-4-5@20250929 (Vertex). Claude Code itself does no model validation, so a
+// pattern that is too strict silently drops the pin and the agent inherits another model.
+const AGENT_MODEL_ID_RE = /^([a-z0-9][a-z0-9._-]*\.)?claude[a-z0-9._:@-]*$/;
+const AGENT_EFFORTS = ['low', 'medium', 'high', 'xhigh', 'max'];
+const AGENT_COLORS = ['red', 'blue', 'green', 'yellow', 'purple', 'orange', 'pink', 'cyan'];
+// memory: also makes Claude Code add Read, Write and Edit to the subagent's tools ("Read,
+// Write, and Edit tools are automatically enabled so the subagent can manage its memory
+// files"). That silently widens a `tools:` allowlist, so no Dev-OS persona sets it — it would
+// hand Write and Edit to the read-only roles (researcher, tech-lead). Supported for projects
+// that want it on a role of their own; set it on a persona that already writes files.
+// Scope note: project stores under .claude/agent-memory/ (meant to be committed), local under
+// .claude/agent-memory-local/ (not meant to be).
+const AGENT_MEMORY_SCOPES = ['user', 'project', 'local'];
+// Only worktree is documented at code.claude.com/docs/en/sub-agents. A value that is not
+// recorded in .agents/evals/conformance.json does not ship, which is the whole point of the
+// fixture; re-add others when a dated source says so.
+const AGENT_ISOLATIONS = ['worktree'];
+// Claude Code ignores these on a plugin-provided agent, and Dev-OS ships its agents through
+// the plugin as well as .claude/agents/. Emitting them would read as enforcement that is not
+// there, so they are dropped with a notice instead.
+const AGENT_IGNORED_KEYS = ['permissionMode', 'hooks', 'mcpServers', 'initialPrompt'];
+// skills: preloads a skill into the subagent. Claude Code keeps only the first 32 distinct
+// names, and for a name it cannot find it skips the preload and writes a line to the debug
+// log only — nothing surfaces in session — so unknown names are dropped here instead.
+const AGENT_MAX_SKILLS = 32;
+// Every frontmatter key generateClaudeAgents can write. Kept beside the validation tables so
+// the conformance check reads one list rather than inferring it from the generator body.
+const AGENT_SUBAGENT_KEYS_EMITTED = ['name', 'description', 'tools', 'disallowedTools', 'model',
+  'effort', 'memory', 'isolation', 'color', 'maxTurns', 'autoCompactWindow', 'omitClaudeMd',
+  'background', 'skills'];
+
+// Comma-separated or YAML-list frontmatter value -> array of trimmed entries.
+function agentList(v) {
+  if (Array.isArray(v)) return v.map((x) => String(x).trim()).filter(Boolean);
+  if (typeof v === 'string') return v.split(',').map((x) => x.trim()).filter(Boolean);
+  return [];
+}
 
 function generateClaudeAgents(destAgents, destClaude, written, guard) {
   const srcAgents = path.join(destAgents, 'agents');
@@ -1451,22 +1504,79 @@ function generateClaudeAgents(destAgents, destClaude, written, guard) {
       `Dev-OS ${name} agent persona. Use for tasks assigned to the ${name} role in .agents/AGENTS.md.`;
 
     const lines = ['---', `name: ${name}`, `description: ${yamlScalar(description)}`];
+    const warn = (msg) => console.error(`${colors.yellow}[ WARN ] Agent '${file}' ${msg}${colors.reset}`);
 
-    let tools = data.tools;
-    if (Array.isArray(tools)) tools = tools.join(', ');
-    if (typeof tools === 'string' && tools.trim()) {
-      const list = tools.split(',').map((t) => t.trim()).filter(Boolean);
-      if (list.length) lines.push(`tools: ${yamlScalar(list.join(', '))}`);
-    }
+    ['tools', 'disallowedTools'].forEach((key) => {
+      const list = agentList(data[key]);
+      if (list.length) lines.push(`${key}: ${yamlScalar(list.join(', '))}`);
+    });
 
-    const model = typeof data.model === 'string' ? data.model.trim().toLowerCase() : '';
+    const model = typeof data.model === 'string' ? data.model.trim() : '';
     if (model) {
-      if (AGENT_MODELS.includes(model)) {
-        lines.push(`model: ${model}`);
+      const lower = model.toLowerCase();
+      if (AGENT_MODEL_ALIASES.includes(lower) || AGENT_MODEL_ID_RE.test(lower)) {
+        lines.push(`model: ${lower}`);
       } else {
-        console.error(`${colors.yellow}[ WARN ] Agent '${file}' declares unknown model '${data.model}'; omitted (inherits).${colors.reset}`);
+        warn(`declares unknown model '${model}'; omitted (inherits).`);
       }
     }
+
+    // Enumerated keys.
+    [
+      ['effort', AGENT_EFFORTS],
+      ['memory', AGENT_MEMORY_SCOPES],
+      ['isolation', AGENT_ISOLATIONS],
+      ['color', AGENT_COLORS]
+    ].forEach(([key, allowed]) => {
+      const raw = typeof data[key] === 'string' ? data[key].trim().toLowerCase() : '';
+      if (!raw) return;
+      if (allowed.includes(raw)) lines.push(`${key}: ${raw}`);
+      else warn(`declares ${key}: '${data[key]}', which is not one of ${allowed.join(', ')}; omitted.`);
+    });
+
+    // Bounded integers.
+    [
+      ['maxTurns', 1, Number.MAX_SAFE_INTEGER],
+      ['autoCompactWindow', 100000, 1000000]
+    ].forEach(([key, min, max]) => {
+      if (data[key] === undefined || data[key] === '') return;
+      const n = Number(String(data[key]).trim());
+      if (Number.isInteger(n) && n >= min && n <= max) lines.push(`${key}: ${n}`);
+      else warn(`declares ${key}: '${data[key]}'; expected a whole number from ${min} to ${max}; omitted.`);
+    });
+
+    // Flags Claude Code reads only as true.
+    ['omitClaudeMd', 'background'].forEach((key) => {
+      if (data[key] === undefined) return;
+      const raw = String(data[key]).trim().toLowerCase();
+      if (raw === 'true') lines.push(`${key}: true`);
+      else if (raw !== 'false') warn(`declares ${key}: '${data[key]}'; only true has an effect; omitted.`);
+    });
+
+    // Preloaded skills, validated against what is installed.
+    const skillNames = agentList(data.skills);
+    if (skillNames.length) {
+      // installedSkillNames takes the project root; destAgents is <root>/.agents.
+      const known = new Set(installedSkillNames(path.dirname(destAgents)));
+      const kept = [];
+      skillNames.forEach((sk) => {
+        if (known.size && !known.has(sk)) {
+          warn(`preloads skill '${sk}', which is not installed; dropped from skills:.`);
+          return;
+        }
+        if (!kept.includes(sk)) kept.push(sk);
+      });
+      if (kept.length > AGENT_MAX_SKILLS) {
+        warn(`preloads ${kept.length} skills; Claude Code keeps the first ${AGENT_MAX_SKILLS}, the rest are dropped.`);
+        kept.length = AGENT_MAX_SKILLS;
+      }
+      if (kept.length) lines.push(`skills: ${yamlScalar(kept.join(', '))}`);
+    }
+
+    AGENT_IGNORED_KEYS.forEach((key) => {
+      if (data[key] === undefined) return;
+      warn(`sets ${key}; Dev-OS omits it so the .claude/agents/ and plugin copies stay identical, and a plugin-provided agent ignores it. Set it on a hand-written agent in .claude/agents/ instead.`);
+    });
 
     lines.push('---', '', body.trim(), '');
     const out = lines.join('\n');
@@ -1762,7 +1872,8 @@ function generateCursorConfig(targetDir, ctx = harnessContext(targetDir)) {
     ''
   ].join('\n'), { targetDir, ctx });
 
-  return wrote ? '.cursor/rules/devos.mdc + .cursorrules' : '.cursorrules (kept your edited .cursor/rules/devos.mdc)';
+  const cursorHooks = writeHarnessJson(path.join(targetDir, '.cursor', 'hooks.json'), cursorHooksConfig(), ctx, '.cursor/hooks.json');
+  return (wrote ? '.cursor/rules/devos.mdc + .cursorrules' : '.cursorrules (kept your edited .cursor/rules/devos.mdc)') + ' + ' + cursorHooks;
 }
 
 const OPENCODE_SCHEMA = 'https://opencode.ai/config.json';
@@ -1820,13 +1931,17 @@ function generateOpenCodeConfig(targetDir, ctx = harnessContext(targetDir)) {
     (text) => text.startsWith('# OpenCode Dev-OS Rules'));
   removeDirIfEmpty(path.join(opencodeDir, 'rules'));
   removeDirIfEmpty(opencodeDir);
-  return `opencode.json (${status})`;
+  const ocPlugin = generateOpenCodePlugin(targetDir, ctx);
+  return `opencode.json (${status}) + ${ocPlugin}`;
 }
 
 function generateAntigravityConfig(targetDir, ctx) {
   upsertManagedBlock(path.join(targetDir, 'GEMINI.md'), thinPointerContent('Gemini CLI', '@./AGENTS.md'), { targetDir, ctx });
   upsertManagedBlock(path.join(targetDir, 'ANTIGRAVITY.md'), thinPointerContent('Google Antigravity', null), { targetDir, ctx });
-  return 'ANTIGRAVITY.md + GEMINI.md';
+  // Antigravity CLI reads .agents/hooks.json at the project root. That is a FILE beside the
+  // .agents/hooks/ script directory, not inside it.
+  const agHooks = writeHarnessJson(path.join(targetDir, '.agents', 'hooks.json'), antigravityHooksConfig(), ctx, '.agents/hooks.json');
+  return 'ANTIGRAVITY.md + GEMINI.md + ' + agHooks;
 }
 
 function generateGeminiConfig(targetDir, ctx) {
@@ -1839,8 +1954,254 @@ function generateCodexConfig(targetDir, ctx = harnessContext(targetDir)) {
   removeDirIfEmpty(codexDir);
   upsertManagedBlock(path.join(targetDir, '.windsurfrules'),
     '# Dev-OS Windsurf Rules\nFollow the Dev-OS block in AGENTS.md and the full rules in .agents/AGENTS.md.\n', { targetDir, ctx });
-  return '.windsurfrules';
+  const codexHooks = writeHarnessJson(path.join(targetDir, '.codex', 'hooks.json'), codexHooksConfig(), ctx, '.codex/hooks.json');
+  ctx.notes.push({ level: 'info', msg: 'Codex: run /hooks in Codex once to trust these hooks; until then they do not run. Trust is tied to each script\'s hash, so re-trust after a devos update.' });
+  return '.windsurfrules + ' + codexHooks;
 }
+
+// ---------------------------------------------------------------------------
+// Cross-harness hook adapters (wave 5.2 W6)
+// ---------------------------------------------------------------------------
+// One core, thin adapters. Every harness runs the SAME scripts in .agents/hooks/;
+// an adapter only (a) registers the events in that harness's own config file and
+// (b) tags the command with DEVOS_HOOK_FORMAT so lib/common.sh emits the shape
+// that harness documents. Nothing about the rules is duplicated per harness.
+//
+// Schemas verified 2026-11-08, each against its own docs. They disagree on
+// nesting, key case, event names and timeout units, so each one is generated
+// explicitly rather than from a shared shape:
+//   Codex        learn.chatgpt.com/docs/hooks          .codex/hooks.json,
+//                nested matcher groups, timeout in SECONDS (default 600;
+//                SessionEnd/Interrupt default 1 and cap at 3).
+//   Cursor       cursor.com/docs/hooks                 .cursor/hooks.json,
+//                REQUIRED integer "version", FLAT handler lists, camelCase
+//                events, snake_case output keys.
+//   Antigravity  antigravity.google/docs/hooks?tab=cli .agents/hooks.json,
+//                a NAMED bundle with "enabled"; lifecycle handlers sit directly
+//                under the event key while PreToolUse/PostToolUse use matcher
+//                groups. Replaced Gemini CLI on 2026-06-18.
+//   OpenCode     installed @opencode-ai/plugin typings  no shell hooks at all;
+//                a JS plugin in .opencode/plugins/.
+//
+// The command resolves its own script path from the git top level instead of an
+// absolute path, because these files get committed and an absolute path would
+// break for every other clone. Hooks already re-resolve the project root
+// themselves (devos_project_root), so only finding the script matters here.
+function harnessHookCommand(format, script) {
+  return `sh -c 'r=$(git rev-parse --show-toplevel 2>/dev/null || pwd); DEVOS_HOOK_FORMAT=${format} exec "$r/.agents/hooks/${script}"'`;
+}
+
+// Codex: ten of the twelve Dev-OS hooks map 1:1. Codex has no InstructionsLoaded
+// and no TaskCompleted, so those two stay Claude Code only.
+const CODEX_HOOK_EVENTS = [
+  ['SessionStart', 'session-start.sh', null, 60],
+  ['UserPromptSubmit', 'user-prompt-submit.sh', null, 30],
+  // Codex matches shell as Bash and patch edits as apply_patch/Edit/Write.
+  ['PreToolUse', 'pre-tool-use.sh', 'Bash|apply_patch|Edit|Write|NotebookEdit', 60],
+  ['PostToolUse', 'post-tool-use.sh', 'apply_patch|Edit|Write', 60],
+  ['Stop', 'stop.sh', null, 30],
+  ['SubagentStart', 'subagent-start.sh', null, 30],
+  ['SubagentStop', 'subagent-stop.sh', null, 30],
+  ['PreCompact', 'pre-compact.sh', null, 30],
+  ['PostCompact', 'post-compact.sh', null, 30],
+  // SessionEnd allows at most 3 seconds.
+  ['SessionEnd', 'session-end.sh', null, 3]
+];
+
+function codexHooksConfig() {
+  const hooks = {};
+  CODEX_HOOK_EVENTS.forEach(([event, script, matcher, timeout]) => {
+    const group = { hooks: [{ type: 'command', command: harnessHookCommand('codex', script), timeout }] };
+    if (matcher) group.matcher = matcher;
+    hooks[event] = [group];
+  });
+  return {
+    description: 'Dev-OS lifecycle gates. Regenerated by `devos update`; edit .agents/hooks/ instead.',
+    hooks
+  };
+}
+
+// Cursor: camelCase events, flat handler lists. preToolUse alone covers shell as
+// well as edits, so beforeShellExecution is deliberately NOT wired — wiring both
+// would run the gate twice on every shell call and double its telemetry.
+// beforeSubmitPrompt is deliberately absent: Cursor documents its output as {continue,
+// user_message} with no additional_context, so the per-turn Orchestrator directive cannot be
+// injected there. Cursor gets the directive once, at sessionStart. Recorded in the fixture.
+const CURSOR_HOOK_EVENTS = [
+  ['sessionStart', 'session-start.sh'],
+  ['preToolUse', 'pre-tool-use.sh'],
+  ['postToolUse', 'post-tool-use.sh'],
+  ['subagentStart', 'subagent-start.sh'],
+  ['subagentStop', 'subagent-stop.sh'],
+  ['preCompact', 'pre-compact.sh'],
+  ['stop', 'stop.sh'],
+  ['sessionEnd', 'session-end.sh']
+];
+
+function cursorHooksConfig() {
+  const hooks = {};
+  CURSOR_HOOK_EVENTS.forEach(([event, script]) => {
+    const handler = { command: harnessHookCommand('cursor', script), timeout: 30 };
+    // Cursor fails open on any exit code other than 2 (a crash, a timeout, a missing script).
+    // The gate events must fail closed instead, which is what failClosed buys.
+    if (event === 'preToolUse') handler.failClosed = true;
+    hooks[event] = [handler];
+  });
+  return { version: 1, hooks };
+}
+
+// Antigravity CLI: six events, and two different nestings inside one file.
+const ANTIGRAVITY_LIFECYCLE = [['SessionStart', 'session-start.sh'], ['Stop', 'stop.sh']];
+const ANTIGRAVITY_TOOL = [['PreToolUse', 'pre-tool-use.sh'], ['PostToolUse', 'post-tool-use.sh']];
+
+function antigravityHooksConfig() {
+  const bundle = { enabled: true };
+  ANTIGRAVITY_LIFECYCLE.forEach(([event, script]) => {
+    bundle[event] = [{ type: 'command', command: harnessHookCommand('antigravity', script), timeout: 30 }];
+  });
+  ANTIGRAVITY_TOOL.forEach(([event, script]) => {
+    bundle[event] = [{
+      matcher: '.*',
+      hooks: [{ type: 'command', command: harnessHookCommand('antigravity', script), timeout: 30 }]
+    }];
+  });
+  return { devos: bundle };
+}
+
+// Write a generated JSON config, keeping a user-edited one in place.
+function writeHarnessJson(filePath, value, ctx, label) {
+  const body = JSON.stringify(value, null, 2) + '\n';
+  const guard = ctx && ctx.guard;
+  if (guard && !guard.allow(filePath, body)) return `kept your edited ${label}`;
+  fs.mkdirSync(path.dirname(filePath), { recursive: true });
+  fs.writeFileSync(filePath, body, 'utf8');
+  if (ctx && Array.isArray(ctx.written)) ctx.written.push(filePath);
+  return label;
+}
+
+// The OpenCode plugin. OpenCode exposes no shell-hook mechanism, so the adapter is
+// a plugin that shells out to the same scripts. Hook names and signatures come from
+// the INSTALLED @opencode-ai/plugin typings (1.18.26), not the docs: the plugin API
+// doc pages 404 and the third-party write-ups contradict each other.
+//   tool.execute.before(input {tool, sessionID, callID}, output {args})
+//     -> returns Promise<void>; output carries only args, so THROWING is the only
+//        way to refuse a call.
+//   experimental.chat.system.transform(input, output {system: string[]})
+//   experimental.session.compacting(input, output {context: string[], prompt?})
+// Hooks the plan named that do NOT exist: permission.asked (it is permission.ask),
+// session.created and session.compacted (session lifecycle comes through `event`).
+function openCodePluginSource() {
+  return `// Dev-OS adapter for OpenCode. GENERATED by \`devos init\` / \`devos update\`.
+// Edit .agents/hooks/ instead; this file is regenerated.
+//
+// Hook names and signatures are taken from the installed @opencode-ai/plugin
+// typings, verified 2026-11-08. OpenCode has no shell-hook mechanism, so this
+// plugin runs the same .agents/hooks/ scripts every other harness runs.
+import { spawnSync } from "node:child_process";
+import { existsSync } from "node:fs";
+import { join } from "node:path";
+
+const FORMAT = "opencode";
+const TIMEOUT_MS = 15000;
+
+function hookPath(root, script) {
+  const p = join(root, ".agents", "hooks", script);
+  return existsSync(p) ? p : null;
+}
+
+// Run a Dev-OS hook. Returns { status, stdout, stderr }, or null when the script
+// is not there (a partial install must not break the session).
+function runHook(root, script, payload) {
+  const p = hookPath(root, script);
+  if (!p) return null;
+  try {
+    const res = spawnSync("bash", [p], {
+      cwd: root,
+      input: payload === undefined ? "" : JSON.stringify(payload),
+      encoding: "utf8",
+      timeout: TIMEOUT_MS,
+      env: { ...process.env, DEVOS_HOOK_FORMAT: FORMAT, CLAUDE_PROJECT_DIR: root }
+    });
+    return { status: res.status, stdout: res.stdout || "", stderr: res.stderr || "" };
+  } catch (e) {
+    return null;
+  }
+}
+
+export const DevOsPlugin = async ({ directory, worktree }) => {
+  const root = worktree || directory || process.cwd();
+  // The session directive is computed once per process: chat.system.transform runs
+  // on every request, and re-running the session-start hook each time would pay for
+  // a git fetch per message.
+  let directive = null;
+
+  return {
+    // Inject the Dev-OS directive and bootstrap into the system prompt.
+    "experimental.chat.system.transform": async (_input, output) => {
+      if (directive === null) {
+        const res = runHook(root, "session-start.sh", { hook_event_name: "SessionStart", source: "startup", cwd: root });
+        directive = res && res.stdout ? res.stdout.trim() : "";
+      }
+      if (directive && Array.isArray(output.system)) output.system.push(directive);
+    },
+
+    // Enforce the gates. output carries only args, so a refusal has to throw: that
+    // is what surfaces the reason to the model and stops the call.
+    "tool.execute.before": async (input, output) => {
+      const args = (output && output.args) || {};
+      const payload = {
+        hook_event_name: "PreToolUse",
+        tool_name: input && input.tool ? input.tool : "",
+        tool_input: args,
+        cwd: root,
+        session_id: input && input.sessionID ? input.sessionID : ""
+      };
+      const res = runHook(root, "pre-tool-use.sh", payload);
+      // status 2 is a refusal. status null means the hook timed out or was killed, and any
+      // other non-zero status means it failed to reach a verdict: both fail closed, because a
+      // gate that silently stops gating is worse than a refused call. res === null means the
+      // script is not installed at all (a partial install), which must not block everything.
+      if (res && res.status !== 0) {
+        const reason = (res.stderr || "").trim() ||
+          (res.status === null
+            ? "Dev-OS could not check this call within its timeout, so it was refused."
+            : "Dev-OS blocked this call.");
+        throw new Error(reason);
+      }
+    },
+
+    // Carry the operating state into the compaction prompt.
+    "experimental.session.compacting": async (_input, output) => {
+      const res = runHook(root, "pre-compact.sh", { hook_event_name: "PreCompact", trigger: "auto", cwd: root });
+      const text = res && res.stdout ? res.stdout.trim() : "";
+      if (text && Array.isArray(output.context)) output.context.push(text);
+    }
+  };
+};
+`;
+}
+
+function generateOpenCodePlugin(targetDir, ctx) {
+  const pluginPath = path.join(targetDir, '.opencode', 'plugins', 'devos.js');
+  const body = openCodePluginSource();
+  const guard = ctx && ctx.guard;
+  if (guard && !guard.allow(pluginPath, body)) return 'kept your edited .opencode/plugins/devos.js';
+  fs.mkdirSync(path.dirname(pluginPath), { recursive: true });
+  fs.writeFileSync(pluginPath, body, 'utf8');
+  if (ctx && Array.isArray(ctx.written)) ctx.written.push(pluginPath);
+  return '.opencode/plugins/devos.js';
+}
+
+// What each harness can actually enforce, and how it was checked. doctor prints
+// this verbatim: claiming enforcement a harness does not give is worse than
+// saying it is advisory.
+const HARNESS_ENFORCEMENT = [
+  ['claude', 'Claude Code', '.claude/settings.json', 'enforced (blocks on exit 2)', 'live-verified'],
+  ['codex', 'Codex', '.codex/hooks.json', 'enforced ONLY after you trust the hooks: run /hooks in Codex (trust is tied to each script\'s hash, so re-trust after a devos update)', 'fixture-verified, not live-verified'],
+  ['cursor', 'Cursor', '.cursor/hooks.json', 'enforced in a trusted workspace (exit 2 denies)', 'fixture-verified, not live-verified'],
+  ['antigravity', 'Antigravity CLI', '.agents/hooks.json', 'enforced via {"decision":"deny"} (it does not read exit 2 as a denial)', 'fixture-verified, not live-verified'],
+  ['opencode', 'OpenCode', '.opencode/plugins/devos.js', 'enforced by the plugin (a refused call throws)', 'live-verified']
+];
 
 // Write every selected harness's files. AGENTS.md is written for every
 // install: it is the canonical cross-harness file.
@@ -2101,7 +2462,21 @@ const DEVOS_CLAUDE_HOOKS = {
   Stop: [{ hooks: [{ type: 'command', command: '"$CLAUDE_PROJECT_DIR"/.agents/hooks/stop.sh' }] }],
   // No matcher: SubagentStop matches on agent type, and an omitted matcher fires for every subagent
   SubagentStop: [{ hooks: [{ type: 'command', command: '"$CLAUDE_PROJECT_DIR"/.agents/hooks/subagent-stop.sh' }] }],
-  SessionEnd: [{ hooks: [{ type: 'command', command: '"$CLAUDE_PROJECT_DIR"/.agents/hooks/session-end.sh' }] }]
+  SessionEnd: [{ hooks: [{ type: 'command', command: '"$CLAUDE_PROJECT_DIR"/.agents/hooks/session-end.sh' }] }],
+  // Wave 5.2 W3. Every one is wired without a matcher: PreCompact/PostCompact then cover both
+  // "manual" and "auto", SubagentStart every agent type, InstructionsLoaded every load_reason.
+  // TaskCompleted supports no matcher at all.
+  // PreCompact stdout becomes the compaction summary instructions (capped at 10,000 chars).
+  PreCompact: [{ hooks: [{ type: 'command', command: '"$CLAUDE_PROJECT_DIR"/.agents/hooks/pre-compact.sh' }] }],
+  // PostCompact has no decision control and cannot inject context; session-start.sh (source
+  // "compact") is what re-injects the directive after compaction.
+  PostCompact: [{ hooks: [{ type: 'command', command: '"$CLAUDE_PROJECT_DIR"/.agents/hooks/post-compact.sh' }] }],
+  // SubagentStart injects the task contract; it cannot deny a spawn.
+  SubagentStart: [{ hooks: [{ type: 'command', command: '"$CLAUDE_PROJECT_DIR"/.agents/hooks/subagent-start.sh' }] }],
+  // TaskCompleted blocks a completion with exit 2, but only when DEVOS_TASK_VERIFY is set.
+  TaskCompleted: [{ hooks: [{ type: 'command', command: '"$CLAUDE_PROJECT_DIR"/.agents/hooks/task-completed.sh' }] }],
+  // InstructionsLoaded fires once per instruction file; its exit code is ignored.
+  InstructionsLoaded: [{ hooks: [{ type: 'command', command: '"$CLAUDE_PROJECT_DIR"/.agents/hooks/instructions-loaded.sh' }] }]
 };
 // Always asked, in every permission mode (code.claude.com/docs/en/permission-modes,
 // "Actions no mode auto-approves"). With commitPolicy "agent" this prompt is the human's
@@ -2117,10 +2492,11 @@ const DEVOS_PERMISSION_DENY = [
   'Read(./.env.*)'
 ];
 
-// Only the seven Dev-OS lifecycle scripts are Dev-OS-owned. A user hook that
+// Only the twelve Dev-OS lifecycle scripts are Dev-OS-owned. A user hook that
 // happens to live in .agents/hooks/ (e.g. my-audit.sh) is never touched.
 // SessionStart has no matcher, so it already fires on `compact` (re-injection).
-const DEVOS_HOOK_SCRIPTS = ['session-start.sh', 'user-prompt-submit.sh', 'pre-tool-use.sh', 'post-tool-use.sh', 'stop.sh', 'subagent-stop.sh', 'session-end.sh'];
+const DEVOS_HOOK_SCRIPTS = ['session-start.sh', 'user-prompt-submit.sh', 'pre-tool-use.sh', 'post-tool-use.sh', 'stop.sh', 'subagent-stop.sh', 'session-end.sh',
+  'pre-compact.sh', 'post-compact.sh', 'subagent-start.sh', 'task-completed.sh', 'instructions-loaded.sh'];
 const DEVOS_HOOK_COMMAND_RE = new RegExp(`(^|[/"'\\s])\\.agents/hooks/(${DEVOS_HOOK_SCRIPTS.map(escapeRegExp).join('|')})(?=$|["'\\s;&|])`);
 
 function isDevosHookCommand(entry) {
@@ -2341,7 +2717,8 @@ function ensureGitignoreEntries(targetDir, groups) {
 
 const DEVOS_GITIGNORE_GROUPS = [
   { comment: 'Dev-OS temporary backups', entries: ['.agents/_backup/'] },
-  { comment: 'Dev-OS runtime session state', entries: ['.agents/memory/session.json', '.agents/memory/sdlc-state.json'] },
+  { comment: 'Dev-OS runtime session state', entries: ['.agents/memory/session.json', '.agents/memory/sdlc-state.json',
+    '.agents/memory/compact-state.json', '.agents/memory/task-completions.log', '.agents/memory/instructions-loaded.log'] },
   { comment: 'Dev-OS local tool binaries (gitleaks installed by install-hooks.sh)', entries: ['.agents/bin/'] }
 ];
 
@@ -2382,6 +2759,10 @@ function copyCoreComponents(srcAgents, destAgents) {
   });
   const suites = path.join(srcAgents, 'evals', 'suites');
   if (fs.existsSync(suites)) copyRecursiveSync(suites, path.join(destAgents, 'evals', 'suites'));
+  // The conformance fixture travels with the install: devos doctor reads it to report which
+  // external facts this version was built against, and how old they are.
+  const conformance = path.join(srcAgents, 'evals', 'conformance.json');
+  if (fs.existsSync(conformance)) fs.copyFileSync(conformance, path.join(destAgents, 'evals', 'conformance.json'));
   fs.mkdirSync(path.join(destAgents, 'evals', 'reports'), { recursive: true });
   installMemoryTemplates(srcAgents, destAgents);
   ['AGENTS.md', 'README.md', 'packs.json'].forEach((file) => {
@@ -2836,7 +3217,7 @@ async function runInit(flags) {
   const rows = [
     ['.agents/agents/', `${agentCount} Agent Personas (Orchestrator, Developer, QA, DBA, Security...)`],
     ['.agents/skills/', `${skillCount} Specialist Skills (Packs: ${(packSummary ? packSummary.packs : ['core']).join(', ')})`],
-    ['.agents/hooks/', hooks ? 'Runtime Lifecycle Hooks (SessionStart, UserPromptSubmit, PreToolUse, PostToolUse, Stop, SubagentStop, SessionEnd)' : 'Runtime Lifecycle Hooks (not wired: --no-hooks)'],
+    ['.agents/hooks/', hooks ? 'Runtime Lifecycle Hooks (SessionStart, UserPromptSubmit, PreToolUse, PostToolUse, Stop, SubagentStop, SessionEnd, PreCompact, PostCompact, SubagentStart, TaskCompleted, InstructionsLoaded)' : 'Runtime Lifecycle Hooks (not wired: --no-hooks)'],
     ['.agents/memory/', 'Shared Memory Vault (ADRs in decisions/, session handoffs)'],
     ['docs/TASK_BOARD.md', 'Deterministic Task Board & DAG Workflow State'],
     ['.agents/scripts/', 'Commit Checkpoint Gate (commit.sh) + Hook Installer'],
@@ -3563,7 +3944,8 @@ function runSkill(flags, positional) {
     console.log(`  Total Skills:    ${report.total}`);
     console.log(`  Passed:          ${colors.green}${report.passed}${colors.reset}`);
     console.log(`  Warnings:        ${report.warnings > 0 ? colors.yellow + report.warnings : colors.gray + '0'}${colors.reset}`);
-    console.log(`  Errors:          ${report.errors > 0 ? colors.red + report.errors : colors.green + '0'}${colors.reset}\n`);
+    console.log(`  Errors:          ${report.errors > 0 ? colors.red + report.errors : colors.green + '0'}${colors.reset}`);
+    console.log(`  Listing size:    ${report.listingChars.toLocaleString()} chars of names + descriptions ${colors.gray}(Codex lists at most 8,000 when the context window is unknown; Claude Code cuts each entry at 1,536)${colors.reset}\n`);
 
     if (report.errors > 0) {
       process.exit(1);
@@ -5044,6 +5426,71 @@ function runEval(flags, positional) {
 // doctor
 // ---------------------------------------------------------------------------
 
+// W3 (5.2.0): what the InstructionsLoaded hook recorded for the NEWEST session in its log.
+// This is the only way to PROVE the CLAUDE.md -> AGENTS.md import resolved: the text of
+// CLAUDE.md shows the @AGENTS.md line, but only the hook shows Claude Code acting on it.
+// Scoping to one session matters — a row from an earlier session would otherwise keep
+// reporting an import that has since broken.
+// Returns null when the log is absent (hooks off, or no session has run since install).
+function readInstructionLoads(targetDir) {
+  const logPath = path.join(targetDir, '.agents', 'memory', 'instructions-loaded.log');
+  if (!fs.existsSync(logPath)) return null;
+  let raw = '';
+  try { raw = fs.readFileSync(logPath, 'utf8'); } catch (e) { return null; }
+  const rows = raw.split('\n').filter(Boolean).map((line) => {
+    const [at, sessionId, memoryType, loadReason, filePath, parent] = line.split('\t');
+    return { at, sessionId, memoryType, loadReason, filePath, parent: parent || null };
+  }).filter((r) => r.filePath);
+  if (!rows.length) return null;
+  // The newest session is the one the last row belongs to; rows are appended in order.
+  const sessionId = rows[rows.length - 1].sessionId;
+  const current = rows.filter((r) => r.sessionId === sessionId);
+  const rel = (p) => (p && p.startsWith(targetDir + path.sep) ? p.slice(targetDir.length + 1) : p);
+  const files = [];
+  current.forEach((r) => {
+    const name = rel(r.filePath);
+    if (!files.some((x) => x.file === name)) {
+      files.push({ file: name, memoryType: r.memoryType, loadReason: r.loadReason, parent: rel(r.parent) });
+    }
+  });
+  const agentsImport = files.find((x) => /(^|\/)AGENTS\.md$/.test(x.file));
+  return { files, agentsImport: agentsImport || null, sessionId, lastAt: current[current.length - 1].at, earlierSessions: rows.length - current.length };
+}
+
+// W5 (5.2.0): the harness facts this install was built against. Offline by design — the
+// fixture is a pinned record, and scripts/check-conformance.js is the only thing that ever
+// re-reads the doc pages, in CI.
+function readConformance(targetDir) {
+  const p = path.join(targetDir, '.agents', 'evals', 'conformance.json');
+  if (!fs.existsSync(p)) return null;
+  let fx = null;
+  try { fx = JSON.parse(fs.readFileSync(p, 'utf8')); } catch (e) { return null; }
+  if (!fx || !fx.harnesses) return null;
+  const dated = [];
+  const suspect = [];
+  Object.entries(fx.harnesses).forEach(([key, h]) => {
+    (h.docs || []).forEach((d) => dated.push({ key, what: d.url, verified: d.verified }));
+    (h.facts || []).forEach((fct) => {
+      dated.push({ key, what: fct.id, verified: fct.verified });
+      if (fct.confidence && /suspect/.test(fct.confidence)) suspect.push(`${key}: ${fct.id}`);
+    });
+  });
+  dated.sort((a, b) => String(a.verified).localeCompare(String(b.verified)));
+  const limit = Number(fx.stalenessWarningDays) || 120;
+  const age = (iso) => Math.floor((Date.now() - Date.parse(`${iso}T00:00:00Z`)) / 86400000);
+  const stale = dated.filter((d) => d.verified && age(d.verified) > limit);
+  return {
+    updated: fx.updated,
+    harnesses: Object.keys(fx.harnesses),
+    count: dated.length,
+    oldest: dated[0] || null,
+    oldestAge: dated[0] && dated[0].verified ? age(dated[0].verified) : null,
+    limit,
+    stale,
+    suspect
+  };
+}
+
 function runDoctor(flags) {
   if (!flags.quiet && !flags.json) printBanner();
 
@@ -5119,7 +5566,7 @@ function runDoctor(flags) {
   });
 
   if (flags.json) {
-    console.log(JSON.stringify({ target: TARGET_DIR, passedCount, totalChecks: requiredTotal, results }, null, 2));
+    console.log(JSON.stringify({ target: TARGET_DIR, passedCount, totalChecks: requiredTotal, results, instructionLoads: readInstructionLoads(TARGET_DIR) }, null, 2));
     if (failedRequired > 0) process.exit(1);
     return;
   }
@@ -5137,6 +5584,55 @@ function runDoctor(flags) {
       console.log(`  [ ${tagColor}${res.status}${colors.reset} ] ${res.name} ${colors.gray}(${reason})${colors.reset}`);
     }
   });
+
+  // W5 (5.2.0): which external facts this install was built against, and how old they are.
+  const conf = readConformance(TARGET_DIR);
+  if (conf) {
+    console.log(`\n  ${colors.bold}Harness conformance${colors.reset} ${colors.gray}(.agents/evals/conformance.json, updated ${conf.updated})${colors.reset}`);
+    console.log(`    ${conf.count} recorded fact(s) across ${conf.harnesses.join(", ")}`);
+    if (conf.oldest) {
+      console.log(`    oldest verified ${conf.oldest.verified} ${colors.gray}(${conf.oldestAge} days — ${conf.oldest.key}: ${conf.oldest.what})${colors.reset}`);
+    }
+    if (conf.suspect.length) {
+      console.log(`    ${colors.yellow}[ WARN ]${colors.reset} ${conf.suspect.length} fact(s) never measured, only read from docs:`);
+      conf.suspect.forEach((x) => console.log(`  ${colors.gray}              ${x}${colors.reset}`));
+    }
+    if (conf.stale.length) {
+      console.log(`    ${colors.yellow}[ WARN ]${colors.reset} ${conf.stale.length} fact(s) older than ${conf.limit} days; re-verify before relying on them${colors.reset}`);
+    }
+    if (!conf.suspect.length && !conf.stale.length) {
+      console.log(`    ${colors.green}[ OK ]${colors.reset} every recorded fact is within ${conf.limit} days and was measured, not assumed`);
+    }
+  }
+  // W6 (5.2.0): what each installed harness can actually enforce. A harness that cannot
+  // block is labelled advisory rather than counted as a gate.
+  const harnessRows = HARNESS_ENFORCEMENT.filter(([, , file]) => fs.existsSync(path.join(TARGET_DIR, file)));
+  if (harnessRows.length) {
+    console.log(`\n  ${colors.bold}Cross-harness hooks${colors.reset}`);
+    harnessRows.forEach(([, name, file, enforcement, checked]) => {
+      console.log(`    ${colors.green}${name}${colors.reset} ${colors.gray}(${file})${colors.reset}`);
+      console.log(`  ${colors.gray}      ${enforcement}${colors.reset}`);
+      console.log(`  ${colors.gray}      ${checked}${colors.reset}`);
+    });
+  }
+  const loads = readInstructionLoads(TARGET_DIR);
+  console.log(`\n  ${colors.bold}Instruction load (InstructionsLoaded hook)${colors.reset}`);
+  if (!loads) {
+    const wired = claudeHooksWired(TARGET_DIR);
+    console.log(`  ${colors.gray}  no record yet — ${wired ? 'the hook writes .agents/memory/instructions-loaded.log at the next session start' : 'this project has no Dev-OS hooks wired, so nothing will write it (devos update to wire them)'}${colors.reset}`);
+  } else {
+    loads.files.slice(0, 12).forEach((x) => {
+      const why = x.loadReason === 'include' && x.parent ? `include from ${x.parent}` : x.loadReason;
+      console.log(`    ${colors.green}loaded${colors.reset} ${x.file} ${colors.gray}(${x.memoryType}, ${why})${colors.reset}`);
+    });
+    if (loads.files.length > 12) console.log(`  ${colors.gray}  ... and ${loads.files.length - 12} more${colors.reset}`);
+    if (loads.agentsImport) {
+      console.log(`    ${colors.green}[ OK ]${colors.reset} AGENTS.md reached Claude Code ${colors.gray}(${loads.agentsImport.loadReason})${colors.reset}`);
+    } else {
+      console.log(`    ${colors.yellow}[ WARN ]${colors.reset} AGENTS.md was not among the instruction files Claude Code loaded;`);
+      console.log(`  ${colors.gray}            check the @AGENTS.md import in CLAUDE.md, then run devos update${colors.reset}`);
+    }
+  }
 
   console.log(`\n${colors.gray}${RULE}${colors.reset}`);
   console.log(`Diagnostic Summary: ${passedCount}/${requiredTotal} required checks passed.`);
@@ -5745,6 +6241,23 @@ if (require.main === module) {
 }
 
 module.exports = {
+  // Read by scripts/check-conformance.js and the smoke test. The conformance check used to
+  // regex this file for its wired events, which passed silently whenever the formatting
+  // changed (a quoted key, a different indent, double quotes) — so the guarantee that an
+  // unrecorded event fails the suite depended on code style. These are the real values.
+  wiredHookEvents: {
+    claude: Object.keys(DEVOS_CLAUDE_HOOKS),
+    codex: CODEX_HOOK_EVENTS.map((e) => e[0]),
+    cursor: CURSOR_HOOK_EVENTS.map((e) => e[0]),
+    antigravity: ANTIGRAVITY_LIFECYCLE.concat(ANTIGRAVITY_TOOL).map((e) => e[0])
+  },
+  openCodePluginHooks: [...openCodePluginSource().matchAll(/"((?:tool|experimental|permission|chat|session|command)\.[a-z.]+)":/g)].map((m) => m[1]),
+  subagentKeysEmitted: AGENT_SUBAGENT_KEYS_EMITTED,
+  subagentKeysDropped: AGENT_IGNORED_KEYS,
+  agentIsolations: AGENT_ISOLATIONS,
+  agentEfforts: AGENT_EFFORTS,
+  agentColors: AGENT_COLORS,
+  agentMemoryScopes: AGENT_MEMORY_SCOPES,
   computeSkillHash,
   backupSkill,
   getSkillManifest,

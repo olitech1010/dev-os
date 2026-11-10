@@ -4,7 +4,7 @@
 
 **by Clement Olives · Olives Technologies**
 
-![Version](https://img.shields.io/badge/version-v5.1.2-blue.svg)
+![Version](https://img.shields.io/badge/version-v5.2.0-blue.svg)
 ![npm](https://img.shields.io/badge/npm-%40olives%2Fdevos-red.svg)
 ![License](https://img.shields.io/badge/license-MIT-green.svg)
 
@@ -249,7 +249,7 @@ Other protocols in `.agents/AGENTS.md`: Project Inception, Product Planning, Doc
 
 ### Claude Code hook events
 
-`init` and `update` merge these into `.claude/settings.json` and keep your own settings and hooks. Each script reads Claude Code's JSON on stdin and blocks with exit code 2 and a reason on stderr.
+`init` and `update` merge these into `.claude/settings.json` and keep your own settings and hooks. Each script reads Claude Code's JSON on stdin. The gates block with exit code 2 and a reason on stderr; `PreCompact`, `PostCompact`, `SubagentStart` and `InstructionsLoaded` cannot block their event and only add context or record state.
 
 | Event | Script | What it enforces |
 |---|---|---|
@@ -260,6 +260,11 @@ Other protocols in `.agents/AGENTS.md`: Project Inception, Product Planning, Doc
 | Stop | `stop.sh` | Asks for a `docs/CURRENT_STATE.md` update when tracked code changed. Opt out: `DEVOS_STOP_GATE=off`. |
 | SubagentStop | `subagent-stop.sh` | A subagent that edited tracked code must leave a note in `.agents/memory/handoffs/`. Opt out: `DEVOS_HANDOFF_GATE=off`. |
 | SessionEnd | `session-end.sh` | Prints a state reminder only; never blocks. |
+| PreCompact | `pre-compact.sh` | Tells the summariser what compaction must keep (mode, active task, plan, Hard Rules, circuit-breaker count) and saves that state to `.agents/memory/compact-state.json`. Never blocks compaction. |
+| PostCompact | `post-compact.sh` | Records that compaction happened and how large the summary was. Side effects only: this event cannot inject context, so the post-compaction directive comes from `SessionStart` (source `compact`). |
+| SubagentStart | `subagent-start.sh` | Injects the task contract into every subagent: mode, active task, approved plan, the no-commit rule, and the handoff duty. Opt out: `DEVOS_SUBAGENT_CONTRACT=off`. |
+| TaskCompleted | `task-completed.sh` | Records every task closure in `.agents/memory/task-completions.log`. Advisory by default; set `DEVOS_TASK_VERIFY=1` (or to a command) to refuse a closure whose verification fails. |
+| InstructionsLoaded | `instructions-loaded.sh` | Logs each instruction file Claude Code loads to `.agents/memory/instructions-loaded.log`, which is how `devos doctor` proves the `CLAUDE.md` -> `AGENTS.md` import resolved. Opt out: `DEVOS_INSTR_LOG=off`. |
 
 `settings.json` also gets `permissions.deny` rules for `git commit`, `git push --force` and reading `.env` files.
 
@@ -334,12 +339,26 @@ Root `AGENTS.md` is the canonical cross-harness file. Dev-OS owns the block betw
 | Harness | Files Dev-OS writes | How the rules load |
 |---|---|---|
 | Claude Code | `CLAUDE.md`, `.claude/agents/`, `.claude/commands/`, `.claude/skills/`, `.claude/settings.json` | `CLAUDE.md` imports `@AGENTS.md`; hooks run from `settings.json` |
-| Codex | `AGENTS.md` | Codex reads `AGENTS.md` directly |
+| Codex | `AGENTS.md`, `.codex/hooks.json` | Codex reads `AGENTS.md` directly; ten of the twelve hooks run once you trust them with `/hooks` |
 | Windsurf (`codex` target) | `.windsurfrules` | Points at `AGENTS.md` |
-| Cursor | `.cursor/rules/devos.mdc`, `.cursorrules` | Cursor reads `AGENTS.md`; the rule has `alwaysApply: true` |
-| OpenCode | `opencode.json` at the project root | `"instructions": [".agents/AGENTS.md"]`, merged into an existing file |
-| Gemini CLI | `GEMINI.md` | Imports `@./AGENTS.md` |
-| Google Antigravity | `ANTIGRAVITY.md` | Pointer to `AGENTS.md` |
+| Cursor | `.cursor/rules/devos.mdc`, `.cursorrules`, `.cursor/hooks.json` | Cursor reads `AGENTS.md`; the rule has `alwaysApply: true`; nine hooks run in a trusted workspace |
+| OpenCode | `opencode.json`, `.opencode/plugins/devos.js` | `"instructions": [".agents/AGENTS.md"]`, merged into an existing file; the plugin runs the same hooks |
+| Google Antigravity | `ANTIGRAVITY.md`, `GEMINI.md`, `.agents/hooks.json` | Pointer to `AGENTS.md`; four hooks run from the workspace bundle |
+| Gemini CLI (retired) | `GEMINI.md` | Imports `@./AGENTS.md`. Google replaced Gemini CLI with Antigravity CLI on 2026-06-18, so no hooks are written for it |
+
+### What each harness can enforce
+
+`devos doctor` prints this per project, because a gate that cannot block is worth saying out loud:
+
+| Harness | Blocking | How it was checked |
+|---|---|---|
+| Claude Code | exit 2 denies | live |
+| OpenCode | the plugin throws to refuse a call | live (plugin discovery, load, and all three hooks exercised) |
+| Codex | exit 2 denies, but **only after you run `/hooks` once to trust them** — trust is tied to each script's hash, so re-trust after `devos update` | fixture |
+| Cursor | exit 2 denies, in a trusted workspace | fixture |
+| Antigravity CLI | `{"decision":"deny"}`; it does not read exit 2 as a denial | fixture |
+
+"fixture" means Dev-OS tests the exact payload and output shapes that harness documents, but the harness is not installed here, so it has not been run end to end. The hooks are the same scripts everywhere; only the config file and the reply shape differ, and the shape is chosen by the `DEVOS_HOOK_FORMAT` tag the generated config puts on each command.
 
 `.codex/instructions.md` and `OPENCODE.md` are retired. `devos update` removes them only when Dev-OS generated them, after a backup.
 
@@ -356,7 +375,7 @@ Dev-OS also ships as a Claude Code plugin with the default agents, the commands,
 /plugin install devos@olives-devos
 ```
 
-This needs `@olives/devos` 5.1.2 published to npm, because the marketplace entry in `.claude-plugin/marketplace.json` uses a `command` source that builds the pinned version on your machine. That source type needs Claude Code v2.1.229 or later. The install shows you the build command and asks you to accept it before running anything, and Claude Code re-runs it once per session (the pinned version is cached under `~/.devos/claude-plugin/`). The plugin's hooks only act in projects that have been set up with `devos init` (they look for `.agents/manifest.json`); in any other repository they do nothing. To build the plugin locally instead:
+This needs `@olives/devos` 5.2.0 published to npm, because the marketplace entry in `.claude-plugin/marketplace.json` uses a `command` source that builds the pinned version on your machine. That source type needs Claude Code v2.1.229 or later. The install shows you the build command and asks you to accept it before running anything, and Claude Code re-runs it once per session (the pinned version is cached under `~/.devos/claude-plugin/`). The plugin's hooks only act in projects that have been set up with `devos init` (they look for `.agents/manifest.json`); in any other repository they do nothing. To build the plugin locally instead:
 
 ```bash
 devos build-plugin --out dist/claude-plugin
@@ -381,6 +400,9 @@ Two cautions:
 | `.agents/memory/decisions/` | Agents | ADRs |
 | `.agents/memory/handoffs/` | Subagents | Handoff notes; the SubagentStop hook requires one after code changes |
 | `.agents/memory/context.json` | Orchestrator | Compact project context |
+| `.agents/memory/compact-state.json` | Hooks | What the session was doing when it compacted (PreCompact/PostCompact). Untracked. |
+| `.agents/memory/task-completions.log` | Hooks | Every task closure the TaskCompleted hook saw. Untracked. |
+| `.agents/memory/instructions-loaded.log` | Hooks | Instruction files Claude Code loaded this session. Untracked. |
 | `.agents/manifest.json` | CLI | Installed version, packs, harnesses, hooks choice, and a sha256 for each generated file |
 | `.agents/telemetry/events.jsonl` | `telemetry` skill | Local failure log; no secrets |
 

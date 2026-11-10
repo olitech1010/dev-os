@@ -1,0 +1,61 @@
+name: Harness conformance
+
+# The facts Dev-OS depends on live in other people's documentation, and they move.
+# Gemini CLI was replaced by Antigravity CLI between two phases of one release, and three
+# OpenCode hook names in an approved plan turned out not to exist. This job re-reads the
+# recorded doc pages and opens an issue when one of them stops naming an event Dev-OS wires.
+#
+# The CLI itself never fetches: `node scripts/check-conformance.js` is offline and runs in
+# `npm test`. Only this job passes --fetch.
+
+on:
+  schedule:
+    # 09:00 UTC on the 1st and 15th of each month.
+    - cron: '0 9 1,15 * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  conformance:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      # Offline first: if the generated output has drifted from the fixture, that is a bug in
+      # this repo and no amount of re-reading docs will tell us about it.
+      - name: Conformance (offline)
+        run: node scripts/check-conformance.js
+
+      - name: Re-read the harness docs
+        id: fetch
+        continue-on-error: true
+        run: |
+          set -o pipefail
+          # bash -e plus pipefail aborts this step when the checker exits non-zero, which is
+          # what continue-on-error turns into steps.fetch.outcome == 'failure' below.
+          node scripts/check-conformance.js --fetch 2>&1 | tee conformance.log
+
+      - name: Open an issue on drift
+        if: steps.fetch.outcome == 'failure'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # A STABLE title: the date used to be in it, so the search below never matched a
+          # previous run and every run filed a new issue.
+          title="Harness doc drift detected"
+          # One open issue at a time: re-running the job should not pile them up.
+          existing=$(gh issue list --state open --search "$title in:title" --json number --jq '.[0].number' || true)
+          body=$(printf 'The scheduled conformance check (%s) found that a harness doc page no longer matches what Dev-OS generates.\n\nRe-verify the affected facts, update `.agents/evals/conformance.json` (including each `verified` date), and adjust the adapter if the harness really changed.\n\n```\n%s\n```\n' "$(date -u +%Y-%m-%d)" "$(tail -c 60000 conformance.log)")
+          if [ -n "$existing" ] && [ "$existing" != "null" ]; then
+            gh issue comment "$existing" --body "$body"
+          else
+            gh issue create --title "$title" --label conformance --body "$body" || \
+              gh issue create --title "$title" --body "$body"
+          fi

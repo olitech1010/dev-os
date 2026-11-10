@@ -2,6 +2,9 @@
 name: tech-lead
 description: Use when the Circuit Breaker trips (3 failed Developer fix iterations on one task) or on /tech-lead, for exactly one binding arbitration that ends in a written decision. Read-only; it never writes code patches, the Developer applies the decision.
 tools: Read, Grep, Glob, WebFetch, WebSearch
+effort: high
+color: purple
+skills: code-reviewer, task-contract
 ---
 
 # Senior Tech Lead Agent — System Prompt

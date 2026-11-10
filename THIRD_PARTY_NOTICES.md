@@ -24,7 +24,7 @@ Paths are relative to `.agents/skills/`. A path under `<skill>/references/<name>
 | anti-ai-ui/references/ui-designer | https://github.com/anthropics/skills (`frontend-design`) | Apache-2.0 | The suspicious `find-relevant-image.py` section was removed in wave 1 |
 | code-reviewer | https://github.com/google-gemini/gemini-cli (`.gemini/skills/code-reviewer`) | Apache-2.0 | Body is verbatim upstream; only the description was reworded. Attribution added in 5.1.1 |
 | find-skills | https://github.com/vercel-labs/skills | MIT | Copyright (c) 2026 Vercel, Inc. |
-| expose-localhost | https://github.com/ngrok/skills | MIT | Repo was `ngrok/agent-skills`, now redirects to `ngrok/skills` |
+| expose-localhost | https://github.com/ngrok/skills | MIT | Repo was `ngrok/agent-skills`, now redirects to `ngrok/skills`. In 5.2 Dev-OS added `disable-model-invocation: true` and a Codex `agents/openai.yaml`, so opening a public tunnel runs only when asked for by name |
 | google-agents-cli-adk-code | https://github.com/google/agents-cli | Apache-2.0 | 5 sibling skills are not shipped |
 | google-agents-cli-workflow | https://github.com/google/agents-cli | Apache-2.0 | 5 sibling skills are not shipped |
 | humanizer | https://github.com/blader/humanizer | MIT | Copyright (c) 2025 Siqi Chen. Rewritten for Dev-OS (v3) |
@@ -57,7 +57,7 @@ The upstream states a license in its README or package metadata but ships no LIC
 
 | Skill (path) | Upstream | License | Notes |
 |---|---|---|---|
-| deploy-to-vercel | https://github.com/vercel-labs/agent-skills | MIT (README) | Dev-OS added a human-confirmation gate before any upload or deploy |
+| deploy-to-vercel | https://github.com/vercel-labs/agent-skills | MIT (README) | Dev-OS added a human-confirmation gate before any upload or deploy, and in 5.2 `disable-model-invocation: true` plus a Codex `agents/openai.yaml` so it runs only when asked for by name |
 | deploy-to-vercel/references/vercel-cli-with-tokens | https://github.com/vercel-labs/agent-skills | MIT (README) | |
 | vercel-composition-patterns | https://github.com/vercel-labs/agent-skills | MIT (README) | |
 | vercel-optimize | https://github.com/vercel-labs/agent-skills | MIT (README) | |
@@ -92,7 +92,7 @@ None. Every vendored skill is attributed above or listed as first-party below.
 
 ## First-party (Dev-OS, MIT)
 
-Written for Dev-OS and covered by the Dev-OS license: anti-ai-ui, autonomous-sdlc, deployment-checklist, eval-harness, git-ops, git-ops/references/git-workflow, grill-me (inspired by Matt Pocock's grill-me), human-checkpoint, project-requirements, shared-memory, spec-driven, stacks, task-board, task-contract, telemetry, testing-guide, token-optimization, workflow-metrics.
+Written for Dev-OS and covered by the Dev-OS license: anti-ai-ui, autonomous-sdlc, deployment-checklist, eval-harness, git-ops, git-ops/references/git-workflow, grill-me (inspired by Matt Pocock's grill-me), human-checkpoint, project-requirements, shared-memory, spec-driven, stacks, task-board, task-contract, telemetry, testing-guide, token-optimization, using-devos, workflow-metrics.
 
 Two files were reclassified as first-party in 5.1.2 after their origin was traced:
 
