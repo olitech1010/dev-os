@@ -547,6 +547,20 @@ fixture into target projects so `devos doctor` can read it there.
    that agent: ui-designer 13.4 KB (about 3,350 tokens), security 11.7 KB, qa and tester 9.2 KB
    each, architect 7.3 KB, developer 5.0 KB. The plan approved preloads; the per-delegation
    cost was never quantified. Trimming the two heaviest is a one-line change per persona.
+   **Resolved 2026-11-10 (human: "trim the heavy skill preloads").** The two heaviest
+   preloads are removed: `skills: anti-ai-ui` from ui-designer and `skills: security-review`
+   from security. Both skills stay installed and are read on demand. The ui-designer body
+   already named the file by path at the point of use, so that preload was duplicating text
+   the persona loads anyway; the line now says to read it in full. The security persona had
+   no such pointer, so a short "Load the review method on demand" section was added that
+   sends it to `SKILL.md` plus only the matching `references/` files for a full review, and
+   tells it to skip the skill for a narrow request (one scanner, one dependency, one secret
+   check). Saving: 13.4 KB per ui-designer spawn and 11.7 KB per security spawn, unconditional
+   before, now paid only when the work needs it. The eight other roles keep their preloads;
+   the next heaviest are qa and tester at 9.2 KB, which have no body pointer to fall back on.
+   Gates after the change: smoke 624/624 exit 0, `devos skill audit` 54 skills / 0 errors,
+   `npm run eval` EVAL_PASSED, and a clean `devos init --existing` whose generated
+   `.claude/agents/security.md` and `ui-designer.md` carry no `skills:` key.
 2. **The core skill listing is 15,519 characters** of names and descriptions. Fine for Claude
    Code; roughly double Codex's 8,000-character budget when the context window is unknown. The
    audit reports it; nothing trims it.

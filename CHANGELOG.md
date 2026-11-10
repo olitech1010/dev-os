@@ -43,7 +43,10 @@ because those facts moved twice while this release was being built.
   Vertex ids), `effort`, `maxTurns`, `autoCompactWindow`, `skills`, `memory`, `isolation`,
   `color`, `omitClaudeMd` and `background`. A `skills:` entry that is not installed is dropped
   with a warning. The roster gained a `color` per persona, `effort: high` on tech-lead, and
-  one or two core-pack skill preloads per role.
+  one or two core-pack skill preloads on the eight roles whose preloaded text is small.
+  The security and ui-designer personas read their one large skill on demand instead
+  (`security-review` 11.7 KB, `anti-ai-ui` 13.4 KB), so it is not injected on every
+  delegation to those roles.
 - **A harness conformance fixture**, `.agents/evals/conformance.json`: every external fact
   Dev-OS depends on, with its doc URL and the date it was checked.
   `node scripts/check-conformance.js` verifies offline that the CLI cannot wire a hook event,
