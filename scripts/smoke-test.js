@@ -1921,6 +1921,189 @@ try {
   } finally {
     fs.rmSync(w3, { recursive: true, force: true });
   }
+
+// ---------------------------------------------------------------------------
+// G1 — the interactive guide: model, path resolution, generator
+// Plan: docs/plans/2026-11-12-interactive-guide.md
+// ---------------------------------------------------------------------------
+function checkGuideModel() {
+  const dx = require(CLI);
+  const SAMPLE = [
+    '# Application Testing & QA Guide',
+    '',
+    '**Application:** Orchard CRM',
+    '**Environment:** Local Development (`http://localhost:3000`)',
+    '**Default Credentials Password:** `devos123` (Universal across all seed accounts)',
+    '',
+    '## 1. Quick Start & Prerequisites',
+    '',
+    '- Run `npm run dev` to start the app.',
+    '- Run `npm run seed` to load fixtures.',
+    '',
+    '## 2. Seed Data Fixtures',
+    '',
+    '| Role | Email / Username | Password | Purpose |',
+    '|---|---|---|---|',
+    '| **Admin User** | `admin@example.com` | `devos123` | Administration |',
+    '| **Standard User** | `user@example.com` | `devos123` | Day-to-day flows |',
+    '| **Secondary User** | `member@example.com` | `devos123` | Sharing and permissions |',
+    '| **Restricted** | `guest@example.com` | `devos123` | Access boundaries |',
+    '',
+    '## 3. Test Scenarios (Step-by-Step Walkthroughs)',
+    '',
+    '### Scenario A: Authentication & Role Verification',
+    '- [ ] 1. Navigate to `/login`.',
+    '- [ ] 2. Enter `user@example.com` and password `devos123`. Click "Sign In".',
+    '- [ ] 3. Verify redirection to `/dashboard`.',
+    '',
+    '### Scenario B: Core Feature Flow',
+    '- [ ] 1. Open the orchard list.',
+    '- [ ] 2. Create a block named "North Field".',
+    '',
+    '## 4. Known Limitations & Notes',
+    '',
+    '- Stripe runs in test mode.',
+    ''
+  ].join('\n');
+
+  check('[G1] the CLI exports parseTestingGuide', typeof dx.parseTestingGuide === 'function');
+  if (typeof dx.parseTestingGuide !== 'function') return;
+
+  const model = dx.parseTestingGuide(SAMPLE);
+
+  check('[G1] the application name and environment come off the header',
+    model.meta.application === 'Orchard CRM' && /localhost:3000/.test(model.meta.environment || ''),
+    JSON.stringify(model.meta));
+
+  check('[G1] all four standard personas parse out of the credentials table',
+    Array.isArray(model.credentials) && model.credentials.length === 4 &&
+    model.credentials.every((c) => c.password === 'devos123') &&
+    model.credentials.some((c) => c.login === 'admin@example.com') &&
+    model.credentials.some((c) => c.login === 'guest@example.com'),
+    JSON.stringify(model.credentials));
+
+  // Every ## section opens a slide, and every ### scenario is a slide of its own.
+  const titles = model.slides.map((s) => s.title);
+  check('[G1] each scenario becomes its own slide',
+    titles.includes('Scenario A: Authentication & Role Verification') &&
+    titles.includes('Scenario B: Core Feature Flow'),
+    titles.join(' | '));
+  check('[G1] quick start and known limitations bookend the deck',
+    /Quick Start/i.test(titles[0] || '') && /Known Limitations/i.test(titles[titles.length - 1] || ''),
+    titles.join(' | '));
+
+  const scenarioA = model.slides.find((s) => /Scenario A/.test(s.title));
+  const scenarioB = model.slides.find((s) => /Scenario B/.test(s.title));
+  check('[G1] checklist items parse as numbered steps',
+    scenarioA && scenarioA.steps.length === 3 && scenarioB && scenarioB.steps.length === 2,
+    `A=${scenarioA && scenarioA.steps.length} B=${scenarioB && scenarioB.steps.length}`);
+  check('[G1] every slide has a stable deep-link id',
+    model.slides.every((s) => /^[a-z0-9][a-z0-9-]*$/.test(s.id)) &&
+    new Set(model.slides.map((s) => s.id)).size === model.slides.length,
+    model.slides.map((s) => s.id).join(','));
+
+  // A Tester who writes prose the parser does not recognise must not break the build.
+  const odd = dx.parseTestingGuide(SAMPLE + '\n> a block quote\n\n<div>raw html</div>\n');
+  check('[G1] unrecognised markdown degrades to a paragraph instead of throwing',
+    odd.slides.length === model.slides.length, `${odd.slides.length} vs ${model.slides.length}`);
+
+  // R2: a real-looking credential must be reported, never embedded.
+  const leaky = dx.parseTestingGuide(SAMPLE.replace('| `devos123` | Administration |',
+    '| `Pr0d-Passw0rd!` | Administration |'));
+  check('[G1] a credential that is not devos123 is reported, not embedded',
+    leaky.warnings.some((w) => /credential/i.test(w)) &&
+    !JSON.stringify(leaky.credentials).includes('Pr0d-Passw0rd!'),
+    JSON.stringify(leaky.warnings));
+
+  // Path resolution: the app's public directory wins, docs/guide is the fallback.
+  check('[G1] the CLI exports resolveGuideDir', typeof dx.resolveGuideDir === 'function');
+  if (typeof dx.resolveGuideDir === 'function') {
+    const base = fs.mkdtempSync(path.join(scratch, 'guidedir-'));
+    const mk = (name, sub) => { const d = path.join(base, name); fs.mkdirSync(path.join(d, sub), { recursive: true }); return d; };
+    const pub = mk('withpublic', 'public');
+    const stat = mk('withstatic', 'static');
+    const bare = path.join(base, 'bare'); fs.mkdirSync(bare, { recursive: true });
+    check('[G1] an existing public/ is the guide root',
+      dx.resolveGuideDir(pub, 'nextjs') === path.join(pub, 'public', 'guide'),
+      dx.resolveGuideDir(pub, 'nextjs'));
+    check('[G1] an existing static/ is used when there is no public/',
+      dx.resolveGuideDir(stat, 'django') === path.join(stat, 'static', 'guide'),
+      dx.resolveGuideDir(stat, 'django'));
+    check('[G1] a stack with a web root gets the conventional directory',
+      dx.resolveGuideDir(bare, 'laravel') === path.join(bare, 'public', 'guide'),
+      dx.resolveGuideDir(bare, 'laravel'));
+    check('[G1] a stack with no web root falls back to docs/guide',
+      dx.resolveGuideDir(bare, 'react-native') === path.join(bare, 'docs', 'guide'),
+      dx.resolveGuideDir(bare, 'react-native'));
+  }
+}
+checkGuideModel();
+
+// ---------------------------------------------------------------------------
+// G1 — `devos guide` end to end in a generated project
+// ---------------------------------------------------------------------------
+function checkGuideCommand() {
+  const proj = fs.mkdtempSync(path.join(scratch, 'guideproj-'));
+  fs.mkdirSync(path.join(proj, 'public'), { recursive: true });
+  fs.writeFileSync(path.join(proj, 'package.json'), JSON.stringify({ name: 'orchard', version: '1.0.0' }));
+  const init = runCli(['init', '--existing', '--stack', 'nextjs', '--platform', 'claude', '--yes', '--no-hooks'], proj);
+  check('[G1] init succeeds in the guide fixture project', init.status === 0,
+    (init.stdout + init.stderr).slice(-300));
+
+  // No TESTING_GUIDE.md yet: the command must fail loudly, not write a hollow page.
+  const docsGuide = path.join(proj, 'docs', 'TESTING_GUIDE.md');
+  if (fs.existsSync(docsGuide)) fs.unlinkSync(docsGuide);
+  const missing = runCli(['guide'], proj);
+  check('[G1] devos guide without a testing guide exits non-zero',
+    missing.status !== 0, `status=${missing.status}`);
+  check('[G1] and says which file to write',
+    /TESTING_GUIDE\.md/.test(missing.stdout + missing.stderr),
+    (missing.stdout + missing.stderr).slice(-300));
+
+  fs.writeFileSync(docsGuide, [
+    '# Application Testing & QA Guide',
+    '', '**Application:** Orchard CRM', '',
+    '## 1. Quick Start & Prerequisites', '', '- Run `npm run dev`.', '',
+    '## 2. Seed Data Fixtures', '',
+    '| Role | Email / Username | Password | Purpose |', '|---|---|---|---|',
+    '| **Admin User** | `admin@example.com` | `devos123` | Administration |', '',
+    '## 3. Test Scenarios (Step-by-Step Walkthroughs)', '',
+    '### Scenario A: Sign in', '- [ ] 1. Go to `/login`.', '- [ ] 2. Sign in.', '',
+    '## 4. Known Limitations & Notes', '', '- None.', ''
+  ].join('\n'));
+
+  const gen = runCli(['guide'], proj);
+  check('[G1] devos guide succeeds once the markdown exists', gen.status === 0,
+    (gen.stdout + gen.stderr).slice(-400));
+  const page = path.join(proj, 'public', 'guide', 'index.html');
+  check('[G1] the page lands in the app public directory', fs.existsSync(page), page);
+  if (fs.existsSync(page)) {
+    const html = fs.readFileSync(page, 'utf8');
+    check('[G1] the page is a complete standalone document',
+      /^<!DOCTYPE html>/i.test(html.trim()) && /<\/html>/i.test(html));
+    check('[G1] the page carries no external resource', !/https?:\/\/(?!www\.w3\.org)/.test(html),
+      (html.match(/https?:\/\/[^"'\s)]+/g) || []).slice(0, 4).join(' '));
+    check('[G1] the page renders the scenario and its steps',
+      html.includes('Scenario A: Sign in') && html.includes('Go to'), 'scenario missing');
+    check('[G1] the demo credentials reach the page',
+      html.includes('admin@example.com') && html.includes('devos123'));
+  }
+  const manifestPath = path.join(proj, '.agents', 'manifest.json');
+  if (fs.existsSync(manifestPath)) {
+    const m = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
+    check('[G1] the resolved guide path is recorded in the manifest',
+      m.guide && m.guide.path === path.join('public', 'guide', 'index.html'),
+      JSON.stringify(m.guide));
+    check('[G1] the manifest records the source hash the page was built from',
+      m.guide && /^[a-f0-9]{64}$/.test(m.guide.sourceSha256 || ''), JSON.stringify(m.guide));
+  }
+  const out = runCli(['guide', '--out', path.join(proj, 'elsewhere', 'g.html')], proj);
+  check('[G1] --out overrides the resolved location',
+    out.status === 0 && fs.existsSync(path.join(proj, 'elsewhere', 'g.html')),
+    (out.stdout + out.stderr).slice(-200));
+}
+checkGuideCommand();
+
 } finally {
   fs.rmSync(proj, { recursive: true, force: true });
   fs.rmSync(empty, { recursive: true, force: true });

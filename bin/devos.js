@@ -276,6 +276,7 @@ function printHelp() {
   console.log(`  ${colors.green}design${colors.reset}                   Browse, match, and apply authentic brand design systems (list, match, apply, sync)`);
   console.log(`  ${colors.green}spec${colors.reset} waves <slug>        Order docs/specs/<slug>/tasks.md into parallel waves (topological layers over depends:)`);
   console.log(`  ${colors.green}spec${colors.reset} check <slug>        Verify every requirement is covered, every task cites real ids and has a verify: line (exit 1 on gaps)`);
+  console.log(`  ${colors.green}guide${colors.reset}                    Build the interactive walkthrough page from docs/TESTING_GUIDE.md into the app's public directory`);
   console.log(`  ${colors.green}build-plugin${colors.reset}             Build the Dev-OS Claude Code plugin (default --out dist/claude-plugin/)`);
   console.log(`  ${colors.green}list${colors.reset}, ${colors.green}agents${colors.reset}       Display active agent personas and installed specialist skills`);
   console.log(`  ${colors.green}status${colors.reset}             Show active project configuration, detected stack, and health summary`);
@@ -6209,6 +6210,9 @@ async function main() {
     case 'build-plugin':
       runBuildPlugin(flags);
       break;
+    case 'guide':
+      runGuide(flags, positional);
+      break;
     case 'status':
       runStatus(flags);
       break;
@@ -6230,6 +6234,585 @@ async function main() {
       console.log(`${colors.red}Unknown command: '${command}'${colors.reset}\n`);
       printHelp();
       process.exit(1);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Interactive guide and stakeholder presentation page
+// Plan: docs/plans/2026-11-12-interactive-guide.md
+//
+// docs/TESTING_GUIDE.md is the single source of truth (the testing-guide skill
+// already mandates its structure, personas and the devos123 password). This
+// renders it into one self-contained page that deploys with the app.
+// ---------------------------------------------------------------------------
+
+const GUIDE_SOURCE_REL = path.join('docs', 'TESTING_GUIDE.md');
+const GUIDE_DEMO_PASSWORD = 'devos123';
+const GUIDE_SOURCE_ATTR = 'data-source-sha256';
+const GUIDE_FILENAME = 'index.html';
+
+// Where each stack serves static files from. null means the stack has no web
+// root (react-native), so the guide falls back to docs/guide/.
+const GUIDE_STACK_WEB_ROOTS = {
+  nextjs: 'public', laravel: 'public', express: 'public',
+  django: 'static', fastapi: 'static',
+  'react-native': null, universal: null
+};
+
+// Values that are obviously not a real secret. Anything else is reported and
+// withheld from the page rather than published with it (Hard Rule 2).
+const GUIDE_PLACEHOLDER_SECRET =
+  /^(devos123|changeme|change-me|password|secret|test123|demo|demo123|example|n\/a|-|\.{3}|<[^>]*>|your[-_ ][a-z-]+)$/i;
+
+function guideIsDir(p) {
+  try { return fs.statSync(p).isDirectory(); } catch (e) { return false; }
+}
+
+function resolveGuideDir(root, stack) {
+  for (const dir of ['public', 'static']) {
+    if (guideIsDir(path.join(root, dir))) return path.join(root, dir, 'guide');
+  }
+  const web = GUIDE_STACK_WEB_ROOTS[String(stack || 'universal').toLowerCase()];
+  if (web) return path.join(root, web, 'guide');
+  return path.join(root, 'docs', 'guide');
+}
+
+function detectGuideStack(root) {
+  const has = (f) => fs.existsSync(path.join(root, f));
+  let pkg = {};
+  try { pkg = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8')); } catch (e) {}
+  const deps = Object.assign({}, pkg.dependencies, pkg.devDependencies);
+  if (has('artisan')) return 'laravel';
+  if (has('manage.py')) return 'django';
+  if (deps.next || has('next.config.js') || has('next.config.mjs') || has('next.config.ts')) return 'nextjs';
+  if (deps.expo || has('app.json') && deps['react-native']) return 'react-native';
+  if (deps.express) return 'express';
+  try {
+    const req = fs.readFileSync(path.join(root, 'requirements.txt'), 'utf8');
+    if (/fastapi/i.test(req)) return 'fastapi';
+    if (/django/i.test(req)) return 'django';
+  } catch (e) {}
+  return 'universal';
+}
+
+function guideSlug(text, taken) {
+  let base = String(text).toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+  if (!base) base = 'slide';
+  if (!/^[a-z0-9]/.test(base)) base = 's-' + base;
+  let id = base;
+  let n = 2;
+  while (taken.has(id)) { id = base + '-' + n; n++; }
+  taken.add(id);
+  return id;
+}
+
+// Markdown subset: only what the testing-guide skill's structure uses. Anything
+// unrecognised becomes a paragraph, so a Tester writing prose never breaks it.
+function parseTestingGuide(markdown) {
+  const lines = String(markdown || '').replace(/\r\n/g, '\n').split('\n');
+  const meta = { title: '', application: '', environment: '', audience: '', password: GUIDE_DEMO_PASSWORD };
+  const warnings = [];
+  const sections = [];
+  let current = null;
+
+  const pushBlock = (b) => { if (current) current.blocks.push(b); };
+  const openSection = (title, level) => {
+    const s = { title, level, blocks: [], steps: [], children: [] };
+    if (level === 3 && sections.length) {
+      sections[sections.length - 1].children.push(s);
+    } else {
+      sections.push(s);
+    }
+    current = s;
+    return s;
+  };
+
+  let i = 0;
+  let para = [];
+  const flushPara = () => {
+    if (para.length) { pushBlock({ type: 'paragraph', text: para.join(' ') }); para = []; }
+  };
+
+  while (i < lines.length) {
+    const raw = lines[i];
+    const line = raw.trim();
+
+    if (/^```/.test(line)) {
+      flushPara();
+      const lang = line.replace(/^```/, '').trim();
+      const body = [];
+      i++;
+      while (i < lines.length && !/^```/.test(lines[i].trim())) { body.push(lines[i]); i++; }
+      i++;
+      pushBlock({ type: 'code', lang, text: body.join('\n') });
+      continue;
+    }
+
+    if (/^#\s+/.test(line)) { flushPara(); meta.title = line.replace(/^#\s+/, '').trim(); i++; continue; }
+    if (/^###\s+/.test(line)) { flushPara(); openSection(line.replace(/^###\s+/, '').trim(), 3); i++; continue; }
+    if (/^##\s+/.test(line)) { flushPara(); openSection(line.replace(/^##\s+/, '').trim(), 2); i++; continue; }
+
+    const metaMatch = line.match(/^\*\*([^*]+):\*\*\s*(.+)$/);
+    if (metaMatch && !current) {
+      const key = metaMatch[1].trim().toLowerCase();
+      const value = metaMatch[2].trim();
+      if (/application/.test(key)) meta.application = value.replace(/`/g, '');
+      else if (/environment/.test(key)) meta.environment = value;
+      else if (/audience/.test(key)) meta.audience = value;
+      else if (/password/.test(key)) {
+        const m = value.match(/`([^`]+)`/);
+        if (m) meta.password = m[1];
+      }
+      i++;
+      continue;
+    }
+
+    // Checklist step: "- [ ] 1. Do the thing" or "- [x] Do the thing"
+    const stepMatch = line.match(/^[-*]\s*\[([ xX])\]\s*(.*)$/);
+    if (stepMatch && current) {
+      flushPara();
+      const text = stepMatch[2].replace(/^\d+[.)]\s*/, '').trim();
+      current.steps.push({ text, done: stepMatch[1].toLowerCase() === 'x' });
+      i++;
+      continue;
+    }
+
+    if (/^\|/.test(line) && /\|/.test(lines[i + 1] || '') && /^\|[\s:|-]+\|$/.test((lines[i + 1] || '').trim())) {
+      flushPara();
+      const cells = (r) => r.trim().replace(/^\|/, '').replace(/\|$/, '').split('|').map((c) => c.trim());
+      const header = cells(line);
+      i += 2;
+      const rows = [];
+      while (i < lines.length && /^\|/.test(lines[i].trim())) { rows.push(cells(lines[i])); i++; }
+      pushBlock({ type: 'table', header, rows });
+      continue;
+    }
+
+    if (/^[-*]\s+/.test(line)) {
+      flushPara();
+      const items = [];
+      while (i < lines.length && /^[-*]\s+/.test(lines[i].trim())) {
+        items.push(lines[i].trim().replace(/^[-*]\s+/, ''));
+        i++;
+      }
+      pushBlock({ type: 'list', ordered: false, items });
+      continue;
+    }
+
+    if (/^\d+[.)]\s+/.test(line)) {
+      flushPara();
+      const items = [];
+      while (i < lines.length && /^\d+[.)]\s+/.test(lines[i].trim())) {
+        items.push(lines[i].trim().replace(/^\d+[.)]\s+/, ''));
+        i++;
+      }
+      pushBlock({ type: 'list', ordered: true, items });
+      continue;
+    }
+
+    if (!line) { flushPara(); i++; continue; }
+
+    para.push(line);
+    i++;
+  }
+  flushPara();
+
+  // Credentials: the first table that carries a password column.
+  const credentials = [];
+  const collectTables = (s) => s.blocks.filter((b) => b.type === 'table')
+    .concat(s.children ? s.children.reduce((acc, c) => acc.concat(collectTables(c)), []) : []);
+  const tables = sections.reduce((acc, s) => acc.concat(collectTables(s)), []);
+  const credTable = tables.find((t) => t.header.some((h) => /password/i.test(h)));
+  if (credTable) {
+    const idx = (re) => credTable.header.findIndex((h) => re.test(h));
+    const iRole = idx(/role|persona|account/i);
+    const iLogin = idx(/email|user|login/i);
+    const iPass = idx(/password/i);
+    const iPurpose = idx(/purpose|use|notes?/i);
+    const strip = (v) => String(v === undefined ? '' : v).replace(/\*\*/g, '').replace(/`/g, '').trim();
+    credTable.rows.forEach((r) => {
+      const password = strip(r[iPass]);
+      if (!password) return;
+      const entry = {
+        role: strip(r[iRole]) || 'Account',
+        login: strip(r[iLogin]),
+        password,
+        purpose: strip(r[iPurpose])
+      };
+      if (!GUIDE_PLACEHOLDER_SECRET.test(password)) {
+        warnings.push(`A credential for '${entry.role}' is not the demo password '${GUIDE_DEMO_PASSWORD}'. `
+          + 'It was withheld from the page: the guide ships inside the deployed app, so only demo credentials belong in it.');
+        entry.password = '[withheld: not a demo credential]';
+        entry.withheld = true;
+      }
+      credentials.push(entry);
+    });
+  }
+
+  // Slides: a section with ### children contributes its children, not itself.
+  const taken = new Set();
+  const slides = [];
+  sections.forEach((s) => {
+    if (s.children.length) {
+      s.children.forEach((c) => slides.push({
+        id: guideSlug(c.title, taken), title: c.title, section: s.title,
+        blocks: c.blocks, steps: c.steps
+      }));
+    } else {
+      slides.push({
+        id: guideSlug(s.title, taken), title: s.title, section: s.title,
+        blocks: s.blocks, steps: s.steps
+      });
+    }
+  });
+
+  return {
+    meta, credentials, slides, warnings,
+    stepCount: slides.reduce((n, s) => n + s.steps.length, 0)
+  };
+}
+
+function guideHash(text) {
+  return require('crypto').createHash('sha256').update(String(text), 'utf8').digest('hex');
+}
+
+function guideEsc(s) {
+  return String(s === undefined || s === null ? '' : s)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
+// Inline markdown, escaped first so nothing in the source can inject markup.
+function guideInline(text) {
+  let out = guideEsc(text);
+  out = out.replace(/`([^`]+)`/g, '<code>$1</code>');
+  out = out.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+  out = out.replace(/\[([^\]]+)\]\(([^)\s]+)\)/g, (m, label, href) =>
+    /^(https?:|\/|#|mailto:)/.test(href) ? '<a href="' + href + '">' + label + '</a>' : label);
+  return out;
+}
+
+function guideRenderBlock(b) {
+  if (b.type === 'paragraph') return '<p>' + guideInline(b.text) + '</p>';
+  if (b.type === 'code') return '<pre><code>' + guideEsc(b.text) + '</code></pre>';
+  if (b.type === 'list') {
+    const tag = b.ordered ? 'ol' : 'ul';
+    return '<' + tag + '>' + b.items.map((it) => '<li>' + guideInline(it) + '</li>').join('') + '</' + tag + '>';
+  }
+  if (b.type === 'table') {
+    return '<div class="scroll"><table><thead><tr>'
+      + b.header.map((h) => '<th>' + guideInline(h) + '</th>').join('')
+      + '</tr></thead><tbody>'
+      + b.rows.map((r) => '<tr>' + r.map((c) => '<td>' + guideInline(c) + '</td>').join('') + '</tr>').join('')
+      + '</tbody></table></div>';
+  }
+  return '';
+}
+
+const GUIDE_CSS = `
+:root{--bg:#f7f7f5;--panel:#fff;--ink:#17201c;--muted:#5d6b63;--line:#dfe3df;
+--accent:#0f6f52;--accent-ink:#fff;--warn-bg:#fdf3e3;--warn-ink:#6b4a12;--warn-line:#e4c89a;
+--code-bg:#edf0ec;--radius:10px;--shadow:0 1px 2px rgba(23,32,28,.08),0 8px 24px rgba(23,32,28,.06)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#11150f;--panel:#171c16;
+--ink:#e8ece6;--muted:#9aa89f;--line:#2b332c;--accent:#4cc79b;--accent-ink:#0a1310;
+--warn-bg:#2e2512;--warn-ink:#f0d9a8;--warn-line:#5a4722;--code-bg:#1f251f;
+--shadow:0 1px 2px rgba(0,0,0,.4),0 8px 24px rgba(0,0,0,.3)}}
+:root[data-theme="dark"]{--bg:#11150f;--panel:#171c16;--ink:#e8ece6;--muted:#9aa89f;--line:#2b332c;
+--accent:#4cc79b;--accent-ink:#0a1310;--warn-bg:#2e2512;--warn-ink:#f0d9a8;--warn-line:#5a4722;
+--code-bg:#1f251f;--shadow:0 1px 2px rgba(0,0,0,.4),0 8px 24px rgba(0,0,0,.3)}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{background:var(--bg);color:var(--ink);font:16px/1.6 ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+-webkit-font-smoothing:antialiased}
+a{color:var(--accent)}
+code{background:var(--code-bg);padding:.12em .36em;border-radius:5px;font:0.92em/1.5 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+pre{background:var(--code-bg);padding:14px 16px;border-radius:var(--radius);overflow:auto}
+pre code{background:none;padding:0}
+.wrap{max-width:860px;margin:0 auto;padding:0 16px 140px}
+header.top{border-bottom:1px solid var(--line);background:var(--panel);position:sticky;top:0;z-index:5}
+.top-in{max-width:860px;margin:0 auto;padding:14px 16px;display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+.title{font-size:1.02rem;font-weight:650;margin:0;letter-spacing:-.01em}
+.chip{font-size:.78rem;color:var(--muted);border:1px solid var(--line);border-radius:999px;padding:3px 10px;white-space:nowrap}
+.grow{flex:1 1 auto}
+.bar{height:3px;background:var(--line)}
+.bar>i{display:block;height:100%;background:var(--accent);width:0;transition:width .25s ease}
+.notice{display:flex;gap:10px;align-items:flex-start;background:var(--warn-bg);color:var(--warn-ink);
+border:1px solid var(--warn-line);border-radius:var(--radius);padding:12px 14px;margin:20px 0;font-size:.9rem}
+.notice svg{flex:0 0 auto;margin-top:2px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:22px 24px;margin:18px 0}
+.kicker{font-size:.76rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin:0 0 6px}
+h2.slide-title{font-size:1.5rem;line-height:1.25;margin:0 0 14px;letter-spacing:-.02em}
+ol.steps{list-style:none;counter-reset:step;margin:0;padding:0}
+ol.steps li{counter-increment:step;display:flex;gap:12px;align-items:flex-start;padding:11px 0;border-top:1px solid var(--line)}
+ol.steps li:first-child{border-top:0}
+ol.steps li::before{content:counter(step);flex:0 0 26px;height:26px;border-radius:999px;background:var(--code-bg);
+color:var(--muted);font-size:.8rem;font-weight:650;display:grid;place-items:center}
+ol.steps input{margin:5px 0 0;width:17px;height:17px;accent-color:var(--accent);flex:0 0 auto;cursor:pointer}
+ol.steps .txt{flex:1 1 auto}
+ol.steps li.done .txt{color:var(--muted);text-decoration:line-through}
+table{border-collapse:collapse;width:100%;font-size:.92rem}
+th,td{border:1px solid var(--line);padding:8px 10px;text-align:left;vertical-align:top}
+th{background:var(--code-bg);font-weight:650}
+.scroll{overflow-x:auto}
+.creds summary{cursor:pointer;font-weight:650;padding:4px 0}
+.cred{display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:9px 0;border-top:1px solid var(--line)}
+.cred:first-of-type{border-top:0}
+.cred b{min-width:120px}
+.copy{font:inherit;font-size:.82rem;background:var(--panel);color:var(--ink);border:1px solid var(--line);
+border-radius:7px;padding:4px 9px;cursor:pointer;display:inline-flex;gap:5px;align-items:center}
+.copy:hover{border-color:var(--accent)}
+.copy:active{transform:scale(.97)}
+nav.pager{position:fixed;left:0;right:0;bottom:0;background:var(--panel);border-top:1px solid var(--line);z-index:6}
+.pager-in{max-width:860px;margin:0 auto;padding:11px 16px;display:flex;gap:10px;align-items:center}
+button.nav{font:inherit;font-weight:600;background:var(--accent);color:var(--accent-ink);border:1px solid transparent;
+border-radius:9px;padding:9px 16px;cursor:pointer;display:inline-flex;gap:7px;align-items:center}
+button.nav.ghost{background:var(--panel);color:var(--ink);border-color:var(--line)}
+button.nav:hover{filter:brightness(1.06)}
+button.nav:active{transform:translateY(1px) scale(.99)}
+button.nav[disabled]{opacity:.4;cursor:not-allowed;transform:none}
+.count{color:var(--muted);font-size:.85rem;font-variant-numeric:tabular-nums}
+select.jump{font:inherit;font-size:.85rem;max-width:230px;background:var(--panel);color:var(--ink);
+border:1px solid var(--line);border-radius:8px;padding:7px 9px}
+:where(a,button,input,select,summary):focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:6px}
+.slide{display:none}
+.slide.on{display:block}
+body.present .top-in .chip,body.present .creds,body.present .notice,body.present ol.steps input{display:none}
+body.present .wrap{max-width:1040px}
+body.present h2.slide-title{font-size:2.3rem}
+body.present .card{font-size:1.2rem;padding:34px 38px}
+body.present ol.steps li{padding:16px 0}
+@media print{
+ header.top,nav.pager,.copy{display:none}
+ .slide{display:block;page-break-after:always}
+ .card{box-shadow:none;border-color:#bbb}
+ body{background:#fff;color:#000}
+}
+@media (max-width:620px){.wrap{padding-bottom:160px}.card{padding:18px}.cred b{min-width:0}}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+`;
+
+const GUIDE_JS = `
+(function(){
+  var slides = Array.prototype.slice.call(document.querySelectorAll('.slide'));
+  var pos = 0, KEY = 'devos-guide:' + (document.body.getAttribute('data-guide-id') || 'default');
+  var prev = document.getElementById('prev'), next = document.getElementById('next');
+  var count = document.getElementById('count'), jump = document.getElementById('jump');
+  var bar = document.getElementById('bar');
+
+  function store(read, value){
+    try { return read ? window.localStorage.getItem(KEY) : window.localStorage.setItem(KEY, value); }
+    catch (e) { return null; }
+  }
+  function show(i, push){
+    pos = Math.max(0, Math.min(slides.length - 1, i));
+    slides.forEach(function(s, n){ s.classList.toggle('on', n === pos); });
+    prev.disabled = pos === 0;
+    next.disabled = pos === slides.length - 1;
+    count.textContent = (pos + 1) + ' of ' + slides.length;
+    if (jump) jump.selectedIndex = pos;
+    if (bar) bar.style.width = (((pos + 1) / slides.length) * 100) + '%';
+    if (push && slides[pos].id) {
+      try { history.replaceState(null, '', '#' + slides[pos].id); } catch (e) {}
+    }
+    window.scrollTo(0, 0);
+  }
+  function fromHash(){
+    var id = (location.hash || '').replace('#', '');
+    if (!id) return 0;
+    for (var i = 0; i < slides.length; i++) { if (slides[i].id === id) return i; }
+    return 0;
+  }
+
+  prev.addEventListener('click', function(){ show(pos - 1, true); });
+  next.addEventListener('click', function(){ show(pos + 1, true); });
+  if (jump) jump.addEventListener('change', function(){ show(jump.selectedIndex, true); });
+  window.addEventListener('hashchange', function(){ show(fromHash(), false); });
+
+  document.addEventListener('keydown', function(e){
+    var t = (e.target && e.target.tagName) || '';
+    if (t === 'INPUT' || t === 'SELECT' || t === 'TEXTAREA') return;
+    if (e.key === 'ArrowRight' || e.key === 'PageDown' || e.key === ' ') { e.preventDefault(); show(pos + 1, true); }
+    else if (e.key === 'ArrowLeft' || e.key === 'PageUp') { e.preventDefault(); show(pos - 1, true); }
+    else if (e.key === 'Home') { e.preventDefault(); show(0, true); }
+    else if (e.key === 'End') { e.preventDefault(); show(slides.length - 1, true); }
+    else if (e.key === 'p' || e.key === 'P') { document.body.classList.toggle('present'); }
+  });
+
+  // Progress is a per-viewer convenience; a browser that refuses storage still works.
+  var saved = {};
+  try { saved = JSON.parse(store(true) || '{}') || {}; } catch (e) { saved = {}; }
+  var boxes = Array.prototype.slice.call(document.querySelectorAll('ol.steps input'));
+  boxes.forEach(function(box){
+    if (saved[box.id]) { box.checked = true; box.closest('li').classList.add('done'); }
+    box.addEventListener('change', function(){
+      box.closest('li').classList.toggle('done', box.checked);
+      saved[box.id] = box.checked;
+      store(false, JSON.stringify(saved));
+    });
+  });
+  var reset = document.getElementById('reset');
+  if (reset) reset.addEventListener('click', function(){
+    boxes.forEach(function(b){ b.checked = false; b.closest('li').classList.remove('done'); });
+    saved = {}; store(false, '{}');
+  });
+
+  Array.prototype.slice.call(document.querySelectorAll('.copy')).forEach(function(btn){
+    btn.addEventListener('click', function(){
+      var text = btn.getAttribute('data-copy') || '';
+      var done = function(){ var o = btn.textContent; btn.textContent = 'Copied'; setTimeout(function(){ btn.textContent = o; }, 1200); };
+      if (navigator.clipboard && navigator.clipboard.writeText) { navigator.clipboard.writeText(text).then(done, function(){}); return; }
+      var ta = document.createElement('textarea');
+      ta.value = text; document.body.appendChild(ta); ta.select();
+      try { document.execCommand('copy'); done(); } catch (e) {}
+      document.body.removeChild(ta);
+    });
+  });
+
+  var pres = document.getElementById('present');
+  if (pres) pres.addEventListener('click', function(){ document.body.classList.toggle('present'); });
+
+  show(fromHash(), false);
+})();
+`;
+
+const GUIDE_ICONS = {
+  left: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg>',
+  right: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18l6-6-6-6"/></svg>',
+  alert: '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 9v4M12 17h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></svg>',
+  copy: '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>',
+  screen: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>'
+};
+
+function renderGuidePage(model, opts) {
+  const o = opts || {};
+  const sourceHash = o.sourceSha256 || '';
+  const appName = model.meta.application || model.meta.title || 'This project';
+  const docTitle = appName + ' — Guided Walkthrough';
+  const env = model.meta.environment || 'Local development';
+
+  const credRows = model.credentials.map((c) => {
+    const copyBtn = (label, value) => '<button class="copy" type="button" data-copy="' + guideEsc(value) + '">'
+      + GUIDE_ICONS.copy + '<span>' + guideEsc(label) + '</span></button>';
+    return '<div class="cred"><b>' + guideInline(c.role) + '</b>'
+      + (c.login ? '<code>' + guideEsc(c.login) + '</code>' + copyBtn('Copy login', c.login) : '')
+      + '<code>' + guideEsc(c.password) + '</code>'
+      + (c.withheld ? '' : copyBtn('Copy password', c.password))
+      + (c.purpose ? '<span class="chip">' + guideInline(c.purpose) + '</span>' : '')
+      + '</div>';
+  }).join('');
+
+  const creds = model.credentials.length
+    ? '<details class="card creds" open><summary>Demo sign-in details</summary>' + credRows + '</details>'
+    : '';
+
+  const slides = model.slides.map((s, i) => {
+    const steps = s.steps.length
+      ? '<ol class="steps">' + s.steps.map((st, n) =>
+        '<li><input type="checkbox" id="' + s.id + '-' + (n + 1) + '" aria-label="Mark step '
+        + (n + 1) + ' done"><span class="txt">' + guideInline(st.text) + '</span></li>').join('') + '</ol>'
+      : '';
+    const body = s.blocks.map(guideRenderBlock).join('');
+    const kicker = s.section && s.section !== s.title ? '<p class="kicker">' + guideInline(s.section) + '</p>' : '';
+    return '<section class="slide' + (i === 0 ? ' on' : '') + '" id="' + s.id + '">'
+      + '<div class="card">' + kicker + '<h2 class="slide-title">' + guideInline(s.title) + '</h2>'
+      + body + steps + '</div></section>';
+  }).join('\n');
+
+  const options = model.slides.map((s) => '<option value="' + s.id + '">' + guideEsc(s.title) + '</option>').join('');
+
+  return [
+    '<!DOCTYPE html>',
+    '<html lang="en">',
+    '<head>',
+    '<meta charset="utf-8">',
+    '<meta name="viewport" content="width=device-width, initial-scale=1">',
+    '<meta name="robots" content="noindex, nofollow">',
+    '<meta name="generator" content="Dev-OS ' + guideEsc(o.version || PKG.version) + '">',
+    '<meta name="devos-guide-source" ' + GUIDE_SOURCE_ATTR + '="' + guideEsc(sourceHash) + '">',
+    '<title>' + guideEsc(docTitle) + '</title>',
+    '<style>' + GUIDE_CSS + '</style>',
+    '</head>',
+    '<body data-guide-id="' + guideEsc(o.guideId || appName) + '">',
+    '<header class="top"><div class="top-in">',
+    '<h1 class="title">' + guideEsc(appName) + '</h1>',
+    '<span class="chip">' + guideInline(env) + '</span>',
+    '<span class="grow"></span>',
+    '<button class="copy" type="button" id="present">' + GUIDE_ICONS.screen + '<span>Presenter</span></button>',
+    '<button class="copy" type="button" id="reset">Reset progress</button>',
+    '</div><div class="bar"><i id="bar"></i></div></header>',
+    '<main class="wrap">',
+    '<div class="notice">' + GUIDE_ICONS.alert + '<div><strong>Demo environment.</strong> '
+      + 'These sign-in details belong to seeded demo data for ' + guideInline(env)
+      + '. Do not serve this page from an environment holding real customer data.</div></div>',
+    creds,
+    slides,
+    '</main>',
+    '<nav class="pager" aria-label="Walkthrough navigation"><div class="pager-in">',
+    '<button class="nav ghost" type="button" id="prev">' + GUIDE_ICONS.left + '<span>Previous</span></button>',
+    '<button class="nav" type="button" id="next"><span>Next</span>' + GUIDE_ICONS.right + '</button>',
+    '<span class="grow"></span>',
+    '<span class="count" id="count"></span>',
+    '<select class="jump" id="jump" aria-label="Jump to a section">' + options + '</select>',
+    '</div></nav>',
+    '<script>' + GUIDE_JS + '</scr' + 'ipt>',
+    '</body>',
+    '</html>',
+    ''
+  ].join('\n');
+}
+
+function runGuide(flags, positional) {
+  const root = TARGET_DIR;
+  const sourcePath = path.join(root, GUIDE_SOURCE_REL);
+
+  if (!fs.existsSync(sourcePath)) {
+    console.error(`${colors.red}[ FAIL ] No testing guide to build from.${colors.reset}`);
+    console.error(`  Expected: ${colors.cyan}${GUIDE_SOURCE_REL}${colors.reset}`);
+    console.error('  The Tester agent writes it (.agents/skills/testing-guide/SKILL.md).');
+    console.error(`  Run ${colors.cyan}devos scaffold${colors.reset} to drop in a starter, then fill in the scenarios.`);
+    process.exit(1);
+  }
+
+  const markdown = fs.readFileSync(sourcePath, 'utf8');
+  const model = parseTestingGuide(markdown);
+  const sourceSha256 = guideHash(markdown);
+
+  if (!model.slides.length) {
+    console.error(`${colors.red}[ FAIL ] ${GUIDE_SOURCE_REL} has no sections to present.${colors.reset}`);
+    console.error('  Add "## " sections and "### " scenarios as the testing-guide skill describes.');
+    process.exit(1);
+  }
+
+  const manifest = getSkillManifest(root);
+  const stack = manifest.stack || detectGuideStack(root);
+  const outPath = flags.out
+    ? path.resolve(process.cwd(), flags.out)
+    : path.join(resolveGuideDir(root, stack), GUIDE_FILENAME);
+
+  fs.mkdirSync(path.dirname(outPath), { recursive: true });
+  fs.writeFileSync(outPath, renderGuidePage(model, {
+    sourceSha256,
+    guideId: model.meta.application || path.basename(root),
+    version: PKG.version
+  }), 'utf8');
+
+  const rel = path.relative(root, outPath) || path.basename(outPath);
+
+  // Only the resolved location is recorded; --out is a one-off and must not
+  // repoint the checks that run later.
+  if (!flags.out && fs.existsSync(path.join(root, '.agents'))) {
+    manifest.guide = { path: rel, sourceSha256, updatedAt: new Date().toISOString(),
+      slides: model.slides.length, steps: model.stepCount };
+    saveSkillManifest(manifest, root);
+  }
+
+  model.warnings.forEach((w) => console.log(`${colors.yellow}[ WARN ] ${w}${colors.reset}`));
+  console.log(`${colors.green}[ OK ]${colors.reset} Guide built: ${colors.cyan}${rel}${colors.reset}`);
+  console.log(`  ${model.slides.length} slides, ${model.stepCount} steps, ${model.credentials.length} demo accounts.`);
+  if (!flags.out) {
+    console.log(`  Served with the app at ${colors.cyan}/${path.basename(path.dirname(outPath))}/${GUIDE_FILENAME}${colors.reset}; open the file directly to present offline.`);
   }
 }
 
@@ -6258,6 +6841,12 @@ module.exports = {
   agentEfforts: AGENT_EFFORTS,
   agentColors: AGENT_COLORS,
   agentMemoryScopes: AGENT_MEMORY_SCOPES,
+  parseTestingGuide,
+  resolveGuideDir,
+  renderGuidePage,
+  detectGuideStack,
+  GUIDE_SOURCE_REL,
+  GUIDE_SOURCE_ATTR,
   computeSkillHash,
   backupSkill,
   getSkillManifest,
