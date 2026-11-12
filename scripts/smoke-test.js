@@ -2104,6 +2104,97 @@ function checkGuideCommand() {
 }
 checkGuideCommand();
 
+// ---------------------------------------------------------------------------
+// G2 — the page itself: navigation, presenter mode, resilience, taste
+// ---------------------------------------------------------------------------
+function checkGuidePage() {
+  const dx = require(CLI);
+  const md = [
+    '# Application Testing & QA Guide', '',
+    '**Application:** Orchard CRM',
+    '**Environment:** Local Development (`http://localhost:3000`)', '',
+    '## 1. Quick Start & Prerequisites', '', '- Run `npm run dev`.', '',
+    '## 2. Seed Data Fixtures', '',
+    '| Role | Email / Username | Password | Purpose |', '|---|---|---|---|',
+    '| **Admin User** | `admin@example.com` | `devos123` | Administration |',
+    '| **Standard User** | `user@example.com` | `devos123` | Day-to-day flows |', '',
+    '## 3. Test Scenarios (Step-by-Step Walkthroughs)', '',
+    '### Scenario A: Sign in and land on the dashboard',
+    '- [ ] 1. Go to `/login`.', '- [ ] 2. Enter the admin details.', '- [ ] 3. Confirm the dashboard loads.', '',
+    '### Scenario B: Create an orchard block',
+    '- [ ] 1. Open **Blocks**.', '- [ ] 2. Add "North Field".', '',
+    '## 4. Known Limitations & Notes', '', '- Stripe runs in test mode.', ''
+  ].join('\n');
+  const model = dx.parseTestingGuide(md);
+  const html = dx.renderGuidePage(model, { sourceSha256: 'a'.repeat(64), guideId: 'orchard' });
+
+  check('[G2] previous and next controls exist',
+    /id="prev"/.test(html) && /id="next"/.test(html) &&
+    />\s*<span>Previous<\/span>|Previous/.test(html) && /Next/.test(html));
+  check('[G2] arrow keys and space drive the deck',
+    /ArrowRight/.test(html) && /ArrowLeft/.test(html), 'keyboard handler missing');
+  check('[G2] a section jump list covers every slide',
+    (html.match(/<option value="/g) || []).length === model.slides.length,
+    `${(html.match(/<option value="/g) || []).length} options for ${model.slides.length} slides`);
+  check('[G2] a progress bar and a slide counter are present',
+    /id="bar"/.test(html) && /id="count"/.test(html));
+  check('[G2] only the first slide starts visible',
+    (html.match(/class="slide on"/g) || []).length === 1 &&
+    (html.match(/class="slide"/g) || []).length === model.slides.length - 1);
+  check('[G2] presenter mode is a control and a stylesheet rule',
+    /id="present"/.test(html) && /body\.present/.test(html));
+  check('[G2] a print stylesheet exports the whole deck',
+    /@media print/.test(html) && /page-break-after/.test(html));
+
+  // Storage is a per-viewer convenience: it must never break the page.
+  check('[G2] every localStorage access is guarded',
+    /try\s*{[^}]*localStorage/.test(html) && /catch/.test(html), 'unguarded storage access');
+  check('[G2] progress can be reset', /id="reset"/.test(html));
+  check('[G2] each step checkbox has a unique id and a label',
+    (html.match(/<input type="checkbox" id="/g) || []).length === model.stepCount &&
+    (html.match(/aria-label="Mark step/g) || []).length === model.stepCount,
+    `${(html.match(/<input type="checkbox" id="/g) || []).length} boxes for ${model.stepCount} steps`);
+  check('[G2] credentials can be copied',
+    /class="copy"/.test(html) && /data-copy="admin@example\.com"/.test(html));
+
+  // Theming and accessibility.
+  check('[G2] colours are tokens on :root with a dark-mode redefinition',
+    /:root\{--bg:/.test(html) && /prefers-color-scheme:dark/.test(html) &&
+    /:root\[data-theme="dark"\]/.test(html));
+  check('[G2] the body has an explicit background', /body\{background:var\(--bg\)/.test(html));
+  check('[G2] focus is always visible', /:focus-visible\{outline:/.test(html));
+  check('[G2] controls depress when pressed', /:active\{transform:/.test(html));
+  check('[G2] it works at phone width', /@media \(max-width:620px\)/.test(html));
+  check('[G2] motion can be turned down', /prefers-reduced-motion/.test(html));
+
+  // The page ships inside the deployed app.
+  check('[G2] the page asks search engines to stay away',
+    /name="robots" content="noindex/.test(html));
+  check('[G2] the page names the environment its demo accounts belong to',
+    /Demo environment/.test(html) && /real customer data/.test(html));
+  check('[G2] the source hash is embedded for the freshness check',
+    new RegExp(dx.GUIDE_SOURCE_ATTR + '="' + 'a'.repeat(64) + '"').test(html),
+    dx.GUIDE_SOURCE_ATTR);
+
+  // Content from the markdown must not be able to inject markup.
+  const nasty = dx.renderGuidePage(dx.parseTestingGuide(
+    '# T\n\n## S\n\n- [ ] 1. <img src=x onerror="alert(1)"> and <script>bad()</scr' + 'ipt>\n'), {});
+  check('[G2] markdown content cannot inject markup',
+    !/<img src=x/.test(nasty) && !/<script>bad\(\)/.test(nasty) && /&lt;img/.test(nasty),
+    'escaping failed');
+
+  // R19 and the pre-commit taste gate scan this file in every target project.
+  const tasteFile = path.join(scratch, 'taste-guide.html');
+  fs.writeFileSync(tasteFile, html);
+  const taste = spawnSync('bash', [path.join(ROOT, '.agents', 'scripts', 'ui-taste-check.sh'), tasteFile],
+    { encoding: 'utf8', timeout: CLI_TIMEOUT_MS, env: BASE_ENV });
+  check('[G2] the generated page passes the Dev-OS UI taste gate', taste.status === 0,
+    ((taste.stdout || '') + (taste.stderr || '')).slice(-500));
+  check('[G2] the page uses SVG icons and carries no emoji',
+    /<svg /.test(html) && !/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]/u.test(html), 'emoji found');
+}
+checkGuidePage();
+
 } finally {
   fs.rmSync(proj, { recursive: true, force: true });
   fs.rmSync(empty, { recursive: true, force: true });
