@@ -1988,8 +1988,14 @@ function generateCodexConfig(targetDir, ctx = harnessContext(targetDir)) {
 // absolute path, because these files get committed and an absolute path would
 // break for every other clone. Hooks already re-resolve the project root
 // themselves (devos_project_root), so only finding the script matters here.
+// One command for every harness and every platform. It names no shell and uses no
+// variable expansion, because on Windows the hook shell is cmd.exe: `$CLAUDE_PROJECT_DIR`
+// stays literal there, `${CLAUDE_PLUGIN_ROOT}` loses its backslashes, and neither `sh`
+// nor a `#!/bin/bash` shebang resolves. run.js finds a POSIX shell itself and proxies
+// stdin, stdout and the exit code. The path is relative because hooks run from the
+// project root and a baked absolute path would break every teammate on a shared config.
 function harnessHookCommand(format, script) {
-  return `sh -c 'r=$(git rev-parse --show-toplevel 2>/dev/null || pwd); DEVOS_HOOK_FORMAT=${format} exec "$r/.agents/hooks/${script}"'`;
+  return `node .agents/hooks/run.js ${script} ${format}`;
 }
 
 // Codex: ten of the twelve Dev-OS hooks map 1:1. Codex has no InstructionsLoaded
@@ -2455,29 +2461,29 @@ function describeClaudeSkillsDrift(d) {
 // (space-separated trailing wildcard, e.g. `Bash(git commit *)`; `Read(./.env)`).
 const DEVOS_HOOK_MARKER = '.agents/hooks/';
 const DEVOS_CLAUDE_HOOKS = {
-  SessionStart: [{ hooks: [{ type: 'command', command: '"$CLAUDE_PROJECT_DIR"/.agents/hooks/session-start.sh' }] }],
-  UserPromptSubmit: [{ hooks: [{ type: 'command', command: '"$CLAUDE_PROJECT_DIR"/.agents/hooks/user-prompt-submit.sh' }] }],
-  PreToolUse: [{ matcher: 'Bash|Edit|Write|MultiEdit|NotebookEdit', hooks: [{ type: 'command', command: '"$CLAUDE_PROJECT_DIR"/.agents/hooks/pre-tool-use.sh' }] }],
+  SessionStart: [{ hooks: [{ type: 'command', command: 'node .agents/hooks/run.js session-start.sh claude' }] }],
+  UserPromptSubmit: [{ hooks: [{ type: 'command', command: 'node .agents/hooks/run.js user-prompt-submit.sh claude' }] }],
+  PreToolUse: [{ matcher: 'Bash|Edit|Write|MultiEdit|NotebookEdit', hooks: [{ type: 'command', command: 'node .agents/hooks/run.js pre-tool-use.sh claude' }] }],
   // PostToolUse exit 2 shows stderr to Claude; the edit has already happened (hooks reference, exit code table)
-  PostToolUse: [{ matcher: 'Edit|Write|MultiEdit', hooks: [{ type: 'command', command: '"$CLAUDE_PROJECT_DIR"/.agents/hooks/post-tool-use.sh' }] }],
-  Stop: [{ hooks: [{ type: 'command', command: '"$CLAUDE_PROJECT_DIR"/.agents/hooks/stop.sh' }] }],
+  PostToolUse: [{ matcher: 'Edit|Write|MultiEdit', hooks: [{ type: 'command', command: 'node .agents/hooks/run.js post-tool-use.sh claude' }] }],
+  Stop: [{ hooks: [{ type: 'command', command: 'node .agents/hooks/run.js stop.sh claude' }] }],
   // No matcher: SubagentStop matches on agent type, and an omitted matcher fires for every subagent
-  SubagentStop: [{ hooks: [{ type: 'command', command: '"$CLAUDE_PROJECT_DIR"/.agents/hooks/subagent-stop.sh' }] }],
-  SessionEnd: [{ hooks: [{ type: 'command', command: '"$CLAUDE_PROJECT_DIR"/.agents/hooks/session-end.sh' }] }],
+  SubagentStop: [{ hooks: [{ type: 'command', command: 'node .agents/hooks/run.js subagent-stop.sh claude' }] }],
+  SessionEnd: [{ hooks: [{ type: 'command', command: 'node .agents/hooks/run.js session-end.sh claude' }] }],
   // Wave 5.2 W3. Every one is wired without a matcher: PreCompact/PostCompact then cover both
   // "manual" and "auto", SubagentStart every agent type, InstructionsLoaded every load_reason.
   // TaskCompleted supports no matcher at all.
   // PreCompact stdout becomes the compaction summary instructions (capped at 10,000 chars).
-  PreCompact: [{ hooks: [{ type: 'command', command: '"$CLAUDE_PROJECT_DIR"/.agents/hooks/pre-compact.sh' }] }],
+  PreCompact: [{ hooks: [{ type: 'command', command: 'node .agents/hooks/run.js pre-compact.sh claude' }] }],
   // PostCompact has no decision control and cannot inject context; session-start.sh (source
   // "compact") is what re-injects the directive after compaction.
-  PostCompact: [{ hooks: [{ type: 'command', command: '"$CLAUDE_PROJECT_DIR"/.agents/hooks/post-compact.sh' }] }],
+  PostCompact: [{ hooks: [{ type: 'command', command: 'node .agents/hooks/run.js post-compact.sh claude' }] }],
   // SubagentStart injects the task contract; it cannot deny a spawn.
-  SubagentStart: [{ hooks: [{ type: 'command', command: '"$CLAUDE_PROJECT_DIR"/.agents/hooks/subagent-start.sh' }] }],
+  SubagentStart: [{ hooks: [{ type: 'command', command: 'node .agents/hooks/run.js subagent-start.sh claude' }] }],
   // TaskCompleted blocks a completion with exit 2, but only when DEVOS_TASK_VERIFY is set.
-  TaskCompleted: [{ hooks: [{ type: 'command', command: '"$CLAUDE_PROJECT_DIR"/.agents/hooks/task-completed.sh' }] }],
+  TaskCompleted: [{ hooks: [{ type: 'command', command: 'node .agents/hooks/run.js task-completed.sh claude' }] }],
   // InstructionsLoaded fires once per instruction file; its exit code is ignored.
-  InstructionsLoaded: [{ hooks: [{ type: 'command', command: '"$CLAUDE_PROJECT_DIR"/.agents/hooks/instructions-loaded.sh' }] }]
+  InstructionsLoaded: [{ hooks: [{ type: 'command', command: 'node .agents/hooks/run.js instructions-loaded.sh claude' }] }]
 };
 // Always asked, in every permission mode (code.claude.com/docs/en/permission-modes,
 // "Actions no mode auto-approves"). With commitPolicy "agent" this prompt is the human's
@@ -2498,7 +2504,14 @@ const DEVOS_PERMISSION_DENY = [
 // SessionStart has no matcher, so it already fires on `compact` (re-injection).
 const DEVOS_HOOK_SCRIPTS = ['session-start.sh', 'user-prompt-submit.sh', 'pre-tool-use.sh', 'post-tool-use.sh', 'stop.sh', 'subagent-stop.sh', 'session-end.sh',
   'pre-compact.sh', 'post-compact.sh', 'subagent-start.sh', 'task-completed.sh', 'instructions-loaded.sh'];
-const DEVOS_HOOK_COMMAND_RE = new RegExp(`(^|[/"'\\s])\\.agents/hooks/(${DEVOS_HOOK_SCRIPTS.map(escapeRegExp).join('|')})(?=$|["'\\s;&|])`);
+// Identifies an entry Dev-OS wrote, so re-running init strips its own handlers and
+// leaves everyone else's alone. Three spellings must match: the launcher form written
+// since 5.3.0, the plugin's ${CLAUDE_PLUGIN_ROOT} form, and the pre-5.3.0 form that
+// named the .sh directly — an upgrade has to clean those up rather than double them.
+const DEVOS_HOOK_COMMAND_RE = new RegExp(
+  `(^|[/"'\\s])\\.agents/hooks/run\\.js(?=$|["'\\s])`
+  + `|hooks/run\\.js["']?\\s+(?:${DEVOS_HOOK_SCRIPTS.map(escapeRegExp).join('|')})(?=$|["'\\s;&|])`
+  + `|(^|[/"'\\s])\\.agents/hooks/(?:${DEVOS_HOOK_SCRIPTS.map(escapeRegExp).join('|')})(?=$|["'\\s;&|])`);
 
 function isDevosHookCommand(entry) {
   return Boolean(entry && typeof entry.command === 'string' && DEVOS_HOOK_COMMAND_RE.test(entry.command));
@@ -6008,7 +6021,12 @@ function pluginHooksJson() {
         // and shell form"), so a leading VAR=value assignment sets the env for
         // the script only. DEVOS_PLUGIN_MODE=1 makes the scripts exit 0 in a
         // project without .agents/manifest.json (not initialized with devos init).
-        command: `${PLUGIN_HOOK_ENV_PREFIX}${h.command.replace('"$CLAUDE_PROJECT_DIR"/.agents/hooks/', '"${CLAUDE_PLUGIN_ROOT}"/hooks/')}`
+        // The plugin is installed outside the project, so this is the one command
+        // that cannot use a relative path. Plugin mode travels as an argument, not an
+        // env prefix: a leading VAR=value assignment needs shell form, which cmd.exe
+        // does not provide.
+        command: h.command.replace('node .agents/hooks/run.js',
+          'node "${CLAUDE_PLUGIN_ROOT}/hooks/run.js"') + ' --plugin'
       }))
     }));
   });
@@ -6102,7 +6120,7 @@ function buildPlugin(outDir) {
     const src = path.join(hookSrc, f);
     if (fs.statSync(src).isDirectory()) {
       if (f === 'lib') copyRecursiveSync(src, path.join(hooksOut, f));
-    } else if (f.endsWith('.sh')) {
+    } else if (f.endsWith('.sh') || f.endsWith('.js')) {
       fs.copyFileSync(src, path.join(hooksOut, f));
       fs.chmodSync(path.join(hooksOut, f), 0o755);
     }

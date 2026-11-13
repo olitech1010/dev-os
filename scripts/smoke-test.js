@@ -100,7 +100,7 @@ function readJson(file) {
 }
 
 // Number of hook entries for an event whose command runs one of the seven Dev-OS hook scripts.
-const DEVOS_HOOK_RE = /\.agents\/hooks\/(session-start|user-prompt-submit|pre-tool-use|post-tool-use|stop|subagent-stop|session-end|pre-compact|post-compact|subagent-start|task-completed|instructions-loaded)\.sh/;
+const DEVOS_HOOK_RE = /\.agents\/hooks\/run\.js (session-start|user-prompt-submit|pre-tool-use|post-tool-use|stop|subagent-stop|session-end|pre-compact|post-compact|subagent-start|task-completed|instructions-loaded)\.sh|hooks\/run\.js\" (session-start|user-prompt-submit|pre-tool-use|post-tool-use|stop|subagent-stop|session-end|pre-compact|post-compact|subagent-start|task-completed|instructions-loaded)\.sh/;
 function devosHookEntries(settings, event) {
   const list = settings && settings.hooks && Array.isArray(settings.hooks[event]) ? settings.hooks[event] : [];
   return list.filter((entry) => Array.isArray(entry.hooks) && entry.hooks.some((h) => typeof h.command === 'string' && DEVOS_HOOK_RE.test(h.command)));
@@ -126,18 +126,19 @@ function checkSettings(settingsPath, stage) {
   check(`[${stage}] exactly one Dev-OS PreToolUse entry`, pre.length === 1, `found ${pre.length}`);
   const preEntry = pre[0] || {};
   check(`[${stage}] PreToolUse matcher covers Bash and Edit`, typeof preEntry.matcher === 'string' && preEntry.matcher.includes('Bash') && preEntry.matcher.includes('Edit'), String(preEntry.matcher));
-  check(`[${stage}] PreToolUse runs .agents/hooks/pre-tool-use.sh as type "command"`,
-    Array.isArray(preEntry.hooks) && preEntry.hooks.some((h) => h.type === 'command' && String(h.command).includes('.agents/hooks/pre-tool-use.sh')));
+  check(`[${stage}] PreToolUse runs pre-tool-use.sh through the launcher as type "command"`,
+    Array.isArray(preEntry.hooks) && preEntry.hooks.some((h) => h.type === 'command' &&
+      h.command === 'node .agents/hooks/run.js pre-tool-use.sh claude'), JSON.stringify(preEntry.hooks));
   ['Stop', 'SessionStart', 'PostToolUse', 'SubagentStop', 'PreCompact', 'PostCompact', 'SubagentStart', 'TaskCompleted', 'InstructionsLoaded'].forEach((ev) => {
     const n = devosHookEntries(settings, ev).length;
     check(`[${stage}] exactly one Dev-OS ${ev} hook entry`, n === 1, `found ${n}`);
   });
   const post = devosHookEntries(settings, 'PostToolUse')[0] || {};
   check(`[${stage}] PostToolUse matcher is Edit|Write|MultiEdit and runs post-tool-use.sh`, post.matcher === 'Edit|Write|MultiEdit' &&
-    Array.isArray(post.hooks) && post.hooks.some((h) => h.type === 'command' && h.command === '"$CLAUDE_PROJECT_DIR"/.agents/hooks/post-tool-use.sh'), JSON.stringify(post));
+    Array.isArray(post.hooks) && post.hooks.some((h) => h.type === 'command' && h.command === 'node .agents/hooks/run.js post-tool-use.sh claude'), JSON.stringify(post));
   const subStop = devosHookEntries(settings, 'SubagentStop')[0] || {};
   check(`[${stage}] SubagentStop runs subagent-stop.sh with no matcher`, subStop.matcher === undefined &&
-    Array.isArray(subStop.hooks) && subStop.hooks.some((h) => h.command === '"$CLAUDE_PROJECT_DIR"/.agents/hooks/subagent-stop.sh'), JSON.stringify(subStop));
+    Array.isArray(subStop.hooks) && subStop.hooks.some((h) => h.command === 'node .agents/hooks/run.js subagent-stop.sh claude'), JSON.stringify(subStop));
   const sessStart = devosHookEntries(settings, 'SessionStart')[0] || {};
   check(`[${stage}] SessionStart has no matcher (fires on compact too, so it is wired once)`, sessStart.matcher === undefined, JSON.stringify(sessStart));
   // W3: the four added events are wired once each, with no matcher, so PreCompact/PostCompact
@@ -147,7 +148,8 @@ function checkSettings(settingsPath, stage) {
     ['TaskCompleted', 'task-completed.sh'], ['InstructionsLoaded', 'instructions-loaded.sh']].forEach(([ev, script]) => {
     const entry = devosHookEntries(settings, ev)[0] || {};
     check(`[${stage}] ${ev} runs ${script} with no matcher`, entry.matcher === undefined &&
-      Array.isArray(entry.hooks) && entry.hooks.some((h) => h.type === 'command' && h.command === `"$CLAUDE_PROJECT_DIR"/.agents/hooks/${script}`), JSON.stringify(entry));
+      Array.isArray(entry.hooks) && entry.hooks.some((h) => h.type === 'command' &&
+        h.command === `node .agents/hooks/run.js ${script} claude`), JSON.stringify(entry));
   });
   const deny = denyList(settings);
   const commitRules = deny.filter((r) => /^Bash\(git commit/.test(r));
@@ -896,8 +898,10 @@ try {
 
     // Every generated command must find its script without depending on the harness's cwd,
     // and must carry the format tag that tells the hook which shape to emit.
+    // The launcher takes the script and the harness format as arguments. Nothing may
+    // be an absolute path: a baked path breaks every teammate on a shared config.
     const cmdOk = (cmd, fmt, script) => typeof cmd === 'string' &&
-      cmd.includes(`DEVOS_HOOK_FORMAT=${fmt}`) && cmd.includes(`.agents/hooks/${script}`) &&
+      cmd === `node .agents/hooks/run.js ${script} ${fmt}` &&
       !/^\/|\/Users\/|\/home\//.test(cmd);
 
     // --- Codex: nested matcher groups like Claude Code, timeout in SECONDS ---
@@ -1819,14 +1823,16 @@ try {
     check('[W4] hooks/hooks.json is valid JSON wrapped in a top-level "hooks" key', Boolean(hooksJson && hooksJson.hooks && hooksJson.hooks.PreToolUse));
     const hookCmds = [];
     Object.values((hooksJson && hooksJson.hooks) || {}).forEach((groups) => groups.forEach((g) => (g.hooks || []).forEach((h) => hookCmds.push(h.command))));
+    // The plugin is installed outside the project, so it is the one command that still
+    // needs ${CLAUDE_PLUGIN_ROOT}. Both the launcher and the script it names must exist.
     const missingHookFiles = hookCmds.filter((c) => {
-      const m = /^DEVOS_PLUGIN_MODE=1 "\$\{CLAUDE_PLUGIN_ROOT\}"\/(.+)$/.exec(c || '');
+      const m = /^node "\$\{CLAUDE_PLUGIN_ROOT\}\/(hooks\/run\.js)" ([a-z-]+\.sh) claude --plugin$/.exec(c || '');
       if (!m) return true;
-      const f = path.join(plugOut, m[1]);
-      return !fs.existsSync(f) || (fs.statSync(f).mode & 0o111) === 0;
+      return [path.join(plugOut, m[1]), path.join(plugOut, 'hooks', m[2])].some(
+        (f) => !fs.existsSync(f) || (fs.statSync(f).mode & 0o111) === 0);
     });
-    check(`[W4] every hooks.json command is "\${CLAUDE_PLUGIN_ROOT}"/... and resolves to an executable file (${hookCmds.length})`, hookCmds.length === 12 && missingHookFiles.length === 0, missingHookFiles.join(', '));
-    check(`[W4] every plugin hooks.json command contains DEVOS_PLUGIN_MODE=1 (${hookCmds.length})`, hookCmds.length > 0 && hookCmds.every((c) => typeof c === 'string' && c.includes('DEVOS_PLUGIN_MODE=1')));
+    check(`[W4] every hooks.json command runs the launcher from "\${CLAUDE_PLUGIN_ROOT}" and resolves to executable files (${hookCmds.length})`, hookCmds.length === 12 && missingHookFiles.length === 0, missingHookFiles.join(', '));
+    check(`[W4] every plugin hooks.json command carries --plugin (${hookCmds.length})`, hookCmds.length > 0 && hookCmds.every((c) => typeof c === 'string' && c.endsWith(' --plugin')));
     const plugReadme = fs.readFileSync(path.join(plugOut, 'README.md'), 'utf8');
     check('[W4] plugin README: install lines, devos-init-only hooks, once-per-session command source',
       ['/plugin marketplace add olitech1010/dev-os', '/plugin install devos@olives-devos', 'only act in projects initialized with', 'once per session'].every((t) => plugReadme.includes(t)));
@@ -2194,6 +2200,210 @@ function checkGuidePage() {
     /<svg /.test(html) && !/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]/u.test(html), 'emoji found');
 }
 checkGuidePage();
+
+// ---------------------------------------------------------------------------
+// H1 — cross-platform hook launcher (.agents/hooks/run.js)
+// Plan: docs/plans/2026-11-12-windows-hooks.md
+// ---------------------------------------------------------------------------
+function checkHookLauncher() {
+  const runner = path.join(ROOT, '.agents', 'hooks', 'run.js');
+  check('[H1] the launcher ships in .agents/hooks/', fs.existsSync(runner), runner);
+  if (!fs.existsSync(runner)) return;
+
+  const rj = require(runner);
+  check('[H1] the launcher exports resolveHookShell', typeof rj.resolveHookShell === 'function');
+  if (typeof rj.resolveHookShell !== 'function') return;
+
+  // Pure over (platform, env, exists), so Windows is testable from macOS.
+  const existsIn = (list) => (p) => list.includes(p);
+  const posixBash = rj.resolveHookShell('darwin', { PATH: '/usr/bin:/bin' },
+    existsIn(['/bin/bash', '/bin/sh']));
+  check('[H1] bash on PATH wins on a POSIX box', posixBash === '/bin/bash', String(posixBash));
+
+  const posixSh = rj.resolveHookShell('linux', { PATH: '/usr/bin:/bin' }, existsIn(['/bin/sh']));
+  check('[H1] sh is taken when bash is absent', posixSh === '/bin/sh', String(posixSh));
+
+  const gitBash = 'C:\\Program Files\\Git\\bin\\bash.exe';
+  const win = rj.resolveHookShell('win32',
+    { PATH: 'C:\\Windows\\system32', ProgramFiles: 'C:\\Program Files' }, existsIn([gitBash]));
+  check('[H1] Git for Windows bash is found when nothing is on PATH', win === gitBash, String(win));
+
+  const winNone = rj.resolveHookShell('win32', { PATH: 'C:\\Windows\\system32' }, () => false);
+  check('[H1] a Windows box with no shell at all resolves to null', winNone === null, String(winNone));
+
+  const override = rj.resolveHookShell('win32', { DEVOS_SHELL: 'D:\\msys64\\usr\\bin\\bash.exe', PATH: '' },
+    existsIn(['D:\\msys64\\usr\\bin\\bash.exe']));
+  check('[H1] DEVOS_SHELL overrides the search',
+    override === 'D:\\msys64\\usr\\bin\\bash.exe', String(override));
+  check('[H1] DEVOS_SHELL that does not exist is not used',
+    rj.resolveHookShell('darwin', { DEVOS_SHELL: '/nope/bash', PATH: '/bin' }, existsIn(['/bin/sh'])) === '/bin/sh');
+
+  // Git Bash needs /c/... rather than C:\...
+  check('[H1] the launcher exports toShellPath', typeof rj.toShellPath === 'function');
+  if (typeof rj.toShellPath === 'function') {
+    check('[H1] a Windows path is converted for the shell',
+      rj.toShellPath('C:\\dev\\app\\.agents\\hooks\\x.sh', 'win32') === '/c/dev/app/.agents/hooks/x.sh',
+      rj.toShellPath('C:\\dev\\app\\.agents\\hooks\\x.sh', 'win32'));
+    check('[H1] a POSIX path is left alone',
+      rj.toShellPath('/Users/x/app/.agents/hooks/x.sh', 'darwin') === '/Users/x/app/.agents/hooks/x.sh');
+  }
+
+  // End to end against a real script.
+  const proj = fs.mkdtempSync(path.join(scratch, 'launcher-'));
+  const hooks = path.join(proj, '.agents', 'hooks');
+  fs.mkdirSync(hooks, { recursive: true });
+  // The launcher resolves hook scripts from its own directory, which is how it
+  // ships in both a project install and the plugin, so the fixture mirrors that.
+  const localRunner = path.join(hooks, 'run.js');
+  fs.copyFileSync(runner, localRunner);
+  const mk = (name, body) => {
+    const f = path.join(hooks, name);
+    fs.writeFileSync(f, body, 'utf8');
+    fs.chmodSync(f, 0o755);
+    return f;
+  };
+  mk('echo-hook.sh', '#!/bin/bash\nread -r line\nprintf "got:%s fmt:%s\\n" "$line" "$DEVOS_HOOK_FORMAT"\n');
+  mk('deny-hook.sh', '#!/bin/bash\necho "denied" >&2\nexit 2\n');
+
+  const launch = (script, input, env) => spawnSync(process.execPath, [localRunner, script, 'claude'], {
+    cwd: proj, input: input === undefined ? '' : input, encoding: 'utf8',
+    timeout: HOOK_TIMEOUT_MS, env: Object.assign({}, BASE_ENV, env || {})
+  });
+
+  const ok = launch('echo-hook.sh', 'payload\n');
+  check('[H1] the launcher runs the script and passes stdin through',
+    ok.status === 0 && /got:payload/.test(ok.stdout || ''), JSON.stringify(ok.stdout));
+  check('[H1] the harness format reaches the script',
+    /fmt:claude/.test(ok.stdout || ''), JSON.stringify(ok.stdout));
+
+  const denied = launch('deny-hook.sh', '{}');
+  check('[H1] a blocking exit code 2 survives the launcher', denied.status === 2, `status=${denied.status}`);
+  check('[H1] the script stderr survives the launcher', /denied/.test(denied.stderr || ''),
+    JSON.stringify(denied.stderr));
+
+  // The whole point: no shell must not mean no work.
+  const noShell = launch('deny-hook.sh', '{}', { PATH: '', DEVOS_SHELL: path.join(proj, 'no-such-shell') });
+  check('[H1] with no shell at all the launcher exits 0 instead of blocking',
+    noShell.status === 0, `status=${noShell.status} stderr=${(noShell.stderr || '').slice(0, 200)}`);
+  check('[H1] and says on stderr that the gates are inactive',
+    /DEVOS|shell|gate/i.test(noShell.stderr || ''), JSON.stringify((noShell.stderr || '').slice(0, 300)));
+
+  const gone = launch('not-a-hook.sh', '{}');
+  check('[H1] a missing script is not treated as a denial', gone.status === 0, `status=${gone.status}`);
+
+  // It runs before every tool call, so its own cost matters. Measure what the
+  // launcher ADDS: bare Node startup is the floor and varies wildly by machine
+  // (a shimmed `node` on PATH can take most of a second all by itself), so an
+  // absolute ceiling here would be testing the box, not the code.
+  const bench = (fn, n) => { const t = Date.now(); for (let i = 0; i < n; i++) fn(); return (Date.now() - t) / n; };
+  const baseline = bench(() => spawnSync(process.execPath, ['-e', ''],
+    { encoding: 'utf8', timeout: HOOK_TIMEOUT_MS, env: BASE_ENV }), 3);
+  const full = bench(() => launch('echo-hook.sh', 'x\n'), 3);
+  const added = full - baseline;
+  check('[H1] the launcher adds under 250ms on top of Node startup', added < 250,
+    `added ${added.toFixed(0)}ms (total ${full.toFixed(0)}ms, node baseline ${baseline.toFixed(0)}ms)`);
+  console.log(`         (hook total ${full.toFixed(0)}ms = ${baseline.toFixed(0)}ms node startup + ${added.toFixed(0)}ms launcher)`);
+}
+checkHookLauncher();
+
+// ---------------------------------------------------------------------------
+// H2 — every harness config goes through the launcher
+// ---------------------------------------------------------------------------
+function checkHookCommandsPortable() {
+  const proj2 = fs.mkdtempSync(path.join(scratch, 'winhooks-'));
+  fs.writeFileSync(path.join(proj2, 'package.json'), JSON.stringify({ name: 'winfix', version: '1.0.0' }));
+  const init = runCli(['init', '--existing', '--stack', 'universal', '--all-harnesses', '--yes'], proj2);
+  check('[H2] init with every harness succeeds', init.status === 0, (init.stdout + init.stderr).slice(-300));
+
+  const configs = [
+    ['.claude/settings.json', path.join(proj2, '.claude', 'settings.json')],
+    ['.codex/hooks.json', path.join(proj2, '.codex', 'hooks.json')],
+    ['.cursor/hooks.json', path.join(proj2, '.cursor', 'hooks.json')],
+    ['.agents/hooks.json', path.join(proj2, '.agents', 'hooks.json')]
+  ];
+  configs.forEach(([label, file]) => {
+    if (!fs.existsSync(file)) { check(`[H2] ${label} exists`, false, file); return; }
+    const raw = fs.readFileSync(file, 'utf8');
+    const devosLines = raw.split('\n')
+      .filter((l) => l.includes('.agents/hooks/') && /"command":/.test(l));
+    check(`[H2] ${label} has Dev-OS hook entries`, devosLines.length > 0, raw.slice(0, 200));
+
+    // cmd.exe cannot run either of the old forms.
+    check(`[H2] ${label} never shells out with sh -c`, !/sh -c/.test(raw),
+      (raw.match(/.{0,60}sh -c.{0,60}/) || [''])[0]);
+    check(`[H2] ${label} never names a .sh file as the command`,
+      devosLines.every((l) => !/"command":\s*"[^"]*\.sh"/.test(l) && !/"command":\s*"[^"]*\.sh\\?"/.test(l)),
+      devosLines.find((l) => /\.sh"/.test(l)) || '');
+    // Windows cmd.exe leaves $VAR literal; ${VAR} in plugin configs loses backslashes.
+    check(`[H2] ${label} depends on no shell variable expansion`,
+      devosLines.every((l) => !/\$\{?[A-Z_]+\}?/.test(l)),
+      devosLines.find((l) => /\$\{?[A-Z_]+\}?/.test(l)) || '');
+    check(`[H2] ${label} runs the launcher with node`,
+      devosLines.every((l) => /node /.test(l)) && /run\.js/.test(raw),
+      devosLines[0] || '');
+  });
+
+  // The launcher must be installed into the project, not just this repo.
+  check('[H2] the launcher is installed into the target project',
+    fs.existsSync(path.join(proj2, '.agents', 'hooks', 'run.js')));
+
+  // The migration path every existing install takes. If the matcher does not know the
+  // pre-5.3.0 spellings, `devos update` leaves them in place and appends the new ones,
+  // and every hook then fires twice.
+  const dxc = require(CLI);
+  [['node .agents/hooks/run.js pre-tool-use.sh claude', true, 'the 5.3 launcher form'],
+    ['node "${CLAUDE_PLUGIN_ROOT}/hooks/run.js" stop.sh claude --plugin', true, 'the plugin form'],
+    ['"$CLAUDE_PROJECT_DIR"/.agents/hooks/pre-tool-use.sh', true, 'the pre-5.3 Claude form'],
+    ["sh -c 'r=$(pwd); DEVOS_HOOK_FORMAT=codex exec \"$r/.agents/hooks/stop.sh\"'", true, 'the pre-5.3 harness form'],
+    ['"$CLAUDE_PROJECT_DIR"/.agents/hooks/my-audit.sh', false, "a user's own hook in .agents/hooks/"],
+    ['node .agents/hooks/run-custom.js x', false, 'a lookalike command']
+  ].forEach(([command, want, label]) => {
+    check(`[H2] isDevosHookCommand ${want ? 'claims' : 'leaves alone'} ${label}`,
+      dxc.isDevosHookCommand({ command }) === want, command);
+  });
+
+  // Re-running init must replace Dev-OS entries, never stack a second copy.
+  const again = runCli(['init', '--existing', '--stack', 'universal', '--all-harnesses', '--yes'], proj2);
+  const settings2 = JSON.parse(fs.readFileSync(path.join(proj2, '.claude', 'settings.json'), 'utf8'));
+  const preCount = (settings2.hooks.PreToolUse || [])
+    .filter((g) => (g.hooks || []).some((h) => dxc.isDevosHookCommand(h))).length;
+  check('[H2] re-running init replaces the Dev-OS hooks instead of duplicating them',
+    again.status === 0 && preCount === 1, `entries=${preCount}`);
+
+  // hooks on/off and the settings merge find Dev-OS entries by this marker.
+  const settings = fs.readFileSync(path.join(proj2, '.claude', 'settings.json'), 'utf8');
+  check('[H2] Dev-OS entries are still identifiable by the .agents/hooks/ marker',
+    settings.includes('.agents/hooks/'), settings.slice(0, 200));
+
+  // The real end-to-end proof: the wired command, run as written, blocks a
+  // destructive command and allows a safe one.
+  const hookEntry = JSON.parse(settings).hooks.PreToolUse[0].hooks[0].command;
+  const runWired = (payload) => spawnSync(hookEntry, {
+    shell: true, cwd: proj2, input: JSON.stringify(payload), encoding: 'utf8',
+    timeout: HOOK_TIMEOUT_MS, env: Object.assign({}, BASE_ENV, { CLAUDE_PROJECT_DIR: proj2 })
+  });
+  const danger = runWired({ tool_name: 'Bash', tool_input: { command: 'rm -rf /' } });
+  check('[H2] the wired command still blocks a destructive call', danger.status === 2,
+    `status=${danger.status} ${(danger.stderr || '').slice(0, 200)}`);
+  const safe = runWired({ tool_name: 'Bash', tool_input: { command: 'ls -la' } });
+  check('[H2] the wired command still allows a safe call', safe.status === 0,
+    `status=${safe.status} ${(safe.stderr || '').slice(0, 200)}`);
+
+  // The plugin ships the same launcher.
+  const dist = fs.mkdtempSync(path.join(scratch, 'plugin-'));
+  const built = runCli(['build-plugin', '--out', dist], ROOT);
+  if (built.status === 0) {
+    const ph = path.join(dist, 'hooks', 'hooks.json');
+    if (fs.existsSync(ph)) {
+      const praw = fs.readFileSync(ph, 'utf8');
+      check('[H2] the plugin hooks config is portable too',
+        !/sh -c/.test(praw) && /run\.js/.test(praw), praw.slice(0, 300));
+    }
+    check('[H2] the plugin ships the launcher',
+      fs.existsSync(path.join(dist, 'hooks', 'run.js')));
+  }
+}
+checkHookCommandsPortable();
 
 } finally {
   fs.rmSync(proj, { recursive: true, force: true });
