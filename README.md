@@ -4,7 +4,7 @@
 
 **by Clement Olives · Olives Technologies**
 
-![Version](https://img.shields.io/badge/version-v5.2.0-blue.svg)
+![Version](https://img.shields.io/badge/version-v5.3.0-blue.svg)
 ![npm](https://img.shields.io/badge/npm-%40olives%2Fdevos-red.svg)
 ![License](https://img.shields.io/badge/license-MIT-green.svg)
 
@@ -247,6 +247,47 @@ Other protocols in `.agents/AGENTS.md`: Project Inception, Product Planning, Doc
 
 ## Gates and hooks
 
+### Windows, and the shell the gates need
+
+Every gate runs through one command, on every harness and every platform:
+
+```
+node .agents/hooks/run.js <script> <format>
+```
+
+`.agents/hooks/run.js` names no shell, expands no variable and contains no absolute path,
+because on Windows the hook shell is `cmd.exe`: `$CLAUDE_PROJECT_DIR` stays literal there and
+`${CLAUDE_PLUGIN_ROOT}` loses its backslashes. The launcher finds a POSIX shell itself, in this
+order:
+
+1. `DEVOS_SHELL`, if it points at an executable.
+2. `bash`, then `sh`, on `PATH`.
+3. On Windows, Git for Windows at `%ProgramFiles%\Git\bin\bash.exe` and the usual variants.
+
+It then runs the hook script and passes stdin, stdout and the exit code straight through, so a
+gate that denies with exit code 2 still denies.
+
+**If no shell is found, the gates fail open.** The launcher writes one line to stderr and exits
+0 rather than denying every tool call, because a gate that blocks all legitimate work gets
+uninstalled rather than fixed. Nothing is enforced in that state, so check it:
+
+```
+devos hooks status     # shell, wiring, and whether the gates are actually on
+devos doctor           # same, as a Hook shell row in the diagnostic report
+```
+
+Git for Windows ships bash, so almost every Windows machine with git already satisfies this.
+
+### Turning the gates off
+
+```
+devos hooks off        # removes only Dev-OS's entries; your own hooks stay
+devos hooks on         # puts them back
+```
+
+`off` is recorded in `.agents/manifest.json`, and `devos update` honours it. Editing or renaming
+a generated config by hand does not survive the next update; this does.
+
 ### Claude Code hook events
 
 `init` and `update` merge these into `.claude/settings.json` and keep your own settings and hooks. Each script reads Claude Code's JSON on stdin. The gates block with exit code 2 and a reason on stderr; `PreCompact`, `PostCompact`, `SubagentStart` and `InstructionsLoaded` cannot block their event and only add context or record state.
@@ -375,7 +416,7 @@ Dev-OS also ships as a Claude Code plugin with the default agents, the commands,
 /plugin install devos@olives-devos
 ```
 
-This needs `@olives/devos` 5.2.0 published to npm, because the marketplace entry in `.claude-plugin/marketplace.json` uses a `command` source that builds the pinned version on your machine. That source type needs Claude Code v2.1.229 or later. The install shows you the build command and asks you to accept it before running anything, and Claude Code re-runs it once per session (the pinned version is cached under `~/.devos/claude-plugin/`). The plugin's hooks only act in projects that have been set up with `devos init` (they look for `.agents/manifest.json`); in any other repository they do nothing. To build the plugin locally instead:
+This needs `@olives/devos` 5.3.0 published to npm, because the marketplace entry in `.claude-plugin/marketplace.json` uses a `command` source that builds the pinned version on your machine. That source type needs Claude Code v2.1.229 or later. The install shows you the build command and asks you to accept it before running anything, and Claude Code re-runs it once per session (the pinned version is cached under `~/.devos/claude-plugin/`). The plugin's hooks only act in projects that have been set up with `devos init` (they look for `.agents/manifest.json`); in any other repository they do nothing. To build the plugin locally instead:
 
 ```bash
 devos build-plugin --out dist/claude-plugin
@@ -425,6 +466,9 @@ Run `devos scaffold` to recreate missing state files, and `devos memory doctor` 
 | Hooks seem to run twice | Plugin enabled on top of a project install | Disable the plugin |
 | An edited agent or command was not updated | Dev-OS keeps edited files | `devos update --force` (backs up first) |
 | Gitleaks not found | Not installed | `devos init --install-gitleaks`, or rely on the built-in scanner |
+| On Windows, every tool call is blocked or errors | Dev-OS before 5.3.0 wired hooks to a POSIX shell that `cmd.exe` cannot run | `devos update` to 5.3.0 or later, which switches to the Node launcher |
+| `doctor` says "no POSIX shell found" | Nothing on the machine can run the hook scripts, so nothing is enforced | Install Git for Windows (it ships bash), or set `DEVOS_SHELL` to a bash executable |
+| You want the gates off entirely | — | `devos hooks off` (not renaming a config, which `devos update` undoes) |
 
 ---
 

@@ -277,6 +277,7 @@ function printHelp() {
   console.log(`  ${colors.green}spec${colors.reset} waves <slug>        Order docs/specs/<slug>/tasks.md into parallel waves (topological layers over depends:)`);
   console.log(`  ${colors.green}spec${colors.reset} check <slug>        Verify every requirement is covered, every task cites real ids and has a verify: line (exit 1 on gaps)`);
   console.log(`  ${colors.green}guide${colors.reset}                    Build the interactive walkthrough page from docs/TESTING_GUIDE.md into the app's public directory`);
+  console.log(`  ${colors.green}hooks${colors.reset}                    Lifecycle gates: hooks status | on | off (reports the POSIX shell they need)`);
   console.log(`  ${colors.green}build-plugin${colors.reset}             Build the Dev-OS Claude Code plugin (default --out dist/claude-plugin/)`);
   console.log(`  ${colors.green}list${colors.reset}, ${colors.green}agents${colors.reset}       Display active agent personas and installed specialist skills`);
   console.log(`  ${colors.green}status${colors.reset}             Show active project configuration, detected stack, and health summary`);
@@ -5618,6 +5619,21 @@ function runDoctor(flags) {
       console.log(`    ${colors.green}[ OK ]${colors.reset} every recorded fact is within ${conf.limit} days and was measured, not assumed`);
     }
   }
+  // 5.3.0: every gate runs through .agents/hooks/run.js, which needs a POSIX shell.
+  // Without one the launcher exits 0 on purpose rather than denying every tool call,
+  // so nothing is enforced and nothing else would say so. This is the row that keeps
+  // a fail-open from being silent.
+  const shellInfo = hookShellReport();
+  console.log(`\n  ${colors.bold}Hook shell (gates run through .agents/hooks/run.js)${colors.reset}`);
+  if (!shellInfo.launcherPresent) {
+    console.log(`    ${colors.yellow}[ WARN ]${colors.reset} .agents/hooks/run.js is missing; run ${colors.cyan}devos update${colors.reset}`);
+  } else if (shellInfo.shell) {
+    console.log(`    ${colors.green}[ OK ]${colors.reset} ${shellInfo.shell}`);
+  } else {
+    console.log(`    ${colors.red}[ WARN ]${colors.reset} no POSIX shell found: every Dev-OS hook exits 0 and NOTHING is enforced.`);
+    console.log(`  ${colors.gray}      Install Git for Windows (it ships bash), or set DEVOS_SHELL to a bash executable.${colors.reset}`);
+  }
+
   // W6 (5.2.0): what each installed harness can actually enforce. A harness that cannot
   // block is labelled advisory rather than counted as a gate.
   const harnessRows = HARNESS_ENFORCEMENT.filter(([, , file]) => fs.existsSync(path.join(TARGET_DIR, file)));
@@ -5725,6 +5741,17 @@ function runStatus(flags) {
   console.log(`  Standards:     ${hasStandards ? colors.green + 'Present' : colors.gray + 'None'}${colors.reset}`);
   console.log(`  Commit Gate:   ${hasCommitScript ? colors.green + 'Active' : colors.gray + 'Disabled'}${colors.reset}`);
   console.log(`  Git Hook:      ${hasHook ? colors.green + 'Installed' : colors.gray + 'Not Installed'}${colors.reset}`);
+  // The gates run through .agents/hooks/run.js, which needs a POSIX shell. Without
+  // one every hook exits 0, so this row is the difference between "enforced" and
+  // "silently not enforced" -- the state a Windows box lands in with no bash.
+  const hookShell = hookShellReport();
+  if (hookShell.shell) {
+    console.log(`  Hook Shell:    ${colors.green}${hookShell.shell}${colors.reset}`);
+  } else {
+    console.log(`  Hook Shell:    ${colors.red}none found - gates are INACTIVE${colors.reset}`);
+    console.log(`  ${colors.yellow}[ WARN ] No POSIX shell: every Dev-OS hook exits 0 and nothing is enforced.${colors.reset}`);
+    console.log(`           Install Git for Windows (it ships bash), or set DEVOS_SHELL.`);
+  }
   const hasGitleaks = spawnSync('which', ['gitleaks'], { encoding: 'utf8' }).status === 0 || fs.existsSync(path.join(TARGET_DIR, '.agents', 'bin', 'gitleaks'));
   console.log(`  Secret Scanner:${hasGitleaks ? colors.green + ' Active (Gitleaks)' : colors.cyan + ' Active (Dev-OS built-in)'}${colors.reset}`);
   console.log(`  Memory Vault:  ${hasMemory ? colors.green + 'Active (.agents/memory/)' : colors.gray + 'None'}${colors.reset}`);
@@ -6230,6 +6257,9 @@ async function main() {
       break;
     case 'guide':
       runGuide(flags, positional);
+      break;
+    case 'hooks':
+      runHooks(flags, positional);
       break;
     case 'status':
       runStatus(flags);
@@ -6832,6 +6862,130 @@ function runGuide(flags, positional) {
   if (!flags.out) {
     console.log(`  Served with the app at ${colors.cyan}/${path.basename(path.dirname(outPath))}/${GUIDE_FILENAME}${colors.reset}; open the file directly to present offline.`);
   }
+}
+
+
+// ---------------------------------------------------------------------------
+// `devos hooks on | off | status`
+// Plan: docs/plans/2026-11-12-windows-hooks.md
+//
+// Before this existed the only way to stop the gates was editing or renaming a
+// generated config by hand, which `devos update` would then undo. Dev-OS owns the
+// entries it writes (isDevosHookCommand), so it can take exactly those back out.
+// ---------------------------------------------------------------------------
+
+function hookShellReport() {
+  let shell = null;
+  let launcherPresent = fs.existsSync(path.join(TARGET_DIR, '.agents', 'hooks', 'run.js'));
+  try {
+    const runner = require(path.join(TARGET_DIR, '.agents', 'hooks', 'run.js'));
+    shell = runner.resolveHookShell(process.platform, process.env);
+  } catch (e) {
+    try {
+      shell = require(path.join(__dirname, '..', '.agents', 'hooks', 'run.js'))
+        .resolveHookShell(process.platform, process.env);
+    } catch (e2) { shell = null; }
+  }
+  return { shell, launcherPresent };
+}
+
+// Strip Dev-OS handlers from .claude/settings.json, keeping everyone else's.
+function unwireClaudeHooks(targetDir) {
+  const settingsPath = path.join(targetDir, '.claude', 'settings.json');
+  if (!fs.existsSync(settingsPath)) return false;
+  let settings;
+  try { settings = JSON.parse(fs.readFileSync(settingsPath, 'utf8') || '{}'); } catch (e) { return false; }
+  const hooks = settings.hooks && typeof settings.hooks === 'object' ? settings.hooks : null;
+  if (!hooks) return false;
+  let removed = 0;
+  Object.keys(hooks).forEach((event) => {
+    if (!Array.isArray(hooks[event])) return;
+    hooks[event] = hooks[event]
+      .map((group) => {
+        if (!group || !Array.isArray(group.hooks)) return group;
+        const kept = group.hooks.filter((h) => !isDevosHookCommand(h));
+        removed += group.hooks.length - kept.length;
+        return { ...group, hooks: kept };
+      })
+      .filter((group) => !(group && Array.isArray(group.hooks) && group.hooks.length === 0));
+    if (hooks[event].length === 0) delete hooks[event];
+  });
+  settings.hooks = hooks;
+  fs.writeFileSync(settingsPath, JSON.stringify(settings, null, 2) + '\n', 'utf8');
+  return removed > 0;
+}
+
+// The other harness configs are Dev-OS's own files, so they are emptied rather
+// than deleted: reversible, and it leaves the file where the harness expects it.
+const EMPTY_HARNESS_CONFIGS = [
+  ['.codex/hooks.json', () => ({ description: 'Dev-OS lifecycle gates are OFF (devos hooks on).', hooks: {} })],
+  ['.cursor/hooks.json', () => ({ version: 1, hooks: {} })],
+  ['.agents/hooks.json', () => ({ devos: { enabled: false } })]
+];
+
+function unwireHarnessHooks(targetDir) {
+  const cleared = [];
+  EMPTY_HARNESS_CONFIGS.forEach(([rel, body]) => {
+    const file = path.join(targetDir, ...rel.split('/'));
+    if (!fs.existsSync(file)) return;
+    if (!fs.readFileSync(file, 'utf8').includes('.agents/hooks/')) return;
+    fs.writeFileSync(file, JSON.stringify(body(), null, 2) + '\n', 'utf8');
+    cleared.push(rel);
+  });
+  return cleared;
+}
+
+function runHooks(flags, positional) {
+  const sub = (positional[0] || 'status').toLowerCase();
+  const manifest = getSkillManifest(TARGET_DIR);
+  const { shell, launcherPresent } = hookShellReport();
+
+  if (sub === 'status') {
+    const wired = claudeHooksWired(TARGET_DIR);
+    const choice = manifest.hooksEnabled !== false;
+    const active = wired && choice && Boolean(shell);
+    console.log(`\n${colors.bold}DEV-OS HOOK GATES${colors.reset}`);
+    console.log(`  Wired into .claude/settings.json: ${wired ? colors.green + 'yes' : colors.yellow + 'no'}${colors.reset}`);
+    console.log(`  Recorded choice:                  ${choice ? 'on' : 'off'}`);
+    console.log(`  Launcher (.agents/hooks/run.js):  ${launcherPresent ? colors.green + 'present' : colors.red + 'missing'}${colors.reset}`);
+    console.log(`  Hook shell:                       ${shell ? colors.green + shell : colors.red + 'none found'}${colors.reset}`);
+    console.log(`  Gates:                            ${active ? colors.green + 'ON (enforced)' : colors.yellow + 'OFF (not enforced)'}${colors.reset}`);
+    if (!shell) {
+      console.log(`\n  ${colors.yellow}No POSIX shell was found, so the gates cannot run and every hook exits 0.${colors.reset}`);
+      console.log('  Install Git for Windows (it ships bash), or set DEVOS_SHELL to a bash executable.');
+    }
+    console.log(`\n  ${colors.gray}devos hooks off${colors.reset} to unwire, ${colors.gray}devos hooks on${colors.reset} to restore.\n`);
+    return;
+  }
+
+  if (sub === 'off') {
+    const claudeCleared = unwireClaudeHooks(TARGET_DIR);
+    const cleared = unwireHarnessHooks(TARGET_DIR);
+    manifest.hooksEnabled = false;
+    saveSkillManifest(manifest, TARGET_DIR);
+    console.log(`${colors.green}[ OK ]${colors.reset} Dev-OS hook gates are off.`);
+    if (claudeCleared) console.log('  Removed the Dev-OS entries from .claude/settings.json; your own hooks were kept.');
+    cleared.forEach((rel) => console.log(`  Cleared ${rel}.`));
+    console.log(`  ${colors.gray}devos update${colors.reset} will respect this. Run ${colors.gray}devos hooks on${colors.reset} to restore them.`);
+    return;
+  }
+
+  if (sub === 'on') {
+    wireHooks(path.join(TARGET_DIR, '.agents'), path.join(TARGET_DIR, '.claude'));
+    const harnesses = harnessesForUpdate({ passed: {} }, manifest);
+    generateHarnessConfigs(TARGET_DIR, harnesses, harnessContext(TARGET_DIR, manifest));
+    manifest.hooksEnabled = true;
+    saveSkillManifest(manifest, TARGET_DIR);
+    console.log(`${colors.green}[ OK ]${colors.reset} Dev-OS hook gates are on.`);
+    if (!shell) {
+      console.log(`  ${colors.yellow}[ WARN ] No POSIX shell was found, so the gates still cannot run.${colors.reset}`);
+      console.log('  Install Git for Windows (it ships bash), or set DEVOS_SHELL to a bash executable.');
+    }
+    return;
+  }
+
+  console.error(`${colors.red}[ FAIL ] Unknown subcommand '${sub}'. Use: devos hooks status | on | off${colors.reset}`);
+  process.exit(1);
 }
 
 if (require.main === module) {

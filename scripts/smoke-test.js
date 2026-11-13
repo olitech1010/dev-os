@@ -2405,6 +2405,85 @@ function checkHookCommandsPortable() {
 }
 checkHookCommandsPortable();
 
+// ---------------------------------------------------------------------------
+// H3 — a supported off switch, and saying whether the gates can run at all
+// ---------------------------------------------------------------------------
+function checkHooksCommand() {
+  const hp = fs.mkdtempSync(path.join(scratch, 'hookscmd-'));
+  fs.writeFileSync(path.join(hp, 'package.json'), JSON.stringify({ name: 'hp', version: '1.0.0' }));
+  const init = runCli(['init', '--existing', '--stack', 'universal', '--all-harnesses', '--yes'], hp);
+  check('[H3] fixture init succeeds', init.status === 0, (init.stdout + init.stderr).slice(-200));
+
+  const settingsPath = path.join(hp, '.claude', 'settings.json');
+  const read = () => JSON.parse(fs.readFileSync(settingsPath, 'utf8'));
+  const dxh = require(CLI);
+  const devosCount = (s) => Object.values((s.hooks) || {})
+    .reduce((n, groups) => n + groups.filter((g) => (g.hooks || []).some((h) => dxh.isDevosHookCommand(h))).length, 0);
+
+  // A hook of the user's own must survive both directions.
+  const before = read();
+  before.hooks.PostToolUse = (before.hooks.PostToolUse || []).concat([
+    { matcher: 'Write', hooks: [{ type: 'command', command: 'node ./scripts/my-own-audit.js' }] }]);
+  fs.writeFileSync(settingsPath, JSON.stringify(before, null, 2));
+  const wiredBefore = devosCount(read());
+  check('[H3] the fixture starts with Dev-OS hooks wired', wiredBefore >= 10, `entries=${wiredBefore}`);
+
+  const status1 = runCli(['hooks', 'status'], hp);
+  check('[H3] hooks status exits 0 and reports the gates as on',
+    status1.status === 0 && /on|enabled|active/i.test(status1.stdout), status1.stdout.slice(-300));
+  check('[H3] hooks status names the shell it would use',
+    /shell/i.test(status1.stdout), status1.stdout.slice(-300));
+
+  const off = runCli(['hooks', 'off'], hp);
+  check('[H3] hooks off exits 0', off.status === 0, (off.stdout + off.stderr).slice(-300));
+  const afterOff = read();
+  check('[H3] hooks off removes every Dev-OS entry', devosCount(afterOff) === 0,
+    JSON.stringify(afterOff.hooks).slice(0, 300));
+  check('[H3] hooks off keeps a hook the user wrote',
+    JSON.stringify(afterOff.hooks).includes('my-own-audit.js'), JSON.stringify(afterOff.hooks).slice(0, 300));
+  check('[H3] hooks off records the choice in the manifest',
+    JSON.parse(fs.readFileSync(path.join(hp, '.agents', 'manifest.json'), 'utf8')).hooksEnabled === false);
+  ['.codex/hooks.json', '.cursor/hooks.json', '.agents/hooks.json'].forEach((rel) => {
+    const f = path.join(hp, rel.replace('/', path.sep));
+    if (!fs.existsSync(f)) return;
+    check(`[H3] hooks off clears ${rel}`,
+      !/run\.js/.test(fs.readFileSync(f, 'utf8')), fs.readFileSync(f, 'utf8').slice(0, 200));
+  });
+
+  const status2 = runCli(['hooks', 'status'], hp);
+  check('[H3] hooks status reports the gates as off once unwired',
+    status2.status === 0 && /off|disabled|inactive/i.test(status2.stdout), status2.stdout.slice(-300));
+
+  const on = runCli(['hooks', 'on'], hp);
+  check('[H3] hooks on exits 0', on.status === 0, (on.stdout + on.stderr).slice(-300));
+  const afterOn = read();
+  check('[H3] hooks on restores the Dev-OS entries', devosCount(afterOn) === wiredBefore,
+    `${devosCount(afterOn)} vs ${wiredBefore}`);
+  check('[H3] hooks on does not duplicate on a second run',
+    runCli(['hooks', 'on'], hp).status === 0 && devosCount(read()) === wiredBefore,
+    `entries=${devosCount(read())}`);
+  check('[H3] hooks on still keeps the user hook',
+    JSON.stringify(afterOn.hooks).includes('my-own-audit.js'));
+
+  // devos update must honour the recorded off choice rather than silently re-wiring.
+  runCli(['hooks', 'off'], hp);
+  const upd = runCli(['update', '--quiet'], hp);
+  check('[H3] devos update leaves the hooks off when the project turned them off',
+    upd.status === 0 && devosCount(read()) === 0, `entries=${devosCount(read())}`);
+  runCli(['hooks', 'on'], hp);
+
+  // A silent fail-open is how someone ships with no gates and never learns.
+  const doc = runCli(['doctor'], hp);
+  check('[H3] doctor reports the hook shell', /shell/i.test(doc.stdout), doc.stdout.slice(-600));
+  const docNoShell = runCli(['doctor'], hp, { env: Object.assign({}, BASE_ENV, { PATH: '', DEVOS_SHELL: '/nope/bash' }) });
+  check('[H3] doctor warns when no shell can run the gates',
+    /no posix shell|not found|inactive|WARN/i.test(docNoShell.stdout + docNoShell.stderr),
+    (docNoShell.stdout + docNoShell.stderr).slice(-400));
+  check('[H3] help documents the hooks command',
+    /hooks\b/.test((runCli(['--help'], hp).stdout || '')), '');
+}
+checkHooksCommand();
+
 } finally {
   fs.rmSync(proj, { recursive: true, force: true });
   fs.rmSync(empty, { recursive: true, force: true });

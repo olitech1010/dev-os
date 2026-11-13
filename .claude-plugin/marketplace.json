@@ -11,7 +11,7 @@
       "description": "The Dev-OS 13-agent roster, slash commands, core skills, and lifecycle gate hooks. For the full project install (permission rules, git hooks, state scaffolds) run npx @olives/devos init instead.",
       "source": {
         "source": "command",
-        "command": "npx -y @olives/devos@5.2.0 build-plugin --out \"$HOME/.devos/claude-plugin/5.2.0\" --print-path",
+        "command": "npx -y @olives/devos@5.3.0 build-plugin --out \"$HOME/.devos/claude-plugin/5.3.0\" --print-path",
         "timeout": 300,
         "mode": "copy"
       },

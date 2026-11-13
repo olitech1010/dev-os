@@ -3,6 +3,46 @@
 All notable changes to Dev-OS are recorded here. The Tech Writer agent maintains this file.
 Versions follow [Semantic Versioning](https://semver.org/).
 
+## [5.3.0] - 2026-11-13
+
+### Fixed
+
+- **Dev-OS now runs on Windows.** Every hook command assumed a POSIX shell, so on
+  Windows the lifecycle gates failed on every tool call. Claude Code was wired to run
+  `.agents/hooks/<script>.sh` directly, which needs a shebang the Windows shell does not
+  honour, and the other harnesses got `sh -c` with quoting `cmd.exe` cannot parse. Because
+  Cursor's `preToolUse` is `failClosed` and Antigravity requires an explicit decision, a
+  hook that could not start denied the call: the gate meant to stop destructive commands
+  stopped all work, and the only way out was renaming a config by hand.
+  Every harness now runs `node .agents/hooks/run.js <script> <format>`. The launcher names
+  no shell, expands no variable (on Windows `$CLAUDE_PROJECT_DIR` stays literal and
+  `${CLAUDE_PLUGIN_ROOT}` loses its backslashes) and bakes no absolute path into a shared
+  config. It finds a POSIX shell itself — `DEVOS_SHELL`, then `PATH`, then Git for Windows
+  at its install paths — and proxies stdin, stdout and the exit code, so `exit 2` still
+  denies.
+- **A machine with no shell at all fails open, loudly.** The launcher exits 0 with one
+  stderr line instead of denying every call, and `devos doctor` carries a Hook shell row so
+  the state is never silent. Git for Windows ships bash, so this is reached only where no
+  bash exists anywhere.
+- **Hook entries are no longer duplicated.** `isDevosHookCommand` recognised only the
+  pre-5.3.0 spellings, so `devos init` would have appended a second set of handlers rather
+  than replacing them. It now matches the launcher form, the plugin form and both legacy
+  forms, and still leaves a hook you wrote in `.agents/hooks/` alone.
+
+### Added
+
+- **`devos hooks status | on | off`.** A supported way to unwire the gates and put them
+  back, instead of editing a generated config that `devos update` would overwrite. `off`
+  strips only Dev-OS's own entries, keeps yours, records the choice in the manifest, and
+  `devos update` honours it.
+- **`devos guide`** builds an interactive walkthrough page from `docs/TESTING_GUIDE.md`
+  into the app's public directory: one self-contained file, no build step, no login.
+  Previous and next buttons with arrow and space keys, deep-linkable slides, a progress
+  bar, per-step checkboxes, a presenter mode for showing the project to stakeholders, a
+  print stylesheet for PDF export, and the demo sign-in details with copy buttons. A
+  credential that is not the `devos123` demo password is reported and withheld, because
+  the page ships inside the deployed app.
+
 ## [5.2.0] - 2026-11-09
 
 Dev-OS now behaves inside Claude Code the way Claude Code itself works, and the same

@@ -101,7 +101,20 @@ Git skips `pre-commit` for merge commits, so a merge could otherwise bypass the 
 
 ---
 
-## 6. Known Issues
+## 6. Windows
+
+The Git pre-commit gate is a shell script, and Git for Windows runs it with its own bundled
+bash, so it works on Windows without any extra setup.
+
+The Claude Code and cross-harness lifecycle gates are different: they run through
+`node .agents/hooks/run.js`, which looks for a POSIX shell (`DEVOS_SHELL`, then `PATH`, then
+Git for Windows). If it finds none it exits 0 with a warning rather than blocking every tool
+call, which means nothing is enforced. Check with `devos hooks status` or `devos doctor`.
+
+To turn the lifecycle gates off deliberately, use `devos hooks off` rather than editing a
+generated config: the command records the choice so `devos update` does not undo it.
+
+## 7. Known Issues
 
 ### Issue 1: legacy Gitleaks subcommand (resolved in v2.1.0)
 
@@ -113,7 +126,7 @@ Testing `$?` on a later line breaks when someone inserts a log line. The hook te
 
 ---
 
-## 7. Verifying the Gate Yourself
+## 8. Verifying the Gate Yourself
 
 In a scratch repository, from your own terminal (not an agent shell, or check 0 fires first):
 
@@ -137,7 +150,7 @@ git log --oneline   # expect no commits
 
 ---
 
-## 8. Related Documentation
+## 9. Related Documentation
 
 - [System Architecture](ARCHITECTURE.md): the Commit Gate Flow diagram
 - [Getting Started](GETTING_STARTED.md): installation and the scripted checkpoint
